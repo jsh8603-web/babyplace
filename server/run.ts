@@ -23,8 +23,16 @@
 
 import { runPipelineA } from './collectors/kakao-category'
 import { runPipelineB } from './collectors/naver-blog'
+import { runPublicData } from './collectors/public-data'
+import { runLocalData } from './collectors/localdata'
 import { runAutoPromotion } from './candidates/auto-promote'
 import { runAutoDeactivate } from './candidates/auto-deactivate'
+import { runScoring } from './scoring'
+import { runDensityControl } from './enrichers/density'
+import { runKOPISCollector } from './collectors/kopis'
+import { runTourAPICollector } from './collectors/tour-api'
+import { runSeoulEventsCollector } from './collectors/seoul-events'
+import { runEventDeduplication } from './matchers/event-dedup'
 
 // ─── Schedule dispatch ────────────────────────────────────────────────────────
 
@@ -97,26 +105,62 @@ async function runPipelineBJob(): Promise<void> {
 }
 
 async function runPublicDataJob(): Promise<void> {
-  // Phase 2: public dataset collectors (놀이시설, 공원, 도서관, 박물관)
-  // Stub — to be implemented in Phase 2
-  console.log('[run] === Public data collectors (Phase 2 — not yet implemented) ===')
+  console.log('[run] === Public data collectors (data.go.kr + LOCALDATA) ===')
+
+  // Public data: data.go.kr sources
+  console.log('[run] Running public data collectors...')
+  const publicDataResult = await runPublicData()
+  console.log('[run] Public data result:', JSON.stringify(publicDataResult, null, 2))
+
+  // LOCALDATA: license-based collection
+  console.log('[run] Running LOCALDATA collector...')
+  const localDataResult = await runLocalData()
+  console.log('[run] LOCALDATA result:', JSON.stringify(localDataResult, null, 2))
 }
 
 async function runEventsJob(): Promise<void> {
-  // Phase 2: events collectors (KOPIS, Tour API, Seoul cultural events)
-  // Stub — to be implemented in Phase 2
-  console.log('[run] === Events collectors (Phase 2 — not yet implemented) ===')
+  console.log('[run] === Events collectors (KOPIS, Tour API, Seoul) ===')
+
+  // KOPIS 공연 정보
+  console.log('[run] Running KOPIS collector...')
+  const kopisResult = await runKOPISCollector()
+  console.log('[run] KOPIS result:', JSON.stringify(kopisResult, null, 2))
+
+  // Tour API 관광정보
+  console.log('[run] Running Tour API collector...')
+  const tourResult = await runTourAPICollector()
+  console.log('[run] Tour API result:', JSON.stringify(tourResult, null, 2))
+
+  // Seoul cultural events
+  console.log('[run] Running Seoul events collector...')
+  const seoulResult = await runSeoulEventsCollector()
+  console.log('[run] Seoul events result:', JSON.stringify(seoulResult, null, 2))
+
+  // Event deduplication
+  console.log('[run] Running event deduplication...')
+  const dedupResult = await runEventDeduplication()
+  console.log('[run] Event deduplication result:', JSON.stringify(dedupResult, null, 2))
 }
 
 async function runScoringJob(): Promise<void> {
-  console.log('[run] === Scoring + auto-promotion + auto-deactivation ===')
+  console.log('[run] === Scoring + density control + auto-promotion + auto-deactivation ===')
 
-  // Auto-promotion: promote qualified candidates to places
+  // Scoring: compute popularity_score for all places (Task #5)
+  console.log('[run] Running popularity scoring...')
+  const scoringResult = await runScoring()
+  console.log('[run] Scoring result:', JSON.stringify(scoringResult, null, 2))
+
+  // Density control: enforce district-based Top-N (Task #5)
+  console.log('[run] Running density control...')
+  const densityResult = await runDensityControl()
+  console.log('[run] Density control result:', JSON.stringify(densityResult, null, 2))
+
+  // Auto-promotion: promote qualified candidates to places (enhanced with public data sources)
   console.log('[run] Running auto-promotion...')
   const promoteResult = await runAutoPromotion()
   console.log('[run] Auto-promotion result:', JSON.stringify(promoteResult, null, 2))
 
-  // Auto-deactivation: detect closed places
+  // Auto-deactivation: detect closed places (enhanced with category-based TTL)
   console.log('[run] Running auto-deactivation...')
   const deactivateResult = await runAutoDeactivate()
   console.log(
