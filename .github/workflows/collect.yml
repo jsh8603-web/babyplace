@@ -1,0 +1,61 @@
+name: Data Collection
+
+on:
+  schedule:
+    # Pipeline B: Naver blog reverse search + keyword rotation (every 6 hours)
+    - cron: '0 */6 * * *'
+    # Pipeline A: Kakao category scan / place discovery (02:00 KST = 17:00 UTC)
+    - cron: '0 17 * * *'
+    # Public data collectors: 놀이시설, 공원, 도서관, 박물관 (03:00 KST = 18:00 UTC)
+    - cron: '0 18 * * *'
+    # Events collectors: KOPIS, Tour API, Seoul cultural events (04:00 KST = 19:00 UTC)
+    - cron: '0 19 * * *'
+    # Scoring + auto-promotion + auto-deactivation (05:00 KST = 20:00 UTC)
+    - cron: '0 20 * * *'
+  workflow_dispatch:
+    inputs:
+      schedule:
+        description: 'Schedule to simulate (leave blank for "manual" — runs all pipelines)'
+        required: false
+        default: 'manual'
+
+jobs:
+  collect:
+    name: Run collection pipeline
+    runs-on: ubuntu-latest
+    timeout-minutes: 55  # GitHub Actions max is 6h; cron is every 6h, so 55min is safe
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Determine schedule parameter
+        id: schedule
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            echo "value=${{ github.event.schedule }}" >> $GITHUB_OUTPUT
+          else
+            echo "value=${{ github.event.inputs.schedule || 'manual' }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run data collection pipeline
+        run: npx tsx server/run.ts "${{ steps.schedule.outputs.value }}"
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          KAKAO_REST_KEY: ${{ secrets.KAKAO_REST_KEY }}
+          NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
+          NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
+          DATA_GO_KR_API_KEY: ${{ secrets.DATA_GO_KR_API_KEY }}
+          KOPIS_API_KEY: ${{ secrets.KOPIS_API_KEY }}
+          TOUR_API_KEY: ${{ secrets.TOUR_API_KEY }}
+          NODE_ENV: production

@@ -1,0 +1,42 @@
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+@import "tailwindcss";
+
+@theme {
+  /* Primary — Soft Coral */
+  --color-coral-50: #FFF5F3;
+  --color-coral-100: #FFE8E3;
+  --color-coral-200: #FFCFC4;
+  --color-coral-300: #FFA08D;
+  --color-coral-400: #FF7B66;
+  --color-coral-500: #FF5C45;
+  --color-coral-600: #E84530;
+
+  /* Neutral — Warm Gray */
+  --color-warm-50: #FAFAF8;
+  --color-warm-100: #F5F4F2;
+  --color-warm-200: #E8E6E3;
+  --color-warm-300: #D1CEC9;
+  --color-warm-400: #A8A49E;
+  --color-warm-500: #78746D;
+  --color-warm-600: #524E49;
+  --color-warm-700: #3A3733;
+  --color-warm-800: #252320;
+
+  /* Semantic */
+  --color-success: #34C759;
+  --color-warning: #FF9500;
+  --color-error: #FF3B30;
+  --color-info: #007AFF;
+  --color-indoor: #5B7FFF;
+  --color-outdoor: #34C759;
+
+  --font-sans: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-warm-50);
+  color: var(--color-warm-700);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
