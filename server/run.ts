@@ -9,7 +9,7 @@
  *   '0 */6 * * *'   → Pipeline B: Naver blog reverse search + keyword rotation
  *   '0 17 * * *'    → Pipeline A: Kakao category scan (places discovery) [02:00 KST]
  *   '0 18 * * *'    → Public data collectors [03:00 KST] (Phase 2 — stub)
- *   '0 19 * * *'    → Events collectors (KOPIS, Tour, Seoul) [04:00 KST] (Phase 2 — stub)
+ *   '0 19 * * *'    → Events collectors (KOPIS, Tour, Seoul) [04:00 KST]
  *   '0 20 * * *'    → Scoring + auto-promotion + auto-deactivation [05:00 KST]
  *   'manual'        → Run all pipelines (for local testing / manual trigger)
  *
@@ -19,16 +19,19 @@
  *   KAKAO_REST_KEY
  *   NAVER_CLIENT_ID
  *   NAVER_CLIENT_SECRET
+ *   KOPIS_API_KEY (for KOPIS events)
+ *   TOUR_API_KEY (for Tour API events)
+ *   SEOUL_API_KEY (optional, for Seoul cultural events)
  */
 
 import { runPipelineA } from './collectors/kakao-category'
 import { runPipelineB } from './collectors/naver-blog'
 import { runPublicData } from './collectors/public-data'
 import { runLocalData } from './collectors/localdata'
-import { runAutoPromotion } from './candidates/auto-promote'
-import { runAutoDeactivate } from './candidates/auto-deactivate'
 import { runScoring } from './scoring'
 import { runDensityControl } from './enrichers/density'
+import { runAutoPromotion } from './candidates/auto-promote'
+import { runAutoDeactivate } from './candidates/auto-deactivate'
 import { runKOPISCollector } from './collectors/kopis'
 import { runTourAPICollector } from './collectors/tour-api'
 import { runSeoulEventsCollector } from './collectors/seoul-events'
@@ -107,12 +110,12 @@ async function runPipelineBJob(): Promise<void> {
 async function runPublicDataJob(): Promise<void> {
   console.log('[run] === Public data collectors (data.go.kr + LOCALDATA) ===')
 
-  // Public data: data.go.kr sources
-  console.log('[run] Running public data collectors...')
-  const publicDataResult = await runPublicData()
-  console.log('[run] Public data result:', JSON.stringify(publicDataResult, null, 2))
+  // Public data collectors: playgrounds, parks, libraries, museums
+  console.log('[run] Running public data collector...')
+  const publicResult = await runPublicData()
+  console.log('[run] Public data result:', JSON.stringify(publicResult, null, 2))
 
-  // LOCALDATA: license-based collection
+  // LOCALDATA: kids cafes, indoor play facilities
   console.log('[run] Running LOCALDATA collector...')
   const localDataResult = await runLocalData()
   console.log('[run] LOCALDATA result:', JSON.stringify(localDataResult, null, 2))
@@ -145,22 +148,22 @@ async function runEventsJob(): Promise<void> {
 async function runScoringJob(): Promise<void> {
   console.log('[run] === Scoring + density control + auto-promotion + auto-deactivation ===')
 
-  // Scoring: compute popularity_score for all places (Task #5)
+  // Popularity scoring: compute scores for all active places
   console.log('[run] Running popularity scoring...')
   const scoringResult = await runScoring()
   console.log('[run] Scoring result:', JSON.stringify(scoringResult, null, 2))
 
-  // Density control: enforce district-based Top-N (Task #5)
+  // Density control: enforce Top-N per district after scoring
   console.log('[run] Running density control...')
   const densityResult = await runDensityControl()
   console.log('[run] Density control result:', JSON.stringify(densityResult, null, 2))
 
-  // Auto-promotion: promote qualified candidates to places (enhanced with public data sources)
+  // Auto-promotion: promote qualified candidates to places
   console.log('[run] Running auto-promotion...')
   const promoteResult = await runAutoPromotion()
   console.log('[run] Auto-promotion result:', JSON.stringify(promoteResult, null, 2))
 
-  // Auto-deactivation: detect closed places (enhanced with category-based TTL)
+  // Auto-deactivation: detect closed places
   console.log('[run] Running auto-deactivation...')
   const deactivateResult = await runAutoDeactivate()
   console.log(

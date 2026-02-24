@@ -1,11 +1,26 @@
 /**
  * Auto-promotion engine: place_candidates → places
  *
- * Promotion conditions (plan.md 10-4):
+ * Promotion conditions (plan.md 10-4, Task #5 enhancements):
+ *
+ * Phase 1 (Original):
  *   ① 2+ independent blog sources (different domain origins)
  *   ② Kakao API match success (string similarity > 0.8, normalized)
  *   ③ Seoul/Gyeonggi region confirmed
  *   → All three met → INSERT to places table
+ *
+ * Phase 2 (Enhanced with public data sources):
+ *   ① 1+ public data source (data.go.kr, LOCALDATA) OR 2+ blog sources
+ *   ② Kakao API match (similarity > 0.8)
+ *   ③ Seoul/Gyeonggi region confirmed
+ *   → All three met → INSERT to places table
+ *
+ * Public data sources recognized:
+ *   - 'data_go_kr': 공공데이터포털 (놀이시설, 공원, 도서관, 박물관)
+ *   - 'localdata': LOCALDATA (키즈카페, 편의점 등)
+ *   - 'kopis': 공연정보시스템
+ *   - 'tour_api': 관광공사 API
+ *   - 'seoul_gov': 서울시 열린데이터
  *
  * TTL cleanup:
  *   Candidates that have been waiting 30+ days without meeting criteria
@@ -42,6 +57,9 @@ const SIMILARITY_THRESHOLD = 0.8
 const MIN_INDEPENDENT_SOURCES = 2
 const CANDIDATE_TTL_DAYS = 30
 
+// Public data sources that allow easier promotion
+const PUBLIC_DATA_SOURCES = new Set(['data_go_kr', 'localdata', 'kopis', 'tour_api', 'seoul_gov'])
+
 // ─── Main export ──────────────────────────────────────────────────────────────
 
 export interface AutoPromoteResult {
@@ -71,7 +89,7 @@ export async function runAutoPromotion(): Promise<AutoPromoteResult> {
     .from('place_candidates')
     .delete()
     .lt('first_seen_at', ttlCutoff.toISOString())
-    .select('id', { count: 'exact' })
+    .select('id')
 
   if (deleteError) {
     console.error('[auto-promote] TTL delete error:', deleteError)
@@ -144,10 +162,21 @@ interface CandidateRow {
 }
 
 async function evaluateCandidate(candidate: CandidateRow): Promise<boolean> {
-  // --- Condition ①: 2+ independent sources ---
+  // --- Condition ①: Check source requirements (Phase 2: enhanced) ---
   const independentSources = countIndependentSources(candidate.source_urls)
-  if (independentSources < MIN_INDEPENDENT_SOURCES) {
+  const hasPublicDataSource = detectPublicDataSource(candidate.source_urls)
+
+  // Phase 2 logic: accept if 1+ public source OR 2+ blog sources
+  const hasValidSources = hasPublicDataSource || independentSources >= MIN_INDEPENDENT_SOURCES
+
+  if (!hasValidSources) {
     return false
+  }
+
+  if (hasPublicDataSource) {
+    console.log(
+      `[auto-promote] Candidate "${candidate.name}" has public data source — easing promotion criteria`
+    )
   }
 
   // --- Condition ②: Kakao API match (similarity > 0.8) ---
@@ -349,4 +378,42 @@ function guessFromName(name: string): PlaceCategory {
   if (/수영|물놀이|키즈풀/.test(name)) return '수영/물놀이'
   if (/식당|카페|맛집|이유식/.test(name)) return '식당/카페'
   return '놀이' // default fallback
+}
+
+/**
+ * Detects if a candidate has source URLs from known public data sources.
+ * Checks actual source URLs for public data domains instead of relying on
+ * heuristic patterns from place names (which can lead to false positives).
+ *
+ * Public data sources recognized:
+ *   - data.go.kr (공공데이터포털)
+ *   - apis.data.go.kr (data.go.kr API)
+ *   - kopis.or.kr (KOPIS 공연정보시스템)
+ *   - tour.go.kr (관광공사)
+ *   - openapi.seoul.go.kr (서울 열린데이터)
+ */
+function detectPublicDataSource(sourceUrls: string[]): boolean {
+  if (!sourceUrls || sourceUrls.length === 0) {
+    return false
+  }
+
+  const publicDomains = [
+    'data.go.kr',
+    'apis.data.go.kr',
+    'kopis.or.kr',
+    'tour.go.kr',
+    'openapi.seoul.go.kr',
+  ]
+
+  return sourceUrls.some((url) =>
+    publicDomains.some((domain) => {
+      try {
+        const parsed = new URL(url)
+        return parsed.hostname?.includes(domain) ?? false
+      } catch {
+        // Fallback for malformed URLs
+        return url.includes(domain)
+      }
+    })
+  )
 }

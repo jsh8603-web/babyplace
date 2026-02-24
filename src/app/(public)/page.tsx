@@ -12,9 +12,12 @@ import type {
   PlacesResponse,
   WeatherResponse,
   EmergencyResponse,
+  Event,
 } from '@/types'
 import BottomSheet from '@/components/BottomSheet'
 import PlaceCard from '@/components/place/PlaceCard'
+import EventCard from '@/components/event/EventCard'
+import SeasonalCuration from '@/components/event/SeasonalCuration'
 import CategoryChips from '@/components/CategoryChips'
 import FilterPanel from '@/components/FilterPanel'
 import EmergencyOverlay, { EmergencyFAB } from '@/components/EmergencyOverlay'
@@ -90,6 +93,7 @@ export default function HomePage() {
   const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [isEmergencyOpen, setIsEmergencyOpen] = useState(false)
   const [isIndoorFilter, setIsIndoorFilter] = useState(false)
+  const [activeTab, setActiveTab] = useState<'places' | 'events'>('places')
   const [filters, setFilters] = useState<FilterState>({
     categories: [],
     tags: [],
@@ -269,7 +273,7 @@ export default function HomePage() {
         <EmergencyFAB onClick={handleEmergencyOpen} />
       </div>
 
-      {/* Bottom Sheet with place list */}
+      {/* Bottom Sheet with tabs */}
       <BottomSheet
         open={true}
         onOpenChange={() => {}}
@@ -278,66 +282,124 @@ export default function HomePage() {
         setActiveSnapPoint={(snap) => {
           if (snap !== null) setSnapPoint(snap)
         }}
-        title="장소 목록"
+        title="장소 및 이벤트"
       >
-        {/* Summary row */}
-        <div className="px-4 py-2 flex items-center justify-between shrink-0">
-          <span className="text-[13px] font-semibold text-warm-600">
-            {isPlacesLoading
-              ? '장소 불러오는 중...'
-              : `주변 ${filteredPlaces.length.toLocaleString()}개 장소`}
-          </span>
+        {/* Tab buttons */}
+        <div className="flex gap-1 px-4 py-2 shrink-0 border-b border-warm-200">
           <button
-            onClick={() =>
-              setFilters((f) => ({
-                ...f,
-                sort: f.sort === 'distance' ? 'popularity' : 'distance',
-              }))
-            }
-            className="text-[12px] text-warm-400 underline min-h-[36px] px-2"
+            onClick={() => {
+              setActiveTab('places')
+              setSnapPoint(LIST_SNAP)
+            }}
+            className={`
+              px-4 py-2 text-[14px] font-semibold rounded-t-lg transition-colors
+              ${
+                activeTab === 'places'
+                  ? 'text-coral-600 border-b-2 border-coral-500 bg-coral-50'
+                  : 'text-warm-500 hover:text-warm-600'
+              }
+            `}
           >
-            {filters.sort === 'distance' ? '거리순' : filters.sort === 'popularity' ? '인기순' : '최신순'}
+            장소
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab('events')
+              setSnapPoint(LIST_SNAP)
+            }}
+            className={`
+              px-4 py-2 text-[14px] font-semibold rounded-t-lg transition-colors
+              ${
+                activeTab === 'events'
+                  ? 'text-coral-600 border-b-2 border-coral-500 bg-coral-50'
+                  : 'text-warm-500 hover:text-warm-600'
+              }
+            `}
+          >
+            이벤트
           </button>
         </div>
 
-        {/* Place list */}
-        <div
-          ref={listScrollRef}
-          className="flex-1 overflow-y-auto px-4 pb-[80px] space-y-2"
-        >
-          {isPlacesLoading ? (
-            // Skeleton placeholders
-            Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="bg-white rounded-xl p-4 animate-pulse space-y-2">
-                <div className="h-5 bg-warm-200 rounded w-2/3" />
-                <div className="h-4 bg-warm-100 rounded w-1/2" />
-                <div className="h-3 bg-warm-100 rounded w-full" />
-              </div>
-            ))
-          ) : filteredPlaces.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <MapPin size={32} className="text-warm-300 mb-3" />
-              <p className="text-[15px] text-warm-500 font-medium">
-                {searchQuery ? '검색 결과가 없습니다.' : '이 지역에 등록된 장소가 없습니다.'}
-              </p>
-              <p className="text-[13px] text-warm-400 mt-1">
-                지도를 이동하거나 필터를 변경해보세요.
-              </p>
+        {/* Places tab */}
+        {activeTab === 'places' && (
+          <>
+            {/* Summary row */}
+            <div className="px-4 py-2 flex items-center justify-between shrink-0">
+              <span className="text-[13px] font-semibold text-warm-600">
+                {isPlacesLoading
+                  ? '장소 불러오는 중...'
+                  : `주변 ${filteredPlaces.length.toLocaleString()}개 장소`}
+              </span>
+              <button
+                onClick={() =>
+                  setFilters((f) => ({
+                    ...f,
+                    sort: f.sort === 'distance' ? 'popularity' : 'distance',
+                  }))
+                }
+                className="text-[12px] text-warm-400 underline min-h-[36px] px-2"
+              >
+                {filters.sort === 'distance'
+                  ? '거리순'
+                  : filters.sort === 'popularity'
+                    ? '인기순'
+                    : '최신순'}
+              </button>
             </div>
-          ) : (
-            filteredPlaces.map((place) => (
-              <PlaceCard
-                key={place.id}
-                place={place}
-                isSelected={selectedPlace?.id === place.id}
-                onClick={(p) => {
-                  setSelectedPlace(p)
-                  window.location.href = `/place/${p.id}`
-                }}
-              />
-            ))
-          )}
-        </div>
+
+            {/* Place list */}
+            <div
+              ref={listScrollRef}
+              className="flex-1 overflow-y-auto px-4 pb-[80px] space-y-2"
+            >
+              {isPlacesLoading ? (
+                // Skeleton placeholders
+                Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="bg-white rounded-xl p-4 animate-pulse space-y-2">
+                    <div className="h-5 bg-warm-200 rounded w-2/3" />
+                    <div className="h-4 bg-warm-100 rounded w-1/2" />
+                    <div className="h-3 bg-warm-100 rounded w-full" />
+                  </div>
+                ))
+              ) : filteredPlaces.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <MapPin size={32} className="text-warm-300 mb-3" />
+                  <p className="text-[15px] text-warm-500 font-medium">
+                    {searchQuery
+                      ? '검색 결과가 없습니다.'
+                      : '이 지역에 등록된 장소가 없습니다.'}
+                  </p>
+                  <p className="text-[13px] text-warm-400 mt-1">
+                    지도를 이동하거나 필터를 변경해보세요.
+                  </p>
+                </div>
+              ) : (
+                filteredPlaces.map((place) => (
+                  <PlaceCard
+                    key={place.id}
+                    place={place}
+                    isSelected={selectedPlace?.id === place.id}
+                    onClick={(p) => {
+                      setSelectedPlace(p)
+                      window.location.href = `/place/${p.id}`
+                    }}
+                  />
+                ))
+              )}
+            </div>
+          </>
+        )}
+
+        {/* Events tab */}
+        {activeTab === 'events' && (
+          <div className="flex-1 overflow-y-auto pb-[80px]">
+            <SeasonalCuration
+              onEventClick={(event: Event) => {
+                window.location.href = `/event/${event.id}`
+              }}
+            />
+          </div>
+        )}
       </BottomSheet>
 
       {/* Filter panel */}

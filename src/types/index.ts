@@ -149,3 +149,14 @@ export interface WeatherResponse {
   temperature: number
   description: string
 }
+
+export interface EventsResponse {
+  events: Event[]
+  /** Opaque base64url-encoded keyset cursor. Pass as `cursor` param to fetch next page. */
+  nextCursor: string | null
+}
+
+export interface EventDetailResponse {
+  event: Event
+  isFavorited: boolean
+}

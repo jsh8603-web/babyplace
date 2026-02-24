@@ -1,12 +1,24 @@
 /**
  * Closure detection + auto-deactivation engine.
  *
- * Conditions for setting is_active = false (plan.md 10-4):
+ * Conditions for setting is_active = false (plan.md 10-4, Task #5 enhancements):
  *   ① Kakao API revalidation FAILS (place no longer in Kakao's database)
- *   ② No blog/café mentions for the past 6 months
+ *   ② No blog/café mentions for the past TTL (category-specific)
  *
  * Both conditions must be true. Either alone is insufficient to deactivate
  * (a place might just be temporarily missing from Kakao, or simply unpopular).
+ *
+ * Category-based TTL (Task #5):
+ *   - 놀이 (play facilities): 3 months
+ *   - 공원/놀이터 (parks): 6 months
+ *   - 전시/체험 (exhibits/experiences): 6 months
+ *   - 공연 (performances): 3 months (seasonal)
+ *   - 동물/자연 (animals/nature): 6 months
+ *   - 식당/카페 (restaurants/cafes): 4 months
+ *   - 도서관 (libraries): 12 months (stable)
+ *   - 수영/물놀이 (swimming/water): 6 months
+ *   - 문화행사 (cultural events): 3 months (seasonal)
+ *   - 편의시설 (facilities): 12 months (reference data)
  *
  * Runs daily at 05:00 KST.
  */
@@ -14,11 +26,26 @@
 import { supabaseAdmin } from '../lib/supabase-admin'
 import { kakaoLimiter } from '../rate-limiter'
 import { similarity } from '../matchers/similarity'
+import type { PlaceCategory } from '../../src/types/index'
 
 const KAKAO_KEYWORD_URL = 'https://dapi.kakao.com/v2/local/search/keyword'
 
-/** A place must have had no mentions for this many days to qualify. */
-const SILENCE_DAYS = 180 // 6 months
+/** Category-specific TTL in days (Task #5 enhancement) */
+const CATEGORY_TTL_DAYS: Record<PlaceCategory, number> = {
+  '놀이': 90,           // 3 months
+  '공원/놀이터': 180,   // 6 months
+  '전시/체험': 180,     // 6 months
+  '공연': 90,           // 3 months (seasonal)
+  '동물/자연': 180,     // 6 months
+  '식당/카페': 120,     // 4 months
+  '도서관': 365,        // 12 months (stable)
+  '수영/물놀이': 180,   // 6 months
+  '문화행사': 90,       // 3 months (seasonal)
+  '편의시설': 365,      // 12 months (reference data)
+}
+
+/** Fallback silence period (used if category is unknown) */
+const DEFAULT_SILENCE_DAYS = 180 // 6 months
 
 /** Batch size: places to revalidate per run (budget-conscious). */
 const REVALIDATE_BATCH = 200
@@ -44,26 +71,39 @@ export async function runAutoDeactivate(): Promise<AutoDeactivateResult> {
   }
 
   const startedAt = Date.now()
-  const sixMonthsAgo = new Date()
-  sixMonthsAgo.setDate(sixMonthsAgo.getDate() - SILENCE_DAYS)
 
   // Select places that are:
   //   - currently active
-  //   - last_mentioned_at is older than 6 months (or null)
+  //   - last_mentioned_at is older than category-specific TTL (or null)
   // These are candidates for Kakao revalidation.
-  const { data: places, error } = await supabaseAdmin
+  // Note: We fetch a larger batch and filter by category-specific TTL client-side
+  // because Supabase doesn't support complex conditional queries easily.
+  const { data: allPlaces, error } = await supabaseAdmin
     .from('places')
-    .select('id, name, kakao_place_id, address, lat, lng, last_mentioned_at')
+    .select('id, name, category, kakao_place_id, address, lat, lng, last_mentioned_at')
     .eq('is_active', true)
-    .or(
-      `last_mentioned_at.lt.${sixMonthsAgo.toISOString()},last_mentioned_at.is.null`
-    )
     .order('last_mentioned_at', { ascending: true, nullsFirst: true })
-    .limit(REVALIDATE_BATCH)
+    .limit(REVALIDATE_BATCH * 2)  // fetch 2x to account for filtering
 
-  if (error || !places) {
+  // Filter by category-specific TTL
+  const places = (allPlaces || [])
+    .filter((place) => {
+      const ttl = CATEGORY_TTL_DAYS[place.category as PlaceCategory] ?? DEFAULT_SILENCE_DAYS
+      const cutoffDate = new Date()
+      cutoffDate.setDate(cutoffDate.getDate() - ttl)
+      const lastMentioned = place.last_mentioned_at ? new Date(place.last_mentioned_at) : new Date(0)
+      return lastMentioned < cutoffDate
+    })
+    .slice(0, REVALIDATE_BATCH)  // limit after filtering
+
+  if (error) {
     console.error('[auto-deactivate] Failed to fetch places:', error)
     result.errors++
+    return result
+  }
+
+  if (!places || places.length === 0) {
+    console.log('[auto-deactivate] No places to check')
     return result
   }
 
@@ -78,7 +118,10 @@ export async function runAutoDeactivate(): Promise<AutoDeactivateResult> {
       )
 
       if (!kakaoAlive) {
-        // Kakao revalidation failed + 6 months silence → deactivate
+        // Kakao revalidation failed + category-specific TTL silence → deactivate
+        const ttl = CATEGORY_TTL_DAYS[place.category as PlaceCategory] ?? DEFAULT_SILENCE_DAYS
+        const ttlMonths = Math.round(ttl / 30)
+
         await supabaseAdmin
           .from('places')
           .update({
@@ -88,7 +131,7 @@ export async function runAutoDeactivate(): Promise<AutoDeactivateResult> {
           .eq('id', place.id)
 
         console.log(
-          `[auto-deactivate] Deactivated: "${place.name}" (id=${place.id}) — Kakao not found + 6mo silence`
+          `[auto-deactivate] Deactivated: "${place.name}" (id=${place.id}, category=${place.category}) — Kakao not found + ${ttlMonths}mo silence`
         )
         result.deactivated++
       } else {
