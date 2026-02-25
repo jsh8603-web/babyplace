@@ -31,8 +31,8 @@ export async function middleware(request: NextRequest) {
 
   const path = request.nextUrl.pathname
 
-  // 로그인 필요 경로: /favorites, /profile
-  if (!user && (path.startsWith('/favorites') || path.startsWith('/profile'))) {
+  // 로그인 필요 경로: /diary, /favorites, /profile
+  if (!user && (path.startsWith('/diary') || path.startsWith('/favorites') || path.startsWith('/profile'))) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     url.searchParams.set('redirect', path)
@@ -59,5 +59,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/favorites/:path*', '/profile/:path*', '/admin/:path*'],
+  matcher: ['/diary/:path*', '/favorites/:path*', '/profile/:path*', '/admin/:path*'],
 }

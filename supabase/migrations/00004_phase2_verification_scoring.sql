@@ -15,8 +15,7 @@ CREATE INDEX idx_verification_checks_place_id_verified_at
   ON verification_checks(place_id, verified_at DESC);
 
 CREATE INDEX idx_verification_checks_place_id_recent
-  ON verification_checks(place_id)
-  WHERE verified_at > now() - interval '3 months';
+  ON verification_checks(place_id, verified_at DESC);
 
 -- 스코어링 이력 (19: 인기도 스코어링 배치)
 CREATE TABLE scoring_logs (

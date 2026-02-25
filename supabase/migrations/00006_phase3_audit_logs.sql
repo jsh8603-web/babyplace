@@ -23,7 +23,7 @@ ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 -- Policy 1: service_role can INSERT (used by Next.js API routes)
 CREATE POLICY "service_role_can_insert_audit_logs"
   ON audit_logs FOR INSERT
-  USING (auth.role() = 'service_role');
+  WITH CHECK (auth.role() = 'service_role');
 
 -- Policy 2: Admins can SELECT (read all audit logs if they are admin)
 CREATE POLICY "admins_can_read_audit_logs"

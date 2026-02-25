@@ -1,6 +1,6 @@
 'use client'
 
-import { Heart, Share2, Phone, Clock, MapPin, Navigation, ExternalLink } from 'lucide-react'
+import { Heart, Share2, Phone, Clock, MapPin, Navigation, ExternalLink, CalendarCheck } from 'lucide-react'
 import type { Place, BlogMention } from '@/types'
 import FacilityIcons from './FacilityIcons'
 import PopularityBar from './PopularityBar'
@@ -11,6 +11,7 @@ interface PlaceDetailProps {
   isFavorited?: boolean
   distance?: number
   onFavoriteToggle?: () => void
+  onVisitRecord?: () => void
   onShare?: () => void
   onBack?: () => void
 }
@@ -50,6 +51,7 @@ export default function PlaceDetail({
   isFavorited = false,
   distance,
   onFavoriteToggle,
+  onVisitRecord,
   onShare,
   onBack,
 }: PlaceDetailProps) {
@@ -98,16 +100,25 @@ export default function PlaceDetail({
             <h1 className="text-[20px] font-bold text-warm-800 leading-snug flex-1">
               {place.name}
             </h1>
-            <button
-              onClick={onFavoriteToggle}
-              className="min-w-[48px] min-h-[48px] flex items-center justify-center -mr-2 transition-transform active:scale-90"
-              aria-label={isFavorited ? '즐겨찾기 해제' : '즐겨찾기 추가'}
-            >
-              <Heart
-                size={24}
-                className={isFavorited ? 'text-coral-500 fill-coral-500' : 'text-warm-300'}
-              />
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={onVisitRecord}
+                className="min-w-[44px] min-h-[44px] flex items-center justify-center transition-transform active:scale-90"
+                aria-label="방문 기록"
+              >
+                <CalendarCheck size={22} className="text-warm-300" />
+              </button>
+              <button
+                onClick={onFavoriteToggle}
+                className="min-w-[44px] min-h-[44px] flex items-center justify-center -mr-2 transition-transform active:scale-90"
+                aria-label={isFavorited ? '즐겨찾기 해제' : '즐겨찾기 추가'}
+              >
+                <Heart
+                  size={24}
+                  className={isFavorited ? 'text-coral-500 fill-coral-500' : 'text-warm-300'}
+                />
+              </button>
+            </div>
           </div>
 
           {/* Category + distance */}

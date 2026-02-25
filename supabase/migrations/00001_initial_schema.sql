@@ -1,5 +1,6 @@
--- Enable PostGIS
+-- Enable extensions
 CREATE EXTENSION IF NOT EXISTS postgis;
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 -- 사용자 프로필 (Supabase Auth 확장)
 CREATE TABLE profiles (
@@ -180,7 +181,7 @@ ALTER TABLE places ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Places are publicly readable"
   ON places FOR SELECT USING (true);
 CREATE POLICY "Only service_role can modify places"
-  ON places FOR INSERT USING (auth.role() = 'service_role');
+  ON places FOR INSERT WITH CHECK (auth.role() = 'service_role');
 CREATE POLICY "Only service_role can update places"
   ON places FOR UPDATE USING (auth.role() = 'service_role');
 CREATE POLICY "Only service_role can delete places"
@@ -190,7 +191,7 @@ ALTER TABLE events ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Events are publicly readable"
   ON events FOR SELECT USING (true);
 CREATE POLICY "Only service_role can modify events"
-  ON events FOR INSERT USING (auth.role() = 'service_role');
+  ON events FOR INSERT WITH CHECK (auth.role() = 'service_role');
 CREATE POLICY "Only service_role can update events"
   ON events FOR UPDATE USING (auth.role() = 'service_role');
 
@@ -202,7 +203,7 @@ ALTER TABLE blog_mentions ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Blog mentions are publicly readable"
   ON blog_mentions FOR SELECT USING (true);
 CREATE POLICY "Only service_role can modify blog_mentions"
-  ON blog_mentions FOR INSERT USING (auth.role() = 'service_role');
+  ON blog_mentions FOR INSERT WITH CHECK (auth.role() = 'service_role');
 
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can read own profile"

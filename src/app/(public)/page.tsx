@@ -53,6 +53,7 @@ async function fetchPlaces(
   userLat?: number,
   userLng?: number,
   indoor?: boolean,
+  query?: string,
 ): Promise<PlacesResponse> {
   const params = new URLSearchParams({
     swLat: String(bounds.swLat),
@@ -67,6 +68,7 @@ async function fetchPlaces(
   if (userLat !== undefined) params.set('lat', String(userLat))
   if (userLng !== undefined) params.set('lng', String(userLng))
   if (indoor !== undefined) params.set('indoor', String(indoor))
+  if (query) params.set('query', query)
 
   const res = await fetch(`/api/places?${params}`)
   if (!res.ok) throw new Error('장소 데이터를 불러오지 못했습니다.')
@@ -107,7 +109,7 @@ export default function HomePage() {
     data: placesData,
     isLoading: isPlacesLoading,
   } = useQuery({
-    queryKey: ['places', mapBounds, filters, userLocation?.lat, userLocation?.lng, isIndoorFilter],
+    queryKey: ['places', mapBounds, filters, userLocation?.lat, userLocation?.lng, isIndoorFilter, searchQuery],
     queryFn: () =>
       mapBounds
         ? fetchPlaces(
@@ -116,6 +118,7 @@ export default function HomePage() {
             userLocation?.lat,
             userLocation?.lng,
             isIndoorFilter || undefined,
+            searchQuery.trim() || undefined,
           )
         : Promise.resolve({ places: [], nextCursor: null }),
     enabled: !!mapBounds,
@@ -148,16 +151,7 @@ export default function HomePage() {
   })
 
   const places = placesData?.places ?? []
-
-  // Filter by search query (client-side substring match for responsiveness)
-  const filteredPlaces = searchQuery.trim()
-    ? places.filter(
-        (p) =>
-          p.name.includes(searchQuery) ||
-          (p.address ?? '').includes(searchQuery) ||
-          (p.road_address ?? '').includes(searchQuery),
-      )
-    : places
+  const filteredPlaces = places
 
   const handleBoundsChanged = useCallback((bounds: MapBounds) => {
     setMapBounds(bounds)

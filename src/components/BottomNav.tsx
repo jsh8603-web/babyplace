@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Map, Search, Heart, User } from 'lucide-react'
+import { Map, Search, BookOpen, Heart, User } from 'lucide-react'
 
 const NAV_ITEMS = [
   {
@@ -16,6 +16,12 @@ const NAV_ITEMS = [
     label: '검색',
     icon: Search,
     matchPaths: ['/search'],
+  },
+  {
+    href: '/diary',
+    label: '다이어리',
+    icon: BookOpen,
+    matchPaths: ['/diary'],
   },
   {
     href: '/favorites',

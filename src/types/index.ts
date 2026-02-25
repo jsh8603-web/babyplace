@@ -161,6 +161,25 @@ export interface EventDetailResponse {
   isFavorited: boolean
 }
 
+export interface Visit {
+  id: number
+  user_id: string
+  place_id: number
+  visited_at: string
+  memo: string | null
+  will_return: boolean
+  created_at: string
+}
+
+export interface VisitWithPlace extends Visit {
+  places: Place
+}
+
+export interface VisitsResponse {
+  visits: VisitWithPlace[]
+  nextCursor: number | null
+}
+
 export interface AuditLog {
   id: number
   admin_id: string | null

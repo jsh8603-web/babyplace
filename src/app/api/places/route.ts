@@ -66,6 +66,7 @@ export async function GET(request: NextRequest) {
   const cursorPayload = cursorRaw ? decodeCursor(cursorRaw) : null
   const limit = Math.min(parseInt(searchParams.get('limit') ?? '20', 10), 100)
   const indoor = searchParams.get('indoor') === 'true' ? true : searchParams.get('indoor') === 'false' ? false : undefined
+  const queryText = searchParams.get('query')?.trim() || null
 
   // Fetch 1 extra to determine if next page exists
   const fetchLimit = limit + 1
@@ -106,6 +107,11 @@ export async function GET(request: NextRequest) {
   // Indoor filter (weather integration)
   if (indoor !== undefined) {
     query = query.eq('is_indoor', indoor)
+  }
+
+  // Text search filter
+  if (queryText) {
+    query = query.or(`name.ilike.%${queryText}%,road_address.ilike.%${queryText}%,address.ilike.%${queryText}%`)
   }
 
   // Keyset pagination — apply cursor filter matching the sort key to avoid jumps/skips.
@@ -184,6 +190,21 @@ export async function GET(request: NextRequest) {
         nextCursor = encodeCursor({ type: 'id', id: lastItem.id })
     }
     places = places.slice(0, limit)
+  }
+
+  // Fire-and-forget: log search query to search_logs
+  if (queryText) {
+    const userId = (await supabase.auth.getUser()).data.user?.id ?? null
+    supabase
+      .from('search_logs')
+      .insert({
+        query: queryText,
+        results_count: places.length,
+        user_id: userId,
+      })
+      .then(({ error: logError }) => {
+        if (logError) console.error('[search_logs] Insert error:', logError)
+      })
   }
 
   const response: PlacesResponse = { places, nextCursor }

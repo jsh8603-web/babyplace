@@ -26,10 +26,7 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <head>
-        <Script
-          src={`//dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_JS_KEY}&libraries=clusterer,services&autoload=false`}
-          strategy="beforeInteractive"
-        />
+        <Script src={`https://dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_JS_KEY}&libraries=clusterer,services&autoload=false`} strategy="beforeInteractive" />
       </head>
       <body>
         <Providers>{children}</Providers>

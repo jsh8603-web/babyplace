@@ -9,9 +9,8 @@ ADD COLUMN relevance_score REAL DEFAULT 0.5;
 
 -- Add index for efficient aggregation in keyword rotation queries
 CREATE INDEX idx_blog_mentions_keyword_relevance
-  ON blog_mentions(place_id, created_at DESC, relevance_score);
+  ON blog_mentions(place_id, collected_at DESC, relevance_score);
 
--- Index for 30-day relevance calculation (used by rotation-engine.ts)
+-- Index for relevance calculation (used by rotation-engine.ts)
 CREATE INDEX idx_blog_mentions_recent_relevance
-  ON blog_mentions(created_at DESC, relevance_score)
-  WHERE created_at > now() - interval '30 days';
+  ON blog_mentions(collected_at DESC, relevance_score);
