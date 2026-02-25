@@ -21,19 +21,32 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
   }
 
-  const { data: profile, error: profileError } = await supabase
+  let { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('*')
     .eq('id', user.id)
     .single()
 
-  if (profileError) {
+  // Auto-create profile if missing (e.g. first OAuth login before INSERT policy existed)
+  if (profileError?.code === 'PGRST116' || !profile) {
+    const { data: created, error: createError } = await supabase
+      .from('profiles')
+      .upsert({
+        id: user.id,
+        email: user.email,
+        display_name: user.user_metadata?.full_name || user.email?.split('@')[0],
+      }, { onConflict: 'id' })
+      .select('*')
+      .single()
+
+    if (createError || !created) {
+      console.error('[GET /api/profile] Auto-create failed:', createError)
+      return NextResponse.json({ error: 'Failed to create profile' }, { status: 500 })
+    }
+    profile = created
+  } else if (profileError) {
     console.error('[GET /api/profile] Supabase error:', profileError)
     return NextResponse.json({ error: 'Failed to fetch profile' }, { status: 500 })
-  }
-
-  if (!profile) {
-    return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
   }
 
   return NextResponse.json({
