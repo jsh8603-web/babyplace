@@ -160,3 +160,13 @@ export interface EventDetailResponse {
   event: Event
   isFavorited: boolean
 }
+
+export interface AuditLog {
+  id: number
+  admin_id: string | null
+  action: string
+  target_type: string
+  target_id: string
+  details: Record<string, unknown> | null
+  created_at: string
+}

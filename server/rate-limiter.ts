@@ -151,3 +151,9 @@ export const naverLimiter = new RateLimiter({
   maxPerDay: 25_000,
   provider: 'naver',
 })
+
+export const dataLabLimiter = new RateLimiter({
+  maxPerSecond: 2,
+  maxPerDay: 1_000,
+  provider: 'naver-datalab',
+})

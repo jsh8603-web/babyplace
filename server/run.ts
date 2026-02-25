@@ -10,7 +10,8 @@
  *   '0 17 * * *'    → Pipeline A: Kakao category scan (places discovery) [02:00 KST]
  *   '0 18 * * *'    → Public data collectors [03:00 KST] (Phase 2 — stub)
  *   '0 19 * * *'    → Events collectors (KOPIS, Tour, Seoul) [04:00 KST]
- *   '0 20 * * *'    → Scoring + auto-promotion + auto-deactivation [05:00 KST]
+ *   '0 20 * * *'    → Scoring + keyword rotation + density + promotion + deactivation [05:00 KST]
+ *   '0 21 1 * *'    → Naver DataLab trend detection + seasonal transition [06:00 KST on 1st of month]
  *   'manual'        → Run all pipelines (for local testing / manual trigger)
  *
  * Environment variables required (set via GitHub Actions secrets):
@@ -36,6 +37,9 @@ import { runKOPISCollector } from './collectors/kopis'
 import { runTourAPICollector } from './collectors/tour-api'
 import { runSeoulEventsCollector } from './collectors/seoul-events'
 import { runEventDeduplication } from './matchers/event-dedup'
+import { runKeywordRotation } from './keywords/keyword-rotation'
+import { runDataLabTrendDetection } from './keywords/datalab'
+import { runSeasonalTransition } from './keywords/seasonal-calendar'
 
 // ─── Schedule dispatch ────────────────────────────────────────────────────────
 
@@ -44,6 +48,7 @@ const PIPELINE_A_SCHEDULE = '0 17 * * *'
 const PUBLIC_DATA_SCHEDULE = '0 18 * * *'
 const EVENTS_SCHEDULE = '0 19 * * *'
 const SCORING_SCHEDULE = '0 20 * * *'
+const MONTHLY_SCHEDULE = '0 21 1 * *' // 1st of month, 06:00 KST (21:00 UTC)
 
 async function main(): Promise<void> {
   const schedule = process.argv[2] ?? 'manual'
@@ -73,6 +78,10 @@ async function main(): Promise<void> {
 
       case SCORING_SCHEDULE:
         await runScoringJob()
+        break
+
+      case MONTHLY_SCHEDULE:
+        await runMonthlyJob()
         break
 
       case 'manual':
@@ -146,12 +155,17 @@ async function runEventsJob(): Promise<void> {
 }
 
 async function runScoringJob(): Promise<void> {
-  console.log('[run] === Scoring + density control + auto-promotion + auto-deactivation ===')
+  console.log('[run] === Scoring + keyword rotation + density control + auto-promotion + auto-deactivation ===')
 
   // Popularity scoring: compute scores for all active places
   console.log('[run] Running popularity scoring...')
   const scoringResult = await runScoring()
   console.log('[run] Scoring result:', JSON.stringify(scoringResult, null, 2))
+
+  // Keyword rotation: evaluate keyword efficiency + state transitions + seasonal transitions
+  console.log('[run] Running keyword rotation...')
+  const keywordResult = await runKeywordRotation()
+  console.log('[run] Keyword rotation result:', JSON.stringify(keywordResult, null, 2))
 
   // Density control: enforce Top-N per district after scoring
   console.log('[run] Running density control...')
@@ -170,6 +184,20 @@ async function runScoringJob(): Promise<void> {
     '[run] Auto-deactivation result:',
     JSON.stringify(deactivateResult, null, 2)
   )
+}
+
+async function runMonthlyJob(): Promise<void> {
+  console.log('[run] === Monthly: DataLab trends + seasonal transition ===')
+
+  // Naver DataLab: detect trending keywords for baby/parenting
+  console.log('[run] Running DataLab trend detection...')
+  const dataLabResult = await runDataLabTrendDetection()
+  console.log('[run] DataLab result:', JSON.stringify(dataLabResult, null, 2))
+
+  // Seasonal transition: activate/deactivate seasonal keywords based on month
+  console.log('[run] Running seasonal transition...')
+  const seasonalResult = await runSeasonalTransition()
+  console.log('[run] Seasonal transition result:', JSON.stringify(seasonalResult, null, 2))
 }
 
 // ─── Environment validation ───────────────────────────────────────────────────
