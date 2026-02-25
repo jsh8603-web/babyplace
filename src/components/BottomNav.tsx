@@ -12,10 +12,10 @@ const NAV_ITEMS = [
     matchPaths: ['/'],
   },
   {
-    href: '/search',
+    href: '/',
     label: '검색',
     icon: Search,
-    matchPaths: ['/search'],
+    matchPaths: [],
   },
   {
     href: '/diary',

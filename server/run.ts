@@ -6,13 +6,13 @@
  *
  * Schedule-to-pipeline mapping (plan.md 10-2, 18-11):
  *
- *   '0 */6 * * *'   → Pipeline B: Naver blog reverse search + keyword rotation
- *   '0 17 * * *'    → Pipeline A: Kakao category scan (places discovery) [02:00 KST]
- *   '0 18 * * *'    → Public data collectors [03:00 KST] (Phase 2 — stub)
- *   '0 19 * * *'    → Events collectors (KOPIS, Tour, Seoul) [04:00 KST]
- *   '0 20 * * *'    → Scoring + keyword rotation + density + promotion + deactivation [05:00 KST]
- *   '0 21 1 * *'    → Naver DataLab trend detection + seasonal transition [06:00 KST on 1st of month]
- *   'manual'        → Run all pipelines (for local testing / manual trigger)
+ *   Pipeline B: Naver blog reverse search + keyword rotation (every 6h)
+ *   Pipeline A: Kakao category scan (02:00 KST)
+ *   Public data collectors (03:00 KST)
+ *   Events collectors: KOPIS, Tour, Seoul (04:00 KST)
+ *   Scoring + keyword rotation + density + promotion + deactivation (05:00 KST)
+ *   Naver DataLab trend detection + seasonal transition (06:00 KST, 1st of month)
+ *   manual: Run all pipelines (for local testing)
  *
  * Environment variables required (set via GitHub Actions secrets):
  *   NEXT_PUBLIC_SUPABASE_URL

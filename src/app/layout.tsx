@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from 'next'
-import Script from 'next/script'
 import './globals.css'
 import Providers from '@/components/Providers'
 
@@ -25,9 +24,6 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ko">
-      <head>
-        <Script src={`https://dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_JS_KEY}&libraries=clusterer,services&autoload=false`} strategy="beforeInteractive" />
-      </head>
       <body>
         <Providers>{children}</Providers>
       </body>

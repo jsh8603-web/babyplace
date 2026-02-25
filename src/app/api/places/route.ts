@@ -84,15 +84,15 @@ export async function GET(request: NextRequest) {
     .lte('lng', neLng)
     .limit(fetchLimit)
 
-  // Zoom-based density control: at low zoom show only high-popularity places
-  if (zoom <= 9) {
-    query = query.gte('popularity_score', 50)
-  } else if (zoom <= 11) {
-    query = query.gte('popularity_score', 20)
-  } else if (zoom <= 13) {
-    query = query.gte('popularity_score', 5)
+  // Zoom-based density control (Kakao Maps: level 1=zoomed in, level 14=zoomed out)
+  // At high levels (zoomed out) show only popular places to reduce clutter
+  // Scores are 0–1 scale; null means unscored (newly collected)
+  if (zoom >= 12) {
+    query = query.gte('popularity_score', 0.5)
+  } else if (zoom >= 10) {
+    query = query.or('popularity_score.gte.0.2,popularity_score.is.null')
   }
-  // zoom >= 14: show all places (no popularity filter)
+  // zoom <= 9: show all places (city view and closer)
 
   // Category filter
   if (categories.length > 0) {
@@ -123,7 +123,7 @@ export async function GET(request: NextRequest) {
       // PostgREST doesn't support tuple comparison directly, so we use the equivalent:
       //   popularity_score < cursorScore
       //   OR (popularity_score = cursorScore AND id < cursorId)
-      query = query.order('popularity_score', { ascending: false }).order('id', { ascending: false })
+      query = query.order('popularity_score', { ascending: false, nullsFirst: false }).order('id', { ascending: false })
       if (cursorPayload?.type === 'popularity') {
         const { score, id } = cursorPayload
         query = query.or(
@@ -149,7 +149,7 @@ export async function GET(request: NextRequest) {
       // Distance sort is done in-memory after fetching; DB query orders by popularity_score
       // so the page is deterministic, then re-sorted by distance client-side.
       // Cursor is id-based (simple) because we re-sort after fetch anyway.
-      query = query.order('popularity_score', { ascending: false }).order('id', { ascending: false })
+      query = query.order('popularity_score', { ascending: false, nullsFirst: false }).order('id', { ascending: false })
       if (cursorPayload?.type === 'id') {
         query = query.lt('id', cursorPayload.id)
       }

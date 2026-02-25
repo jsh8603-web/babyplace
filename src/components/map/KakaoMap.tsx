@@ -31,9 +31,6 @@ declare global {
         event: {
           addListener: (target: object, type: string, handler: () => void) => void
         }
-        clusterer: {
-          MarkerClusterer: new (options: object) => KakaoClustererInstance
-        }
       }
     }
   }
@@ -58,35 +55,36 @@ interface KakaoOverlayInstance {
   setMap: (map: KakaoMapInstance | null) => void
 }
 
-interface KakaoClustererInstance {
-  clear: () => void
-  addMarkers: (markers: KakaoMarkerInstance[]) => void
-}
+const KAKAO_SDK_SRC = 'https://dapi.kakao.com/v2/maps/sdk.js?appkey=' + process.env.NEXT_PUBLIC_KAKAO_JS_KEY + '&autoload=false'
 
-const CLUSTER_STYLES = [
-  {
-    width: '40px',
-    height: '40px',
-    background: 'rgba(255, 92, 69, 0.85)',
-    borderRadius: '20px',
-    color: 'white',
-    textAlign: 'center',
-    lineHeight: '40px',
-    fontSize: '14px',
-    fontWeight: '600',
-  },
-  {
-    width: '50px',
-    height: '50px',
-    background: 'rgba(232, 69, 48, 0.9)',
-    borderRadius: '25px',
-    color: 'white',
-    textAlign: 'center',
-    lineHeight: '50px',
-    fontSize: '15px',
-    fontWeight: '700',
-  },
-]
+/** Load Kakao Maps SDK once. Always calls load() to ensure full initialization. */
+let sdkReady: Promise<void> | null = null
+function ensureKakaoSDK(): Promise<void> {
+  if (sdkReady) return sdkReady
+  sdkReady = new Promise<void>((resolve, reject) => {
+    const tryLoad = () => {
+      if (window.kakao?.maps?.load) {
+        window.kakao.maps.load(() => resolve())
+      } else {
+        reject(new Error('kakao.maps.load not available'))
+      }
+    }
+
+    if (window.kakao?.maps) {
+      tryLoad()
+      return
+    }
+
+    // Inject script tag
+    const script = document.createElement('script')
+    script.src = KAKAO_SDK_SRC
+    script.async = true
+    script.onload = () => tryLoad()
+    script.onerror = () => reject(new Error('Kakao Maps SDK failed to load'))
+    document.head.appendChild(script)
+  })
+  return sdkReady
+}
 
 export default function KakaoMap({
   places,
@@ -94,14 +92,14 @@ export default function KakaoMap({
   onBoundsChanged,
   onPlaceClick,
   initialCenter = { lat: 37.5665, lng: 126.978 },
-  initialZoom = 13,
+  initialZoom = 8,
 }: KakaoMapProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<KakaoMapInstance | null>(null)
-  const clustererRef = useRef<KakaoClustererInstance | null>(null)
+  const overlaysRef = useRef<KakaoOverlayInstance[]>([])
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const markersRef = useRef<KakaoMarkerInstance[]>([])
   const [mapError, setMapError] = useState(false)
+  const [mapReady, setMapReady] = useState(false)
 
   const handleBoundsChanged = useCallback(() => {
     if (!mapRef.current || !onBoundsChanged) return
@@ -122,12 +120,14 @@ export default function KakaoMap({
     }, 300)
   }, [onBoundsChanged])
 
+  // Initialize map
   useEffect(() => {
     if (!containerRef.current) return
+    let cancelled = false
 
-    const initMap = () => {
-      window.kakao.maps.load(() => {
-        if (!containerRef.current) return
+    ensureKakaoSDK()
+      .then(() => {
+        if (cancelled || !containerRef.current) return
 
         const map = new window.kakao.maps.Map(containerRef.current, {
           center: new window.kakao.maps.LatLng(initialCenter.lat, initialCenter.lng),
@@ -136,108 +136,57 @@ export default function KakaoMap({
 
         mapRef.current = map
 
-        const clusterer = new window.kakao.maps.clusterer.MarkerClusterer({
-          map,
-          gridSize: 60,
-          minClusterSize: 3,
-          averageCenter: true,
-          minLevel: 5,
-          styles: CLUSTER_STYLES,
-        })
-
-        clustererRef.current = clusterer
-
         window.kakao.maps.event.addListener(map, 'bounds_changed', handleBoundsChanged)
         window.kakao.maps.event.addListener(map, 'zoom_changed', handleBoundsChanged)
 
+        setMapReady(true)
         handleBoundsChanged()
       })
-    }
+      .catch(() => {
+        if (!cancelled) setMapError(true)
+      })
 
-    if (window.kakao && window.kakao.maps) {
-      initMap()
-    } else {
-      let retries = 0
-      const maxRetries = 100
-      const interval = setInterval(() => {
-        if (window.kakao && window.kakao.maps) {
-          clearInterval(interval)
-          initMap()
-        } else if (retries++ >= maxRetries) {
-          clearInterval(interval)
-          setMapError(true)
-        }
-      }, 100)
-      return () => clearInterval(interval)
-    }
+    return () => { cancelled = true }
   }, [initialCenter.lat, initialCenter.lng, initialZoom, handleBoundsChanged])
 
+  // Render place overlays
   useEffect(() => {
-    if (!mapRef.current || !clustererRef.current) return
+    if (!mapReady || !mapRef.current) return
 
-    markersRef.current.forEach((m) => m.setMap(null))
-    markersRef.current = []
-    clustererRef.current.clear()
+    // Clean up previous overlays
+    overlaysRef.current.forEach((o) => o.setMap(null))
+    overlaysRef.current = []
 
-    const newMarkers = places.map((place) => {
+    const newOverlays: KakaoOverlayInstance[] = []
+
+    places.forEach((place) => {
       const isSelected = place.id === selectedPlaceId
+      const bg = isSelected ? '#E84530' : '#FF5C45'
+      const size = isSelected ? 36 : 28
+      const fontSize = isSelected ? 16 : 12
 
-      const content = `
-        <div style="
-          position: relative;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          cursor: pointer;
-        ">
-          <div style="
-            background: ${isSelected ? '#E84530' : '#FF5C45'};
-            color: white;
-            border-radius: 50%;
-            width: ${isSelected ? '36px' : '28px'};
-            height: ${isSelected ? '36px' : '28px'};
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: ${isSelected ? '16px' : '12px'};
-            box-shadow: 0 2px 8px rgba(255,92,69,0.4);
-            border: 2px solid white;
-            transition: all 0.2s;
-          ">📍</div>
-          <div style="
-            width: 0; height: 0;
-            border-left: 5px solid transparent;
-            border-right: 5px solid transparent;
-            border-top: 6px solid ${isSelected ? '#E84530' : '#FF5C45'};
-            margin-top: -1px;
-          "></div>
-        </div>
-      `
+      const el = document.createElement('div')
+      el.style.cssText = 'position:relative;display:flex;flex-direction:column;align-items:center;cursor:pointer;'
+      el.innerHTML =
+        '<div style="background:' + bg + ';color:white;border-radius:50%;width:' + size + 'px;height:' + size + 'px;display:flex;align-items:center;justify-content:center;font-size:' + fontSize + 'px;box-shadow:0 2px 8px rgba(255,92,69,0.4);border:2px solid white;">\uD83D\uDCCD</div>' +
+        '<div style="width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid ' + bg + ';margin-top:-1px;"></div>'
+      el.addEventListener('click', () => {
+        if (onPlaceClick) onPlaceClick(place)
+      })
 
       const overlay = new window.kakao.maps.CustomOverlay({
         position: new window.kakao.maps.LatLng(place.lat, place.lng),
-        content,
+        content: el,
         yAnchor: 1,
         zIndex: isSelected ? 10 : 1,
       })
 
       overlay.setMap(mapRef.current!)
-
-      const marker = new window.kakao.maps.Marker({
-        position: new window.kakao.maps.LatLng(place.lat, place.lng),
-        image: undefined,
-      })
-
-      window.kakao.maps.event.addListener(overlay as unknown as object, 'click', () => {
-        if (onPlaceClick) onPlaceClick(place)
-      })
-
-      return marker
+      newOverlays.push(overlay)
     })
 
-    markersRef.current = newMarkers
-    clustererRef.current.addMarkers(newMarkers)
-  }, [places, selectedPlaceId, onPlaceClick])
+    overlaysRef.current = newOverlays
+  }, [mapReady, places, selectedPlaceId, onPlaceClick])
 
   if (mapError) {
     return (
