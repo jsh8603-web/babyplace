@@ -61,12 +61,10 @@ interface SearchTarget {
  * A 2-column × 3-row grid (6 rects) covers the full service area.
  */
 const SEARCH_TARGETS: SearchTarget[] = [
-  // Kakao category codes
-  { kakaoCategory: 'CE7', babyCategory: '식당/카페', isIndoor: true },
-  { kakaoCategory: 'FD6', babyCategory: '식당/카페', isIndoor: true },
+  // Kakao category codes (baby-relevant only; CE7/FD6 removed — too many generic results)
   { kakaoCategory: 'CT1', babyCategory: '전시/체험', isIndoor: true },
   { kakaoCategory: 'AT4', babyCategory: '동물/자연', isIndoor: null },
-  // Keyword searches (not covered by category codes)
+  // Keyword searches — primary discovery method for baby-friendly places
   { keyword: '키즈카페', babyCategory: '놀이', isIndoor: true },
   { keyword: '실내놀이터', babyCategory: '놀이', isIndoor: true },
   { keyword: '볼풀', babyCategory: '놀이', isIndoor: true },

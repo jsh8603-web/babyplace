@@ -58,7 +58,7 @@ const MIN_INDEPENDENT_SOURCES = 2
 const CANDIDATE_TTL_DAYS = 30
 
 // Public data sources that allow easier promotion
-const PUBLIC_DATA_SOURCES = new Set(['data_go_kr', 'localdata', 'kopis', 'tour_api', 'seoul_gov'])
+const PUBLIC_DATA_SOURCES = new Set(['data_go_kr', 'localdata', 'small-biz', 'children-facility', 'kopis', 'tour_api', 'seoul_gov'])
 
 // ─── Main export ──────────────────────────────────────────────────────────────
 

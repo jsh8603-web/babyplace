@@ -35,6 +35,7 @@ import { runAutoPromotion } from './candidates/auto-promote'
 import { runAutoDeactivate } from './candidates/auto-deactivate'
 import { runKOPISCollector } from './collectors/kopis'
 import { runTourAPICollector } from './collectors/tour-api'
+import { runChildrenFacility } from './collectors/children-facility'
 import { runSeoulEventsCollector } from './collectors/seoul-events'
 import { runEventDeduplication } from './matchers/event-dedup'
 import { runKeywordRotation } from './keywords/keyword-rotation'
@@ -117,17 +118,22 @@ async function runPipelineBJob(): Promise<void> {
 }
 
 async function runPublicDataJob(): Promise<void> {
-  console.log('[run] === Public data collectors (data.go.kr + LOCALDATA) ===')
+  console.log('[run] === Public data collectors ===')
 
   // Public data collectors: playgrounds, parks, libraries, museums
   console.log('[run] Running public data collector...')
   const publicResult = await runPublicData()
   console.log('[run] Public data result:', JSON.stringify(publicResult, null, 2))
 
-  // LOCALDATA: kids cafes, indoor play facilities
-  console.log('[run] Running LOCALDATA collector...')
+  // Small business market data (소상공인 상권정보): kids cafes, indoor play facilities
+  console.log('[run] Running small business collector...')
   const localDataResult = await runLocalData()
-  console.log('[run] LOCALDATA result:', JSON.stringify(localDataResult, null, 2))
+  console.log('[run] Small business result:', JSON.stringify(localDataResult, null, 2))
+
+  // Children play facility safety data (행안부 어린이놀이시설)
+  console.log('[run] Running children facility collector...')
+  const childrenResult = await runChildrenFacility()
+  console.log('[run] Children facility result:', JSON.stringify(childrenResult, null, 2))
 }
 
 async function runEventsJob(): Promise<void> {

@@ -109,7 +109,8 @@ export async function runKOPISCollector(): Promise<KOPISCollectorResult> {
  */
 async function fetchKOPISPerformances(stdate: string, eddate: string): Promise<KOPISPerformance[]> {
   if (!process.env.KOPIS_API_KEY) {
-    throw new Error('Missing env: KOPIS_API_KEY')
+    console.warn('[kopis] KOPIS_API_KEY not set, skipping')
+    return []
   }
 
   const params = new URLSearchParams({
