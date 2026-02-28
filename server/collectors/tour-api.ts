@@ -293,14 +293,18 @@ async function processAsPlace(
   }
 
   const districtCode = await getDistrictCode(lat, lng, address)
-  const category = mapToCategory(item.contenttypeid, item.cat1, item.title)
+  const category = mapToCategory(item.contenttypeid, item.cat1, item.title, item.cat3)
   const isIndoor =
     ct.isIndoor !== null ? ct.isIndoor : guessIndoor(item.title, item.cat3)
+
+  // Store human-readable sub_category instead of raw cat3 code
+  const whitelisted = item.cat3 ? BABY_RELEVANT_CAT3.get(item.cat3) : undefined
+  const subCategory = whitelisted?.name || item.cat3 || item.cat2 || ct.label
 
   const { error } = await supabaseAdmin.from('places').insert({
     name: item.title,
     category,
-    sub_category: item.cat3 || item.cat2 || ct.label,
+    sub_category: subCategory,
     address,
     road_address: item.addr1 || null,
     lat,
@@ -467,31 +471,49 @@ async function fetchIntro(
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 /**
- * Skip non-baby-relevant places from Tour API.
- * Returns true for landmarks, historical sites, temples, etc.
- * that aren't meaningful for a baby/kids place app.
+ * WHITELIST of baby-relevant Tour API cat3 codes.
+ * Only places matching these codes are collected.
+ * This replaces the previous blacklist approach which couldn't catch all
+ * non-baby landmarks (palaces, temples, monuments, hiking trails, etc.).
  */
-function shouldSkipPlace(title: string, cat1?: string, cat2?: string, cat3?: string): boolean {
-  // cat2 codes for non-baby content:
-  //   A0201 = 역사관광지 (historical tourist sites)
-  //   A0202 = 휴양관광지 (resort tourism — adult-oriented spas, temples)
-  const skipCat2 = new Set(['A0201', 'A0202'])
-  if (cat2 && skipCat2.has(cat2)) return true
+const BABY_RELEVANT_CAT3 = new Map<string, { name: string; category: PlaceCategory }>([
+  // A0206 문화시설
+  ['A02060100', { name: '박물관', category: '전시/체험' }],
+  ['A02060300', { name: '전시관', category: '전시/체험' }],
+  ['A02060500', { name: '미술관', category: '전시/체험' }],
+  ['A02060600', { name: '공연장', category: '전시/체험' }],
+  ['A02060900', { name: '도서관', category: '도서관' }],
+  // A0203 체험관광
+  ['A02030100', { name: '체험마을', category: '전시/체험' }],
+  ['A02030400', { name: '이색체험', category: '놀이' }],
+  // A0101 자연관광지
+  ['A01010500', { name: '생태관광지', category: '동물/자연' }],
+  ['A01010700', { name: '수목원', category: '동물/자연' }],
+  // A0202 휴양관광
+  ['A02020600', { name: '테마공원', category: '놀이' }],
+])
 
-  // Name patterns for non-baby-relevant places
-  const skipPatterns = /궁$|궁궐|사찰|사당|서원|향교|명륜|번사|총국|관아|왕릉|능묘|묘소|성곽|성터|성벽|봉수대|비석|기념비|전적지|유적|기념탑|사적|종묘/
-  if (skipPatterns.test(title)) return true
-
+/**
+ * Skip non-baby-relevant places from Tour API.
+ * Uses a WHITELIST: if cat3 is available, only allow whitelisted codes.
+ * Content type 14 (문화시설) and 28 (레포츠) pass through to mapToCategory.
+ */
+function shouldSkipPlace(_title: string, _cat1?: string, _cat2?: string, cat3?: string): boolean {
+  if (cat3 && !BABY_RELEVANT_CAT3.has(cat3)) return true
   return false
 }
 
 function mapToCategory(
   contentTypeId: number,
   cat1?: string,
-  title?: string
+  title?: string,
+  cat3?: string
 ): PlaceCategory {
+  // Use whitelist mapping if cat3 is known
+  const whitelisted = cat3 ? BABY_RELEVANT_CAT3.get(cat3) : undefined
+  if (whitelisted) return whitelisted.category
+
   if (contentTypeId === 14) {
-    // 문화시설: distinguish parks/outdoor from exhibition
     if (title && /공원/.test(title)) return '공원/놀이터'
     return '전시/체험'
   }
