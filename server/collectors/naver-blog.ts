@@ -1,13 +1,13 @@
 /**
- * Pipeline B — Naver blog/café reverse search → blog_mentions + mention_count
+ * Pipeline B — Naver + Daum blog reverse search → blog_mentions + mention_count
  *
  * Covers plan.md sections 18-6, 18-8.
  *
  * Two sub-methods (run in sequence):
  *
  * Method 1 — Reverse search (place → blog):
- *   Select up to 100 active places ordered by stale mention date.
- *   For each place, search Naver Blog + Café by place name.
+ *   Select up to 500 active places ordered by stale mention date.
+ *   For each place, search Naver Blog + Daum Blog (Kakao) by place name.
  *   Insert new mentions into blog_mentions; increment mention_count.
  *
  * Method 2 — Keyword search (keyword → blog → DB match):
@@ -22,7 +22,7 @@
  */
 
 import { supabaseAdmin } from '../lib/supabase-admin'
-import { naverLimiter } from '../rate-limiter'
+import { naverLimiter, kakaoSearchLimiter } from '../rate-limiter'
 import { findMatchingPlace } from '../matchers/duplicate'
 import { isValidServiceAddress } from '../enrichers/region'
 
@@ -37,14 +37,6 @@ interface NaverBlogItem {
   postdate: string       // YYYYMMDD
 }
 
-interface NaverCafeItem {
-  title: string
-  link: string
-  description: string
-  cafename: string
-  cafeurl: string
-}
-
 interface NaverSearchResponse<T> {
   lastBuildDate: string
   total: number
@@ -53,17 +45,34 @@ interface NaverSearchResponse<T> {
   items: T[]
 }
 
+// ─── Daum/Kakao API types ────────────────────────────────────────────────────
+
+interface DaumBlogItem {
+  title: string          // HTML-escaped
+  contents: string       // snippet
+  url: string
+  blogname: string
+  thumbnail: string
+  datetime: string       // ISO 8601 (e.g. "2024-01-15T12:00:00.000+09:00")
+}
+
+interface DaumSearchResponse {
+  meta: { total_count: number; pageable_count: number; is_end: boolean }
+  documents: DaumBlogItem[]
+}
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const NAVER_BLOG_URL = 'https://openapi.naver.com/v1/search/blog.json'
-const NAVER_CAFE_URL = 'https://openapi.naver.com/v1/search/cafearticle.json'
+const DAUM_BLOG_URL = 'https://dapi.kakao.com/v2/search/blog'
 
 /** Number of places to reverse-search per pipeline run.
- *  Budget: each place = 2 API calls (blog + cafe).
- *  Naver daily quota ~25K. 4 runs/day × 500 = 4,000 calls (well within budget). */
+ *  Budget: each place = 2 API calls (naver blog + daum blog).
+ *  Naver daily quota ~25K, Kakao search ~300K/month (~10K/day).
+ *  4 runs/day × 500 = 4,000 calls per provider (well within budget). */
 const REVERSE_SEARCH_BATCH = 500
 
-/** Number of results per Naver API call (max 100). */
+/** Number of results per API call. */
 const DISPLAY_COUNT = 30
 
 /** Max keywords to cycle per run (budget: each keyword = 2 API calls). */
@@ -185,7 +194,7 @@ async function runReverseSearch(
 }
 
 /**
- * Searches Naver Blog and Café for a given place name + district.
+ * Searches Naver Blog + Daum Blog for a given place name + district.
  * Computes relevance_score per post (place name match in title/snippet).
  * Only inserts posts with relevance >= 0.3.
  * Returns number of new mentions inserted.
@@ -195,63 +204,89 @@ async function reverseSearchPlace(
   placeName: string,
   district: string
 ): Promise<number> {
-  // Append district to query for location specificity (e.g. "커피에리어 남양주")
   const searchTerm = district ? `${placeName} ${district}` : placeName
-  const query = encodeURIComponent(searchTerm)
   let newCount = 0
 
-  // Search both blog and cafe
-  const sources: Array<{
-    url: string
-    type: 'naver_blog' | 'naver_cafe'
-  }> = [
-    { url: `${NAVER_BLOG_URL}?query=${query}&display=${DISPLAY_COUNT}&sort=date`, type: 'naver_blog' },
-    { url: `${NAVER_CAFE_URL}?query=${query}&display=${DISPLAY_COUNT}&sort=date`, type: 'naver_cafe' },
-  ]
+  // --- Naver Blog ---
+  newCount += await searchNaverBlog(placeId, placeName, district, searchTerm)
 
-  for (const source of sources) {
-    const items = await fetchNaverSearch<NaverBlogItem | NaverCafeItem>(source.url)
-    if (!items) continue
-
-    for (const item of items) {
-      const url = item.link
-      if (!url) continue
-
-      const title = stripHtml(item.title)
-      const snippet = stripHtml(item.description).slice(0, 500)
-
-      // Compute relevance: does the post actually mention this place?
-      const relevance = computePostRelevance(placeName, district, title, snippet)
-
-      // Skip irrelevant posts (threshold 0.3)
-      if (relevance < 0.3) continue
-
-      const postDate = parseNaverPostDate(
-        'postdate' in item ? item.postdate : undefined
-      )
-
-      const { error } = await supabaseAdmin.from('blog_mentions').insert({
-        place_id: placeId,
-        source_type: source.type,
-        title,
-        url,
-        post_date: postDate,
-        snippet,
-        relevance_score: relevance,
-      })
-
-      if (!error) {
-        newCount++
-      }
-      // error.code === '23505' means duplicate URL → skip silently
-    }
-  }
+  // --- Daum Blog (Kakao) — covers 티스토리 + Daum 블로그 ---
+  newCount += await searchDaumBlog(placeId, placeName, district, searchTerm)
 
   if (newCount > 0) {
     await updateMentionCount(placeId, newCount)
   }
 
   return newCount
+}
+
+/** Search Naver Blog API and insert relevant mentions. */
+async function searchNaverBlog(
+  placeId: number,
+  placeName: string,
+  district: string,
+  searchTerm: string
+): Promise<number> {
+  const query = encodeURIComponent(searchTerm)
+  const items = await fetchNaverSearch<NaverBlogItem>(
+    `${NAVER_BLOG_URL}?query=${query}&display=${DISPLAY_COUNT}&sort=date`
+  )
+  if (!items) return 0
+
+  let count = 0
+  for (const item of items) {
+    if (!item.link) continue
+    const title = stripHtml(item.title)
+    const snippet = stripHtml(item.description).slice(0, 500)
+    const relevance = computePostRelevance(placeName, district, title, snippet)
+    if (relevance < 0.3) continue
+
+    const { error } = await supabaseAdmin.from('blog_mentions').insert({
+      place_id: placeId,
+      source_type: 'naver_blog',
+      title,
+      url: item.link,
+      post_date: parseNaverPostDate(item.postdate),
+      snippet,
+      relevance_score: relevance,
+    })
+    if (!error) count++
+  }
+  return count
+}
+
+/** Search Daum/Kakao Blog API and insert relevant mentions. */
+async function searchDaumBlog(
+  placeId: number,
+  placeName: string,
+  district: string,
+  searchTerm: string
+): Promise<number> {
+  const items = await fetchDaumSearch(searchTerm)
+  if (!items) return 0
+
+  let count = 0
+  for (const item of items) {
+    if (!item.url) continue
+    const title = stripHtml(item.title)
+    const snippet = stripHtml(item.contents).slice(0, 500)
+    const relevance = computePostRelevance(placeName, district, title, snippet)
+    if (relevance < 0.3) continue
+
+    const postDate = item.datetime ? item.datetime.slice(0, 10) : null // "2024-01-15"
+
+    const { error } = await supabaseAdmin.from('blog_mentions').insert({
+      place_id: placeId,
+      source_type: 'daum_blog',
+      title,
+      url: item.url,
+      post_date: postDate,
+      snippet,
+      relevance_score: relevance,
+    })
+    if (!error) count++
+  }
+  return count
 }
 
 /**
@@ -580,6 +615,34 @@ async function fetchNaverSearch<T>(url: string): Promise<T[] | null> {
     return data.items ?? []
   } catch (err) {
     console.error('[pipeline-b] Naver fetch error:', err)
+    return null
+  }
+}
+
+// ─── Daum/Kakao API fetch ────────────────────────────────────────────────────
+
+async function fetchDaumSearch(query: string): Promise<DaumBlogItem[] | null> {
+  try {
+    const encodedQuery = encodeURIComponent(query)
+    const url = `${DAUM_BLOG_URL}?query=${encodedQuery}&size=${DISPLAY_COUNT}&sort=recency`
+
+    const response = await kakaoSearchLimiter.throttle(() =>
+      fetch(url, {
+        headers: {
+          Authorization: `KakaoAK ${process.env.KAKAO_REST_KEY ?? ''}`,
+        },
+      })
+    )
+
+    if (!response.ok) {
+      console.error(`[pipeline-b] Daum Blog API HTTP ${response.status}`)
+      return null
+    }
+
+    const data = (await response.json()) as DaumSearchResponse
+    return data.documents ?? []
+  } catch (err) {
+    console.error('[pipeline-b] Daum Blog fetch error:', err)
     return null
   }
 }

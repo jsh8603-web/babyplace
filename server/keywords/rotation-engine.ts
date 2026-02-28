@@ -365,15 +365,18 @@ export async function getSeasonalKeywordsForMonth(month: number, provider?: stri
  */
 export async function activateSeasonalKeyword(keywordId: number): Promise<boolean> {
   try {
+    // Also reactivate EXHAUSTED/DECLINING seasonal keywords at season start (fresh chance)
     const { error } = await supabaseAdmin
       .from('keywords')
       .update({
         status: 'ACTIVE',
         consecutive_zero_new: 0,
+        efficiency_score: 0,
+        cycle_count: 0,
         last_used_at: new Date().toISOString(),
       })
       .eq('id', keywordId)
-      .eq('status', 'SEASONAL')
+      .in('status', ['SEASONAL', 'EXHAUSTED', 'DECLINING'])
 
     if (error) {
       console.error(`[keyword-rotation] Failed to activate seasonal keyword ${keywordId}:`, error)
@@ -394,8 +397,8 @@ export async function activateSeasonalKeyword(keywordId: number): Promise<boolea
 }
 
 /**
- * Deactivate an ACTIVE SEASONAL keyword (transition to SEASONAL off-season).
- * Called when month changes outside seasonal range.
+ * Deactivate a seasonal keyword off-season (ACTIVE/EXHAUSTED/DECLINING → SEASONAL).
+ * Resets stats so the keyword gets a fresh start next season.
  */
 export async function deactivateSeasonalKeyword(keywordId: number): Promise<boolean> {
   try {
@@ -405,7 +408,7 @@ export async function deactivateSeasonalKeyword(keywordId: number): Promise<bool
         status: 'SEASONAL',
       })
       .eq('id', keywordId)
-      .eq('status', 'ACTIVE')
+      .in('status', ['ACTIVE', 'EXHAUSTED', 'DECLINING'])
 
     if (error) {
       console.error(`[keyword-rotation] Failed to deactivate seasonal keyword ${keywordId}:`, error)

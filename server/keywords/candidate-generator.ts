@@ -23,6 +23,7 @@ export interface GeneratedKeywordCandidate {
   provider: KeywordProvider
   keywordGroup?: string
   isIndoor?: boolean | null
+  seasonalMonths?: number[]
 }
 
 /**
@@ -137,6 +138,37 @@ const KAKAO_CATEGORY_TEMPLATES: { keyword: string; group: string; isIndoor: bool
   { keyword: '키즈도서관', group: '도서관', isIndoor: true },
 ]
 
+/**
+ * Kakao seasonal keyword templates — auto-generated when seasonal EXHAUSTED ≥ 30%.
+ * Each entry has months (1-12) when active.
+ */
+const KAKAO_SEASONAL_TEMPLATES: { keyword: string; group: string; isIndoor: boolean | null; months: number[] }[] = [
+  // 봄 (3~5월)
+  { keyword: '봄꽃놀이', group: '공원/놀이터', isIndoor: false, months: [3, 4, 5] },
+  { keyword: '유채꽃 아이', group: '동물/자연', isIndoor: false, months: [3, 4, 5] },
+  { keyword: '봄소풍', group: '공원/놀이터', isIndoor: false, months: [3, 4, 5] },
+  { keyword: '아이 피크닉', group: '공원/놀이터', isIndoor: false, months: [3, 4, 5] },
+  { keyword: '딸기체험', group: '전시/체험', isIndoor: false, months: [3, 4, 5] },
+  // 여름 (6~8월)
+  { keyword: '유아물놀이장', group: '수영/물놀이', isIndoor: false, months: [6, 7, 8] },
+  { keyword: '키즈풀장', group: '수영/물놀이', isIndoor: null, months: [6, 7, 8] },
+  { keyword: '아이물놀이', group: '수영/물놀이', isIndoor: false, months: [6, 7, 8] },
+  { keyword: '어린이워터파크', group: '수영/물놀이', isIndoor: null, months: [6, 7, 8] },
+  { keyword: '계곡 아이', group: '동물/자연', isIndoor: false, months: [6, 7, 8] },
+  // 가을 (9~11월)
+  { keyword: '단풍놀이', group: '공원/놀이터', isIndoor: false, months: [9, 10, 11] },
+  { keyword: '가을소풍', group: '공원/놀이터', isIndoor: false, months: [9, 10, 11] },
+  { keyword: '고구마캐기', group: '전시/체험', isIndoor: false, months: [9, 10, 11] },
+  { keyword: '밤줍기체험', group: '전시/체험', isIndoor: false, months: [9, 10, 11] },
+  { keyword: '허수아비축제', group: '동물/자연', isIndoor: false, months: [9, 10, 11] },
+  // 겨울 (12~2월)
+  { keyword: '실내키즈파크', group: '놀이', isIndoor: true, months: [12, 1, 2] },
+  { keyword: '어린이스키', group: '놀이', isIndoor: false, months: [12, 1, 2] },
+  { keyword: '겨울실내놀이', group: '놀이', isIndoor: true, months: [12, 1, 2] },
+  { keyword: '아이썰매장', group: '놀이', isIndoor: false, months: [12, 1, 2] },
+  { keyword: '실내트램폴린', group: '놀이', isIndoor: true, months: [12, 1, 2] },
+]
+
 /** Baby/parenting related keywords for text mining. */
 const BABY_KEYWORDS = [
   '아기',
@@ -209,11 +241,17 @@ export async function generateNewKeywordCandidates(provider: KeywordProvider = '
     let allCandidates: GeneratedKeywordCandidate[]
 
     if (provider === 'kakao') {
-      // Kakao: template-based only (text mining uses naver blog data, not applicable)
+      // Kakao: template-based + seasonal templates + cross-pollinated blog text mining
       console.log('[candidate-generator] Generating kakao template-based candidates...')
       const kakaoCandidates = generateKakaoTemplates()
-      result.candidatesGenerated += kakaoCandidates.length
-      allCandidates = kakaoCandidates
+      const seasonalCandidates = generateKakaoSeasonalTemplates()
+
+      console.log('[candidate-generator] Cross-pollinating naver blog text mining → kakao...')
+      const crossPollinatedCandidates = await extractFromBlogMentions('kakao')
+
+      result.candidatesGenerated +=
+        kakaoCandidates.length + seasonalCandidates.length + crossPollinatedCandidates.length
+      allCandidates = [...kakaoCandidates, ...seasonalCandidates, ...crossPollinatedCandidates]
     } else {
       // Naver: text mining + template-based
       console.log('[candidate-generator] Extracting keywords from blog mentions...')
@@ -237,12 +275,14 @@ export async function generateNewKeywordCandidates(provider: KeywordProvider = '
     // Insert into keywords table (ignore duplicates via UNIQUE constraint)
     for (const candidate of uniqueCandidates) {
       try {
+        const isSeasonal = candidate.seasonalMonths && candidate.seasonalMonths.length > 0
         const { error } = await supabaseAdmin.from('keywords').insert({
           keyword: candidate.keyword,
           provider: candidate.provider,
           keyword_group: candidate.keywordGroup || null,
           is_indoor: candidate.isIndoor ?? null,
-          status: 'NEW',
+          status: isSeasonal ? 'SEASONAL' : 'NEW',
+          seasonal_months: candidate.seasonalMonths || null,
           source: candidate.source,
           efficiency_score: 0,
           cycle_count: 0,
@@ -283,12 +323,57 @@ export async function generateNewKeywordCandidates(provider: KeywordProvider = '
   }
 }
 
+/** Keyword group inference map: token substring → kakao keyword_group */
+const KEYWORD_GROUP_HINTS: { pattern: string; group: string; isIndoor: boolean | null }[] = [
+  { pattern: '수영', group: '수영/물놀이', isIndoor: true },
+  { pattern: '물놀이', group: '수영/물놀이', isIndoor: null },
+  { pattern: '워터', group: '수영/물놀이', isIndoor: null },
+  { pattern: '풀장', group: '수영/물놀이', isIndoor: null },
+  { pattern: '카페', group: '식당/카페', isIndoor: true },
+  { pattern: '식당', group: '식당/카페', isIndoor: true },
+  { pattern: '맛집', group: '식당/카페', isIndoor: true },
+  { pattern: '놀이터', group: '공원/놀이터', isIndoor: false },
+  { pattern: '공원', group: '공원/놀이터', isIndoor: false },
+  { pattern: '숲', group: '공원/놀이터', isIndoor: false },
+  { pattern: '산책', group: '공원/놀이터', isIndoor: false },
+  { pattern: '키즈카페', group: '놀이', isIndoor: true },
+  { pattern: '놀이시설', group: '놀이', isIndoor: true },
+  { pattern: '키즈', group: '놀이', isIndoor: true },
+  { pattern: '박물관', group: '전시/체험', isIndoor: true },
+  { pattern: '체험', group: '전시/체험', isIndoor: null },
+  { pattern: '전시', group: '전시/체험', isIndoor: true },
+  { pattern: '미술관', group: '전시/체험', isIndoor: true },
+  { pattern: '동물', group: '동물/자연', isIndoor: false },
+  { pattern: '농장', group: '동물/자연', isIndoor: false },
+  { pattern: '목장', group: '동물/자연', isIndoor: false },
+  { pattern: '도서관', group: '도서관', isIndoor: true },
+  { pattern: '책', group: '도서관', isIndoor: true },
+]
+
+/**
+ * Infer kakao keyword_group and isIndoor from a keyword string.
+ * Returns first matching hint, or default '놀이' group.
+ */
+function inferKeywordGroup(keyword: string): { group: string; isIndoor: boolean | null } {
+  for (const hint of KEYWORD_GROUP_HINTS) {
+    if (keyword.includes(hint.pattern)) {
+      return { group: hint.group, isIndoor: hint.isIndoor }
+    }
+  }
+  return { group: '놀이', isIndoor: null }
+}
+
 /**
  * Extract keyword candidates from blog mentions text mining.
  * Analyzes titles and snippets from recent blog_mentions entries.
  * Looks for baby/parenting keywords and high-frequency words.
+ *
+ * @param targetProvider - Provider tag for generated candidates ('naver' or 'kakao').
+ *   When 'kakao', results are tagged with inferred keywordGroup and isIndoor.
  */
-async function extractFromBlogMentions(): Promise<GeneratedKeywordCandidate[]> {
+async function extractFromBlogMentions(
+  targetProvider: KeywordProvider = 'naver'
+): Promise<GeneratedKeywordCandidate[]> {
   try {
     // Fetch recent blog mentions (last 7 days)
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
@@ -336,14 +421,29 @@ async function extractFromBlogMentions(): Promise<GeneratedKeywordCandidate[]> {
       .filter(([_, count]) => count >= 3) // Minimum frequency
       .sort((a, b) => b[1] - a[1])
       .slice(0, 20)
-      .map(([word]) => ({
-        keyword: word,
-        source: 'text_mining' as const,
-        estimatedRelevance: 0.7,
-        provider: 'naver' as const,
-      }))
+      .map(([word]): GeneratedKeywordCandidate => {
+        if (targetProvider === 'kakao') {
+          const { group, isIndoor } = inferKeywordGroup(word)
+          return {
+            keyword: word,
+            source: 'text_mining',
+            estimatedRelevance: 0.65, // slightly lower confidence for cross-pollinated
+            provider: 'kakao',
+            keywordGroup: group,
+            isIndoor,
+          }
+        }
+        return {
+          keyword: word,
+          source: 'text_mining',
+          estimatedRelevance: 0.7,
+          provider: 'naver',
+        }
+      })
 
-    console.log(`[candidate-generator] Extracted ${topWords.length} keywords from text mining`)
+    console.log(
+      `[candidate-generator] Extracted ${topWords.length} keywords from text mining (target: ${targetProvider})`
+    )
     return topWords
   } catch (err) {
     console.error('[candidate-generator] Error in text mining:', err)
@@ -384,6 +484,22 @@ function generateKakaoTemplates(): GeneratedKeywordCandidate[] {
     provider: 'kakao' as const,
     keywordGroup: t.group,
     isIndoor: t.isIndoor,
+  }))
+}
+
+/**
+ * Generate kakao seasonal keyword candidates with seasonal_months.
+ * Inserted as status='SEASONAL' so they activate/deactivate by season.
+ */
+function generateKakaoSeasonalTemplates(): GeneratedKeywordCandidate[] {
+  return KAKAO_SEASONAL_TEMPLATES.map((t) => ({
+    keyword: t.keyword,
+    source: 'template' as const,
+    estimatedRelevance: 0.85,
+    provider: 'kakao' as const,
+    keywordGroup: t.group,
+    isIndoor: t.isIndoor,
+    seasonalMonths: t.months,
   }))
 }
 

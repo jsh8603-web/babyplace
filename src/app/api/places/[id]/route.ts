@@ -26,6 +26,7 @@ export async function GET(
       .from('blog_mentions')
       .select('*')
       .eq('place_id', placeId)
+      .in('source_type', ['naver_blog', 'daum_blog'])
       .gte('relevance_score', 0.3)
       .order('relevance_score', { ascending: false })
       .order('post_date', { ascending: false })

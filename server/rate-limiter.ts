@@ -146,6 +146,15 @@ export const kakaoLimiter = new RateLimiter({
   provider: 'kakao',
 })
 
+// Kakao Daum search API (blog search in Pipeline B).
+// Separate from kakaoLimiter (place search) for independent quota tracking.
+// Free tier: 300K/month ≈ 10K/day.
+export const kakaoSearchLimiter = new RateLimiter({
+  maxPerSecond: 10,
+  maxPerDay: 10_000,
+  provider: 'kakao-search',
+})
+
 export const naverLimiter = new RateLimiter({
   maxPerSecond: 10,
   maxPerDay: 25_000,

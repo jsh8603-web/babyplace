@@ -63,7 +63,7 @@ export interface Event {
 export interface BlogMention {
   id: number
   place_id: number
-  source_type: 'naver_blog' | 'naver_cafe'
+  source_type: 'naver_blog' | 'naver_cafe' | 'daum_blog'
   title: string | null
   url: string
   post_date: string | null

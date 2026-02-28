@@ -85,26 +85,39 @@ export async function runSeasonalTransition(): Promise<{
 
     console.log(`[seasonal-calendar] Activated ${result.activated} keywords for next season`)
 
-    // --- Phase 2: Deactivate keywords for off-season ---
-    // Fetch all SEASONAL keywords to find those that should NOT be active now or next month
+    // --- Phase 2: Deactivate off-season keywords ---
+    // Find keywords with seasonal_months set that are ACTIVE/EXHAUSTED/DECLINING
+    // but NOT in current or next month → deactivate back to SEASONAL
     console.log('[seasonal-calendar] Phase 2: Deactivate off-season keywords...')
 
-    const { data: allSeasonal, error: fetchError } = await supabaseAdmin
+    const { data: activeSeasonals, error: fetchError } = await supabaseAdmin
       .from('keywords')
       .select('*')
-      .eq('status', 'SEASONAL')
+      .not('seasonal_months', 'is', null)
+      .in('status', ['ACTIVE', 'EXHAUSTED', 'DECLINING'])
 
     if (fetchError) {
-      console.warn('[seasonal-calendar] Failed to fetch seasonal keywords:', fetchError)
+      console.warn('[seasonal-calendar] Failed to fetch active seasonal keywords:', fetchError)
       result.errors++
       return result
     }
 
-    // Check each SEASONAL keyword: if NOT in current/next month, leave SEASONAL
-    // (Already handled: those in current month stay active, those in next month activate)
-    // Just log confirmation
+    for (const kw of (activeSeasonals as any[]) || []) {
+      const months: number[] = kw.seasonal_months ?? []
+      if (months.length === 0) continue
+      // If keyword's season does NOT include current or next month → deactivate
+      if (!months.includes(currentMonth) && !months.includes(nextMonth)) {
+        const deactivated = await deactivateSeasonalKeyword(kw.id)
+        if (deactivated) {
+          result.deactivated++
+        } else {
+          result.errors++
+        }
+      }
+    }
+
     console.log(
-      `[seasonal-calendar] Confirmed ${(allSeasonal as any[]).length} keywords remain SEASONAL (off-season)`
+      `[seasonal-calendar] Deactivated ${result.deactivated} off-season keywords`
     )
 
     console.log(
