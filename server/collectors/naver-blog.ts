@@ -126,22 +126,52 @@ export async function runPipelineB(): Promise<PipelineBResult> {
 async function runReverseSearch(
   stats: PipelineBResult['reverseSearch']
 ): Promise<void> {
-  // Select places most in need of a mention refresh (plan.md 18-8)
-  const { data: places, error } = await supabaseAdmin
+  // Phase 1: uncrawled places first (initial coverage, evenly distributed)
+  const { data: uncrawled, error: err1 } = await supabaseAdmin
     .from('places')
     .select('id, name')
     .eq('is_active', true)
-    .order('last_mentioned_at', { ascending: true, nullsFirst: true })
-    .order('popularity_score', { ascending: false })
+    .is('last_mentioned_at', null)
+    .order('id', { ascending: true })
     .limit(REVERSE_SEARCH_BATCH)
 
-  if (error || !places) {
-    console.error('[pipeline-b] Failed to fetch places for reverse search:', error)
+  if (err1) {
+    console.error('[pipeline-b] Failed to fetch uncrawled places:', err1)
     stats.errors++
     return
   }
 
-  for (const place of places) {
+  const uncrawledPlaces = uncrawled ?? []
+  const remaining = REVERSE_SEARCH_BATCH - uncrawledPlaces.length
+
+  // Phase 2: popular places that haven't been refreshed recently
+  // Prioritize high mention_count (active places get new posts frequently)
+  // with staleness as tiebreaker (oldest refresh first)
+  let popularPlaces: Array<{ id: number; name: string }> = []
+  if (remaining > 0) {
+    const { data, error: err2 } = await supabaseAdmin
+      .from('places')
+      .select('id, name')
+      .eq('is_active', true)
+      .not('last_mentioned_at', 'is', null)
+      .order('mention_count', { ascending: false })
+      .order('last_mentioned_at', { ascending: true })
+      .limit(remaining)
+
+    if (err2) {
+      console.error('[pipeline-b] Failed to fetch popular places:', err2)
+      stats.errors++
+    } else {
+      popularPlaces = data ?? []
+    }
+  }
+
+  const allPlaces = [...uncrawledPlaces, ...popularPlaces]
+  console.log(
+    `[pipeline-b] Reverse search: ${uncrawledPlaces.length} uncrawled + ${popularPlaces.length} popular = ${allPlaces.length} total`
+  )
+
+  for (const place of allPlaces) {
     try {
       const newMentions = await reverseSearchPlace(place.id, place.name)
       stats.newMentions += newMentions
