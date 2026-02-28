@@ -12,6 +12,8 @@ on:
     - cron: '0 19 * * *'
     # Scoring + auto-promotion + auto-deactivation (05:00 KST = 20:00 UTC)
     - cron: '0 20 * * *'
+    # Monthly: DataLab trends + seasonal keyword transition (06:00 KST 1st of month = 21:00 UTC)
+    - cron: '0 21 1 * *'
   workflow_dispatch:
     inputs:
       schedule:
@@ -23,7 +25,7 @@ jobs:
   collect:
     name: Run collection pipeline
     runs-on: ubuntu-latest
-    timeout-minutes: 55  # GitHub Actions max is 6h; cron is every 6h, so 55min is safe
+    timeout-minutes: 90  # manual mode runs all pipelines; cron jobs finish within 55min each
 
     steps:
       - name: Checkout repository
@@ -58,4 +60,5 @@ jobs:
           DATA_GO_KR_API_KEY: ${{ secrets.DATA_GO_KR_API_KEY }}
           KOPIS_API_KEY: ${{ secrets.KOPIS_API_KEY }}
           TOUR_API_KEY: ${{ secrets.TOUR_API_KEY }}
+          SEOUL_API_KEY: ${{ secrets.SEOUL_API_KEY }}
           NODE_ENV: production

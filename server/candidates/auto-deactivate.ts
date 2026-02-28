@@ -48,7 +48,7 @@ const CATEGORY_TTL_DAYS: Record<PlaceCategory, number> = {
 const DEFAULT_SILENCE_DAYS = 180 // 6 months
 
 /** Batch size: places to revalidate per run (budget-conscious). */
-const REVALIDATE_BATCH = 200
+const REVALIDATE_BATCH = 1000
 
 /** Minimum similarity score to consider a Kakao result a match. */
 const MATCH_THRESHOLD = 0.75

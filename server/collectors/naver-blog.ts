@@ -64,7 +64,7 @@ const NAVER_CAFE_URL = 'https://openapi.naver.com/v1/search/cafearticle.json'
 const REVERSE_SEARCH_BATCH = 500
 
 /** Number of results per Naver API call (max 100). */
-const DISPLAY_COUNT = 10
+const DISPLAY_COUNT = 30
 
 /** Max keywords to cycle per run (budget: each keyword = 2 API calls). */
 const MAX_KEYWORDS_PER_RUN = 60
@@ -275,6 +275,7 @@ async function runKeywordSearch(
     .select(
       'id, keyword, status, efficiency_score, cycle_count, consecutive_zero_new, seasonal_months'
     )
+    .eq('provider', 'naver')
     .in('status', ['NEW', 'ACTIVE', 'DECLINING', 'SEASONAL'])
     .order('efficiency_score', { ascending: false })
     .limit(MAX_KEYWORDS_PER_RUN)

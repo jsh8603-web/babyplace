@@ -18,6 +18,7 @@
  */
 
 import { supabaseAdmin } from '../lib/supabase-admin'
+import { tourLimiter } from '../rate-limiter'
 import { checkDuplicate } from '../matchers/duplicate'
 import { isInServiceRegion } from '../enrichers/region'
 import { getDistrictCode } from '../enrichers/district'
@@ -245,7 +246,9 @@ async function fetchListPage(
   const timeout = setTimeout(() => controller.abort(), 15000)
 
   try {
-    const response = await fetch(url, { signal: controller.signal })
+    const response = await tourLimiter.throttle(() =>
+      fetch(url, { signal: controller.signal })
+    )
     if (!response.ok) throw new Error(`HTTP ${response.status}`)
     return (await response.json()) as TourListResponse
   } finally {
@@ -446,7 +449,7 @@ async function fetchIntro(
   const url = `${API_BASE}/detailIntro2?${params.toString()}`
 
   try {
-    const response = await fetch(url)
+    const response = await tourLimiter.throttle(() => fetch(url))
     if (!response.ok) return null
 
     const json = (await response.json()) as TourIntroResponse

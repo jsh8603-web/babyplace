@@ -14,10 +14,15 @@
 
 import { supabaseAdmin } from '../lib/supabase-admin'
 
+export type KeywordProvider = 'naver' | 'kakao'
+
 export interface GeneratedKeywordCandidate {
   keyword: string
   source: 'text_mining' | 'template'
   estimatedRelevance: number // 0~1
+  provider: KeywordProvider
+  keywordGroup?: string
+  isIndoor?: boolean | null
 }
 
 /**
@@ -90,6 +95,48 @@ const CATEGORY_TEMPLATES: Record<string, string[]> = {
   ],
 }
 
+/**
+ * Kakao-specific templates: direct place search keywords (no "아기" prefix needed).
+ * 7 categories × 4 keywords = 28 candidates.
+ */
+const KAKAO_CATEGORY_TEMPLATES: { keyword: string; group: string; isIndoor: boolean | null }[] = [
+  // 놀이
+  { keyword: '어린이놀이공간', group: '놀이', isIndoor: true },
+  { keyword: '유아놀이시설', group: '놀이', isIndoor: true },
+  { keyword: '키즈파크', group: '놀이', isIndoor: true },
+  { keyword: '아이랜드', group: '놀이', isIndoor: true },
+  // 공원/놀이터
+  { keyword: '유아숲체험원', group: '공원/놀이터', isIndoor: false },
+  { keyword: '모래놀이터', group: '공원/놀이터', isIndoor: false },
+  { keyword: '물놀이 공원', group: '공원/놀이터', isIndoor: false },
+  { keyword: '자연놀이터', group: '공원/놀이터', isIndoor: false },
+  // 전시/체험
+  { keyword: '키즈체험', group: '전시/체험', isIndoor: true },
+  { keyword: '유아미술관', group: '전시/체험', isIndoor: true },
+  { keyword: '어린이전시', group: '전시/체험', isIndoor: true },
+  { keyword: '어린이과학관', group: '전시/체험', isIndoor: true },
+  // 동물/자연
+  { keyword: '아기동물농장', group: '동물/자연', isIndoor: false },
+  { keyword: '곤충체험관', group: '동물/자연', isIndoor: true },
+  { keyword: '체험목장', group: '동물/자연', isIndoor: false },
+  { keyword: '생태공원', group: '동물/자연', isIndoor: false },
+  // 식당/카페
+  { keyword: '패밀리레스토랑', group: '식당/카페', isIndoor: true },
+  { keyword: '유아식당', group: '식당/카페', isIndoor: true },
+  { keyword: '키즈존카페', group: '식당/카페', isIndoor: true },
+  { keyword: '아이맛집', group: '식당/카페', isIndoor: true },
+  // 수영/물놀이
+  { keyword: '영유아수영', group: '수영/물놀이', isIndoor: true },
+  { keyword: '베이비풀', group: '수영/물놀이', isIndoor: true },
+  { keyword: '유아물놀이', group: '수영/물놀이', isIndoor: null },
+  { keyword: '키즈워터파크', group: '수영/물놀이', isIndoor: null },
+  // 도서관
+  { keyword: '그림책 카페', group: '도서관', isIndoor: true },
+  { keyword: '유아도서관', group: '도서관', isIndoor: true },
+  { keyword: '어린이책방', group: '도서관', isIndoor: true },
+  { keyword: '키즈도서관', group: '도서관', isIndoor: true },
+]
+
 /** Baby/parenting related keywords for text mining. */
 const BABY_KEYWORDS = [
   '아기',
@@ -147,7 +194,7 @@ const STOP_WORDS = new Set([
  * Generate new keyword candidates via text mining + templates.
  * Called when keyword health check shows ≥30% exhausted (plan.md 9-2, 25).
  */
-export async function generateNewKeywordCandidates(): Promise<{
+export async function generateNewKeywordCandidates(provider: KeywordProvider = 'naver'): Promise<{
   candidatesGenerated: number
   candidatesInserted: number
   errors: number
@@ -159,22 +206,32 @@ export async function generateNewKeywordCandidates(): Promise<{
   }
 
   try {
-    // Method 1: Text mining from recent blog mentions
-    console.log('[candidate-generator] Extracting keywords from blog mentions...')
-    const textMinedCandidates = await extractFromBlogMentions()
-    result.candidatesGenerated += textMinedCandidates.length
+    let allCandidates: GeneratedKeywordCandidate[]
 
-    // Method 2: Template-based generation
-    console.log('[candidate-generator] Generating template-based candidates...')
-    const templateCandidates = generateFromTemplates()
-    result.candidatesGenerated += templateCandidates.length
+    if (provider === 'kakao') {
+      // Kakao: template-based only (text mining uses naver blog data, not applicable)
+      console.log('[candidate-generator] Generating kakao template-based candidates...')
+      const kakaoCandidates = generateKakaoTemplates()
+      result.candidatesGenerated += kakaoCandidates.length
+      allCandidates = kakaoCandidates
+    } else {
+      // Naver: text mining + template-based
+      console.log('[candidate-generator] Extracting keywords from blog mentions...')
+      const textMinedCandidates = await extractFromBlogMentions()
+      result.candidatesGenerated += textMinedCandidates.length
 
-    // Combine and deduplicate
-    const allCandidates = [...textMinedCandidates, ...templateCandidates]
+      console.log('[candidate-generator] Generating template-based candidates...')
+      const templateCandidates = generateFromTemplates()
+      result.candidatesGenerated += templateCandidates.length
+
+      allCandidates = [...textMinedCandidates, ...templateCandidates]
+    }
+
+    // Deduplicate
     const uniqueCandidates = deduplicateCandidates(allCandidates)
 
     console.log(
-      `[candidate-generator] Generated ${uniqueCandidates.length} unique candidates`
+      `[candidate-generator] Generated ${uniqueCandidates.length} unique ${provider} candidates`
     )
 
     // Insert into keywords table (ignore duplicates via UNIQUE constraint)
@@ -182,6 +239,9 @@ export async function generateNewKeywordCandidates(): Promise<{
       try {
         const { error } = await supabaseAdmin.from('keywords').insert({
           keyword: candidate.keyword,
+          provider: candidate.provider,
+          keyword_group: candidate.keywordGroup || null,
+          is_indoor: candidate.isIndoor ?? null,
           status: 'NEW',
           source: candidate.source,
           efficiency_score: 0,
@@ -212,7 +272,7 @@ export async function generateNewKeywordCandidates(): Promise<{
     }
 
     console.log(
-      `[candidate-generator] Inserted ${result.candidatesInserted} new keywords (${result.errors} duplicates/errors)`
+      `[candidate-generator] Inserted ${result.candidatesInserted} new ${provider} keywords (${result.errors} duplicates/errors)`
     )
 
     return result
@@ -280,6 +340,7 @@ async function extractFromBlogMentions(): Promise<GeneratedKeywordCandidate[]> {
         keyword: word,
         source: 'text_mining' as const,
         estimatedRelevance: 0.7,
+        provider: 'naver' as const,
       }))
 
     console.log(`[candidate-generator] Extracted ${topWords.length} keywords from text mining`)
@@ -297,18 +358,33 @@ async function extractFromBlogMentions(): Promise<GeneratedKeywordCandidate[]> {
 function generateFromTemplates(): GeneratedKeywordCandidate[] {
   const candidates: GeneratedKeywordCandidate[] = []
 
-  for (const [category, templates] of Object.entries(CATEGORY_TEMPLATES)) {
+  for (const [_category, templates] of Object.entries(CATEGORY_TEMPLATES)) {
     for (const template of templates) {
       candidates.push({
         keyword: template,
         source: 'template',
-        estimatedRelevance: 0.85, // Templates are highly relevant
+        estimatedRelevance: 0.85,
+        provider: 'naver',
       })
     }
   }
 
-  console.log(`[candidate-generator] Generated ${candidates.length} template-based candidates`)
+  console.log(`[candidate-generator] Generated ${candidates.length} naver template-based candidates`)
   return candidates
+}
+
+/**
+ * Generate kakao keyword candidates from kakao-specific templates.
+ */
+function generateKakaoTemplates(): GeneratedKeywordCandidate[] {
+  return KAKAO_CATEGORY_TEMPLATES.map((t) => ({
+    keyword: t.keyword,
+    source: 'template' as const,
+    estimatedRelevance: 0.85,
+    provider: 'kakao' as const,
+    keywordGroup: t.group,
+    isIndoor: t.isIndoor,
+  }))
 }
 
 /**

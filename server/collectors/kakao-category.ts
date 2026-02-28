@@ -4,12 +4,9 @@
  * Covers plan.md sections 18-5, 18-6, 18-9.
  *
  * Flow:
- *   For each (category_code, keyword) pair in SEARCH_TARGETS:
- *     → Fetch all pages from Kakao Local API
- *     → Filter to Seoul/Gyeonggi service area
- *     → Check for duplicates (kakao_place_id first, then name+proximity)
- *     → Upsert into places table
- *     → Log result to collection_logs
+ *   1. Category codes (CT1, AT4) → processTarget() → no tracking
+ *   2. DB keywords (provider='kakao') → processTarget() → per-keyword tracking
+ *   3. Fallback hardcoded keywords if DB is empty
  */
 
 import { supabaseAdmin } from '../lib/supabase-admin'
@@ -18,6 +15,7 @@ import { checkDuplicate } from '../matchers/duplicate'
 import { isInServiceRegion } from '../enrichers/region'
 import { getDistrictCode } from '../enrichers/district'
 import { PlaceCategory } from '../../src/types/index'
+import { evaluateKeywordCycle } from '../keywords/rotation-engine'
 
 // ─── Kakao API types ─────────────────────────────────────────────────────────
 
@@ -43,7 +41,7 @@ interface KakaoSearchResponse {
   }
 }
 
-// ─── Category + keyword search targets ───────────────────────────────────────
+// ─── Search target types ─────────────────────────────────────────────────────
 
 interface SearchTarget {
   kakaoCategory?: string       // category_group_code (e.g. CE7, FD6, CT1, AT4)
@@ -52,19 +50,20 @@ interface SearchTarget {
   isIndoor: boolean | null
 }
 
-/**
- * Search targets based on plan.md 18-5.
- * Each entry triggers a full area scan.
- *
- * Seoul/Gyeonggi is divided into a grid of rect queries because the Kakao
- * category API returns max 45 pages × 15 items = 675 items per rect.
- * A 2-column × 3-row grid (6 rects) covers the full service area.
- */
-const SEARCH_TARGETS: SearchTarget[] = [
-  // Kakao category codes (baby-relevant only; CE7/FD6 removed — too many generic results)
+interface DBKeywordTarget extends SearchTarget {
+  keywordId: number            // keywords table id for tracking
+}
+
+// ─── Category code targets (no tracking) ─────────────────────────────────────
+
+const CATEGORY_CODE_TARGETS: SearchTarget[] = [
   { kakaoCategory: 'CT1', babyCategory: '전시/체험', isIndoor: true },
   { kakaoCategory: 'AT4', babyCategory: '동물/자연', isIndoor: null },
-  // Keyword searches — primary discovery method for baby-friendly places
+]
+
+// ─── Fallback keywords (used when DB is empty) ──────────────────────────────
+
+const FALLBACK_KEYWORD_TARGETS: SearchTarget[] = [
   { keyword: '키즈카페', babyCategory: '놀이', isIndoor: true },
   { keyword: '실내놀이터', babyCategory: '놀이', isIndoor: true },
   { keyword: '볼풀', babyCategory: '놀이', isIndoor: true },
@@ -80,7 +79,31 @@ const SEARCH_TARGETS: SearchTarget[] = [
   { keyword: '과학관', babyCategory: '전시/체험', isIndoor: true },
   { keyword: '동물원', babyCategory: '동물/자연', isIndoor: false },
   { keyword: '아쿠아리움', babyCategory: '동물/자연', isIndoor: true },
+  { keyword: '유아체험', babyCategory: '전시/체험', isIndoor: true },
+  { keyword: '키즈수영', babyCategory: '수영/물놀이', isIndoor: true },
+  { keyword: '트램폴린파크', babyCategory: '놀이', isIndoor: true },
+  { keyword: '키즈레스토랑', babyCategory: '식당/카페', isIndoor: true },
+  { keyword: '어린이미술관', babyCategory: '전시/체험', isIndoor: true },
+  { keyword: '유아놀이', babyCategory: '놀이', isIndoor: true },
+  { keyword: '어린이체험관', babyCategory: '전시/체험', isIndoor: true },
+  { keyword: '아기카페', babyCategory: '식당/카페', isIndoor: true },
+  { keyword: '가족나들이', babyCategory: '동물/자연', isIndoor: false },
+  { keyword: '워터파크 키즈', babyCategory: '수영/물놀이', isIndoor: null },
 ]
+
+// ─── Category to PlaceCategory mapping ──────────────────────────────────────
+
+const KEYWORD_GROUP_TO_CATEGORY: Record<string, PlaceCategory> = {
+  '놀이': '놀이',
+  '공원/놀이터': '공원/놀이터',
+  '도서관': '도서관',
+  '수영/물놀이': '수영/물놀이',
+  '식당/카페': '식당/카페',
+  '전시/체험': '전시/체험',
+  '동물/자연': '동물/자연',
+  '문화행사': '문화행사',
+  '편의시설': '편의시설',
+}
 
 /**
  * Grid of rect parameters (swLng,swLat,neLng,neLat) covering Seoul + Gyeonggi + Incheon.
@@ -110,6 +133,8 @@ export interface PipelineAResult {
   duplicates: number
   skippedOutOfArea: number
   errors: number
+  keywordsProcessed: number
+  keywordsFromDB: boolean
 }
 
 export async function runPipelineA(): Promise<PipelineAResult> {
@@ -119,20 +144,75 @@ export async function runPipelineA(): Promise<PipelineAResult> {
     duplicates: 0,
     skippedOutOfArea: 0,
     errors: 0,
+    keywordsProcessed: 0,
+    keywordsFromDB: false,
   }
 
   const startedAt = Date.now()
 
-  for (const target of SEARCH_TARGETS) {
+  // Phase 1: Category codes (CT1, AT4) — no tracking
+  for (const target of CATEGORY_CODE_TARGETS) {
     for (const rect of SERVICE_AREA_RECTS) {
       try {
         await processTarget(target, rect, result)
       } catch (err) {
         console.error(
-          `[pipeline-a] Error processing target ${target.keyword ?? target.kakaoCategory} rect=${rect}:`,
+          `[pipeline-a] Error processing category ${target.kakaoCategory} rect=${rect}:`,
           err
         )
         result.errors++
+      }
+    }
+  }
+
+  // Phase 2: DB keywords with per-keyword tracking
+  const dbKeywords = await getKakaoKeywordsFromDB()
+
+  if (dbKeywords.length > 0) {
+    result.keywordsFromDB = true
+    console.log(`[pipeline-a] Loaded ${dbKeywords.length} keywords from DB`)
+
+    for (const kw of dbKeywords) {
+      // Snapshot result before processing this keyword
+      const beforeNewPlaces = result.newPlaces
+      const beforeDuplicates = result.duplicates
+      const beforeFetched = result.totalFetched
+
+      for (const rect of SERVICE_AREA_RECTS) {
+        try {
+          await processTarget(kw, rect, result)
+        } catch (err) {
+          console.error(
+            `[pipeline-a] Error processing keyword "${kw.keyword}" rect=${rect}:`,
+            err
+          )
+          result.errors++
+        }
+      }
+
+      // Calculate delta for this keyword
+      const kwApiResults = result.totalFetched - beforeFetched
+      const kwNewPlaces = result.newPlaces - beforeNewPlaces
+      const kwDuplicates = result.duplicates - beforeDuplicates
+
+      // Evaluate keyword cycle (logs to keyword_logs + updates status)
+      await evaluateKeywordCycle(kw.keywordId, kwApiResults, kwNewPlaces, kwDuplicates)
+      result.keywordsProcessed++
+    }
+  } else {
+    // Fallback: no DB keywords → use hardcoded (no tracking)
+    console.log('[pipeline-a] No DB keywords found, using fallback keywords')
+    for (const target of FALLBACK_KEYWORD_TARGETS) {
+      for (const rect of SERVICE_AREA_RECTS) {
+        try {
+          await processTarget(target, rect, result)
+        } catch (err) {
+          console.error(
+            `[pipeline-a] Error processing fallback "${target.keyword}" rect=${rect}:`,
+            err
+          )
+          result.errors++
+        }
       }
     }
   }
@@ -146,7 +226,45 @@ export async function runPipelineA(): Promise<PipelineAResult> {
     duration_ms: Date.now() - startedAt,
   })
 
+  console.log(
+    `[pipeline-a] Complete: fetched=${result.totalFetched} new=${result.newPlaces} dup=${result.duplicates} keywords=${result.keywordsProcessed} fromDB=${result.keywordsFromDB}`
+  )
+
   return result
+}
+
+// ─── DB keyword loading ──────────────────────────────────────────────────────
+
+async function getKakaoKeywordsFromDB(): Promise<DBKeywordTarget[]> {
+  const currentMonth = new Date().getMonth() + 1 // 1-12
+
+  const { data: keywords, error } = await supabaseAdmin
+    .from('keywords')
+    .select('id, keyword, keyword_group, status, is_indoor, seasonal_months')
+    .eq('provider', 'kakao')
+    .in('status', ['NEW', 'ACTIVE', 'DECLINING', 'SEASONAL'])
+    .order('efficiency_score', { ascending: false })
+
+  if (error || !keywords) {
+    console.error('[pipeline-a] Failed to load kakao keywords from DB:', error)
+    return []
+  }
+
+  return (keywords as any[])
+    .filter((kw) => {
+      // Skip SEASONAL if not in season
+      if (kw.status === 'SEASONAL') {
+        const months: number[] = kw.seasonal_months ?? []
+        return months.includes(currentMonth)
+      }
+      return true
+    })
+    .map((kw) => ({
+      keyword: kw.keyword,
+      keywordId: kw.id,
+      babyCategory: (KEYWORD_GROUP_TO_CATEGORY[kw.keyword_group] ?? '놀이') as PlaceCategory,
+      isIndoor: kw.is_indoor ?? null,
+    }))
 }
 
 // ─── Per-target processing ────────────────────────────────────────────────────

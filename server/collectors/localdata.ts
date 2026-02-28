@@ -134,7 +134,7 @@ const SERVICE_AREA_RECTS = [
 
 const API_BASE = 'https://apis.data.go.kr/B553077/api/open/sdsc2'
 const PAGE_SIZE = 1000 // API max per page
-const MAX_PAGES = 50
+const MAX_PAGES = 30
 
 // ─── Main export ────────────────────────────────────────────────────────────
 

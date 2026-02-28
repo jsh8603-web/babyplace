@@ -194,36 +194,51 @@ export async function initializeDefaultSeasonalKeywords(): Promise<{
 }> {
   const result = { inserted: 0, errors: 0 }
 
-  const defaultSeasonalKeywords = [
-    // Spring
-    { keyword: '아기 벚꽃', months: [3, 4, 5] },
-    { keyword: '아기 봄 공원', months: [3, 4, 5] },
-    { keyword: '봄 축제', months: [3, 4, 5] },
-    { keyword: '아기 봄나들이', months: [3, 4, 5] },
+  const defaultSeasonalKeywords: { keyword: string; months: number[]; provider: string; keywordGroup?: string; isIndoor?: boolean | null }[] = [
+    // Naver — Spring
+    { keyword: '아기 벚꽃', months: [3, 4, 5], provider: 'naver' },
+    { keyword: '아기 봄 공원', months: [3, 4, 5], provider: 'naver' },
+    { keyword: '봄 축제', months: [3, 4, 5], provider: 'naver' },
+    { keyword: '아기 봄나들이', months: [3, 4, 5], provider: 'naver' },
+    // Naver — Summer
+    { keyword: '아기 물놀이', months: [6, 7, 8], provider: 'naver' },
+    { keyword: '아기 워터파크', months: [6, 7, 8], provider: 'naver' },
+    { keyword: '아기 계곡', months: [6, 7, 8], provider: 'naver' },
+    { keyword: '여름 물놀이터', months: [6, 7, 8], provider: 'naver' },
+    // Naver — Autumn
+    { keyword: '아기 단풍', months: [9, 10, 11], provider: 'naver' },
+    { keyword: '아기 숲', months: [9, 10, 11], provider: 'naver' },
+    { keyword: '가을 축제', months: [9, 10, 11], provider: 'naver' },
+    { keyword: '아기 가을 공원', months: [9, 10, 11], provider: 'naver' },
+    // Naver — Winter
+    { keyword: '아기 실내', months: [12, 1, 2], provider: 'naver' },
+    { keyword: '아기 눈썰매', months: [12, 1, 2], provider: 'naver' },
+    { keyword: '겨울 실내놀이터', months: [12, 1, 2], provider: 'naver' },
+    { keyword: '아기 온실', months: [12, 1, 2], provider: 'naver' },
 
-    // Summer
-    { keyword: '아기 물놀이', months: [6, 7, 8] },
-    { keyword: '아기 워터파크', months: [6, 7, 8] },
-    { keyword: '아기 계곡', months: [6, 7, 8] },
-    { keyword: '여름 물놀이터', months: [6, 7, 8] },
-
-    // Autumn
-    { keyword: '아기 단풍', months: [9, 10, 11] },
-    { keyword: '아기 숲', months: [9, 10, 11] },
-    { keyword: '가을 축제', months: [9, 10, 11] },
-    { keyword: '아기 가을 공원', months: [9, 10, 11] },
-
-    // Winter
-    { keyword: '아기 실내', months: [12, 1, 2] },
-    { keyword: '아기 눈썰매', months: [12, 1, 2] },
-    { keyword: '겨울 실내놀이터', months: [12, 1, 2] },
-    { keyword: '아기 온실', months: [12, 1, 2] },
+    // Kakao — Summer
+    { keyword: '물놀이장', months: [6, 7, 8], provider: 'kakao', keywordGroup: '수영/물놀이', isIndoor: false },
+    { keyword: '유아워터파크', months: [6, 7, 8], provider: 'kakao', keywordGroup: '수영/물놀이', isIndoor: null },
+    { keyword: '여름키즈', months: [6, 7, 8], provider: 'kakao', keywordGroup: '놀이', isIndoor: null },
+    // Kakao — Winter
+    { keyword: '실내키즈카페', months: [12, 1, 2], provider: 'kakao', keywordGroup: '놀이', isIndoor: true },
+    { keyword: '눈썰매장', months: [12, 1, 2], provider: 'kakao', keywordGroup: '놀이', isIndoor: false },
+    { keyword: '실내놀이공원', months: [12, 1, 2], provider: 'kakao', keywordGroup: '놀이', isIndoor: true },
+    // Kakao — Spring
+    { keyword: '벚꽃놀이터', months: [3, 4, 5], provider: 'kakao', keywordGroup: '공원/놀이터', isIndoor: false },
+    { keyword: '봄나들이', months: [3, 4, 5], provider: 'kakao', keywordGroup: '동물/자연', isIndoor: false },
+    // Kakao — Autumn
+    { keyword: '단풍공원', months: [9, 10, 11], provider: 'kakao', keywordGroup: '공원/놀이터', isIndoor: false },
+    { keyword: '가을체험', months: [9, 10, 11], provider: 'kakao', keywordGroup: '전시/체험', isIndoor: false },
   ]
 
-  for (const { keyword, months } of defaultSeasonalKeywords) {
+  for (const { keyword, months, provider, keywordGroup, isIndoor } of defaultSeasonalKeywords) {
     try {
       const { error } = await supabaseAdmin.from('keywords').insert({
         keyword,
+        provider,
+        keyword_group: keywordGroup || null,
+        is_indoor: isIndoor ?? null,
         status: 'SEASONAL',
         seasonal_months: months,
         source: 'seasonal',

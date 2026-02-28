@@ -157,3 +157,9 @@ export const dataLabLimiter = new RateLimiter({
   maxPerDay: 1_000,
   provider: 'naver-datalab',
 })
+
+export const tourLimiter = new RateLimiter({
+  maxPerSecond: 5,
+  maxPerDay: 800,
+  provider: 'tour',
+})

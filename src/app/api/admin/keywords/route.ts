@@ -16,6 +16,8 @@ interface Keyword {
   consecutive_zero_new: number
   seasonal_months: number[] | null
   source: string
+  provider: string
+  is_indoor: boolean | null
   created_at: string
   last_used_at: string | null
 }
@@ -31,6 +33,7 @@ interface KeywordsListResponse {
  *
  * Query params:
  * - status?: string ('NEW' | 'ACTIVE' | 'DECLINING' | 'EXHAUSTED' | 'SEASONAL')
+ * - provider?: string ('naver' | 'kakao')
  * - sortBy?: 'efficiency' | 'recent' | 'cycle_count' (default: 'efficiency')
  * - page?: number (default 1)
  * - limit?: number (default 20, max 100)
@@ -45,6 +48,7 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = request.nextUrl
   const status = searchParams.get('status') || ''
+  const provider = searchParams.get('provider') || ''
   const sortBy = (searchParams.get('sortBy') || 'efficiency') as 'efficiency' | 'recent' | 'cycle_count'
   const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10))
   const limit = Math.min(100, parseInt(searchParams.get('limit') || '20', 10))
@@ -58,6 +62,11 @@ export async function GET(request: NextRequest) {
     // Status filter
     if (status) {
       query = query.eq('status', status)
+    }
+
+    // Provider filter
+    if (provider) {
+      query = query.eq('provider', provider)
     }
 
     // Sorting
@@ -118,7 +127,7 @@ export async function POST(request: NextRequest) {
     return errorResponse('Invalid request body', 400)
   }
 
-  const { keyword, keyword_group, seasonal_months } = body
+  const { keyword, keyword_group, seasonal_months, provider, is_indoor } = body
 
   if (!keyword || typeof keyword !== 'string' || keyword.trim().length === 0) {
     return errorResponse('keyword is required and must be a non-empty string', 400)
@@ -130,6 +139,8 @@ export async function POST(request: NextRequest) {
       .insert({
         keyword: keyword.trim(),
         keyword_group: keyword_group || null,
+        provider: provider || 'naver',
+        is_indoor: is_indoor ?? null,
         status: 'NEW',
         seasonal_months: seasonal_months || null,
         source: 'manual',

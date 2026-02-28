@@ -87,12 +87,12 @@ export async function GET(request: NextRequest) {
   // Zoom-based density control (Kakao Maps: level 1=zoomed in, level 14=zoomed out)
   // At high levels (zoomed out) show only popular places to reduce clutter
   // Scores are 0–1 scale; null means unscored (newly collected)
-  if (zoom >= 12) {
-    query = query.gte('popularity_score', 0.5)
-  } else if (zoom >= 10) {
-    query = query.or('popularity_score.gte.0.2,popularity_score.is.null')
+  if (zoom >= 13) {
+    query = query.or('popularity_score.gte.0.3,popularity_score.is.null')
+  } else if (zoom >= 11) {
+    query = query.or('popularity_score.gte.0.1,popularity_score.is.null')
   }
-  // zoom <= 9: show all places (city view and closer)
+  // zoom <= 10: show all places
 
   // Category filter
   if (categories.length > 0) {

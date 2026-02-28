@@ -31,6 +31,7 @@ import { runPublicData } from './collectors/public-data'
 import { runLocalData } from './collectors/localdata'
 import { runScoring } from './scoring'
 import { runDensityControl } from './enrichers/density'
+import { runKakaoEnrichment } from './enrichers/kakao-enrich'
 import { runAutoPromotion } from './candidates/auto-promote'
 import { runAutoDeactivate } from './candidates/auto-deactivate'
 import { runKOPISCollector } from './collectors/kopis'
@@ -91,7 +92,10 @@ async function main(): Promise<void> {
         console.log('[run] Manual mode — running all pipelines')
         await runPipelineAJob()
         await runPipelineBJob()
+        await runPublicDataJob()
+        await runEventsJob()
         await runScoringJob()
+        await runMonthlyJob()
         break
     }
 
@@ -161,7 +165,12 @@ async function runEventsJob(): Promise<void> {
 }
 
 async function runScoringJob(): Promise<void> {
-  console.log('[run] === Scoring + keyword rotation + density control + auto-promotion + auto-deactivation ===')
+  console.log('[run] === Kakao enrichment + scoring + keyword rotation + density + promotion + deactivation ===')
+
+  // Kakao enrichment: fill missing phone/road_address before scoring
+  console.log('[run] Running Kakao enrichment...')
+  const enrichResult = await runKakaoEnrichment()
+  console.log('[run] Kakao enrichment result:', JSON.stringify(enrichResult, null, 2))
 
   // Popularity scoring: compute scores for all active places
   console.log('[run] Running popularity scoring...')

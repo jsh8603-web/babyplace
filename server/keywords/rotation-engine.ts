@@ -113,6 +113,8 @@ interface KeywordRow {
   new_places_found?: number
   duplicate_ratio?: number
   last_used_at?: string | null
+  provider?: string
+  is_indoor?: boolean | null
 }
 
 const EFFICIENCY_THRESHOLD_ACTIVE = 0.3
@@ -147,19 +149,33 @@ export async function evaluateKeywordCycle(
     const yield_ = apiResults > 0 ? Math.min(newPlaces / apiResults, 1.0) : 0
     const duplicateRate =
       apiResults > 0 ? Math.min(duplicates / apiResults, 1.0) : 0
-    const relevanceScore = await computeRelevanceScore(keywordId)
     const cycleFatigue = Math.exp(-currentKeyword.cycle_count / 10)
 
     // Update consecutive_zero_new
     const newConsecutiveZero = newPlaces === 0 ? currentKeyword.consecutive_zero_new + 1 : 0
     const zeroNewPenalty = 1 - Math.min(newConsecutiveZero * 0.3, 1.0)
 
-    // --- Efficiency score formula ---
-    const newEfficiencyScore =
-      0.4 * yield_ * (1 - duplicateRate) +
-      0.25 * relevanceScore +
-      0.2 * cycleFatigue +
-      0.15 * zeroNewPenalty
+    // --- Efficiency score formula (provider-specific) ---
+    const isKakao = currentKeyword.provider === 'kakao'
+    let newEfficiencyScore: number
+    let relevanceScore: number
+
+    if (isKakao) {
+      // Kakao: no blog relevance, yield weighted higher (direct place discovery)
+      relevanceScore = 0 // not used in kakao formula
+      newEfficiencyScore =
+        0.50 * yield_ * (1 - duplicateRate) +
+        0.30 * cycleFatigue +
+        0.20 * zeroNewPenalty
+    } else {
+      // Naver: original formula with blog relevance
+      relevanceScore = await computeRelevanceScore(keywordId)
+      newEfficiencyScore =
+        0.4 * yield_ * (1 - duplicateRate) +
+        0.25 * relevanceScore +
+        0.2 * cycleFatigue +
+        0.15 * zeroNewPenalty
+    }
 
     // --- State transition logic ---
     const oldStatus = currentKeyword.status
@@ -239,17 +255,19 @@ export async function evaluateKeywordCycle(
  * Check overall keyword health: compute % EXHAUSTED.
  * If ≥ 30%, trigger new keyword generation.
  */
-export async function checkKeywordHealthAndGenerate(): Promise<{
+export async function checkKeywordHealthAndGenerate(provider?: string): Promise<{
   totalKeywords: number
   exhaustedCount: number
   percentExhausted: number
   shouldGenerateNew: boolean
 }> {
   try {
-    const { data: keywords, error } = await supabaseAdmin
+    let query = supabaseAdmin
       .from('keywords')
       .select('status')
       .not('status', 'is', null)
+    if (provider) query = query.eq('provider', provider)
+    const { data: keywords, error } = await query
 
     if (error || !keywords) {
       console.error('[keyword-rotation] Failed to fetch keywords for health check:', error)
@@ -290,13 +308,15 @@ export async function checkKeywordHealthAndGenerate(): Promise<{
  * Fetch all ACTIVE + NEW keywords for rotation (excluding DECLINING, EXHAUSTED, SEASONAL).
  * Used by pipeline B keyword search (plan.md 18-2, Method 2).
  */
-export async function getActiveKeywords(): Promise<KeywordRow[]> {
+export async function getActiveKeywords(provider?: string): Promise<KeywordRow[]> {
   try {
-    const { data: keywords, error } = await supabaseAdmin
+    let query = supabaseAdmin
       .from('keywords')
       .select('*')
       .in('status', ['ACTIVE', 'NEW'])
       .order('cycle_count', { ascending: true }) // Prioritize less-cycled keywords
+    if (provider) query = query.eq('provider', provider)
+    const { data: keywords, error } = await query
 
     if (error) {
       console.error('[keyword-rotation] Failed to fetch active keywords:', error)
@@ -314,12 +334,14 @@ export async function getActiveKeywords(): Promise<KeywordRow[]> {
  * Fetch all SEASONAL keywords that should be active for the current month.
  * Called during seasonal transition check (daily scoring job, plan.md 10-2).
  */
-export async function getSeasonalKeywordsForMonth(month: number): Promise<KeywordRow[]> {
+export async function getSeasonalKeywordsForMonth(month: number, provider?: string): Promise<KeywordRow[]> {
   try {
-    const { data: allSeasonal, error } = await supabaseAdmin
+    let query = supabaseAdmin
       .from('keywords')
       .select('*')
       .eq('status', 'SEASONAL')
+    if (provider) query = query.eq('provider', provider)
+    const { data: allSeasonal, error } = await query
 
     if (error) {
       console.error('[keyword-rotation] Failed to fetch seasonal keywords:', error)
