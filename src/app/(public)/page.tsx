@@ -151,7 +151,19 @@ export default function HomePage() {
   })
 
   const places = placesData?.places ?? []
-  const filteredPlaces = places
+
+  // When a place is selected, sort remaining places by distance from it
+  // and only show places within 2km radius
+  const filteredPlaces = selectedPlace
+    ? places
+        .filter((p) => p.id !== selectedPlace.id)
+        .map((p) => ({
+          ...p,
+          _distFromSelected: haversineMeters(selectedPlace.lat, selectedPlace.lng, p.lat, p.lng),
+        }))
+        .filter((p) => p._distFromSelected <= 2000) // 2km radius
+        .sort((a, b) => a._distFromSelected - b._distFromSelected)
+    : places
 
   const handleBoundsChanged = useCallback((bounds: MapBounds) => {
     setMapBounds(bounds)
@@ -322,8 +334,18 @@ export default function HomePage() {
               <span className="text-[13px] font-semibold text-warm-600">
                 {isPlacesLoading
                   ? '장소 불러오는 중...'
-                  : `주변 ${filteredPlaces.length.toLocaleString()}개 장소`}
+                  : selectedPlace
+                    ? `${selectedPlace.name} 주변 ${filteredPlaces.length}개 장소`
+                    : `주변 ${filteredPlaces.length.toLocaleString()}개 장소`}
               </span>
+              {selectedPlace && (
+                <button
+                  onClick={() => setSelectedPlace(null)}
+                  className="text-[12px] text-coral-500 font-medium min-h-[36px] px-2"
+                >
+                  전체보기
+                </button>
+              )}
               <button
                 onClick={() =>
                   setFilters((f) => ({
@@ -417,4 +439,15 @@ export default function HomePage() {
       <BottomNav />
     </main>
   )
+}
+
+/** Haversine distance in meters */
+function haversineMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371000
+  const dLat = ((lat2 - lat1) * Math.PI) / 180
+  const dLng = ((lng2 - lng1) * Math.PI) / 180
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
