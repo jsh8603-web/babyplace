@@ -377,7 +377,7 @@ export default function HomePage() {
                     <div className="h-3 bg-warm-100 rounded w-full" />
                   </div>
                 ))
-              ) : filteredPlaces.length === 0 ? (
+              ) : filteredPlaces.length === 0 && !selectedPlace ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <MapPin size={32} className="text-warm-300 mb-3" />
                   <p className="text-[15px] text-warm-500 font-medium">
