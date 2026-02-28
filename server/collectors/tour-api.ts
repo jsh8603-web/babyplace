@@ -265,6 +265,9 @@ async function processAsPlace(
 ): Promise<void> {
   if (!item.contentid) return
 
+  // Skip non-baby-relevant landmarks (palaces, temples, historical sites, etc.)
+  if (shouldSkipPlace(item.title || '', item.cat1, item.cat2, item.cat3)) return
+
   // Coordinates are WGS84 decimal (no division needed)
   const lat = item.mapy || null
   const lng = item.mapx || null
@@ -463,16 +466,40 @@ async function fetchIntro(
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
+/**
+ * Skip non-baby-relevant places from Tour API.
+ * Returns true for landmarks, historical sites, temples, etc.
+ * that aren't meaningful for a baby/kids place app.
+ */
+function shouldSkipPlace(title: string, cat1?: string, cat2?: string, cat3?: string): boolean {
+  // cat2 codes for non-baby content:
+  //   A0201 = 역사관광지 (historical tourist sites)
+  //   A0202 = 휴양관광지 (resort tourism — adult-oriented spas, temples)
+  const skipCat2 = new Set(['A0201', 'A0202'])
+  if (cat2 && skipCat2.has(cat2)) return true
+
+  // Name patterns for non-baby-relevant places
+  const skipPatterns = /궁$|궁궐|사찰|사당|서원|향교|명륜|번사|총국|관아|왕릉|능묘|묘소|성곽|성터|성벽|봉수대|비석|기념비|전적지|유적|기념탑|사적|종묘/
+  if (skipPatterns.test(title)) return true
+
+  return false
+}
+
 function mapToCategory(
   contentTypeId: number,
   cat1?: string,
   title?: string
 ): PlaceCategory {
-  if (contentTypeId === 14) return '전시/체험'
+  if (contentTypeId === 14) {
+    // 문화시설: distinguish parks/outdoor from exhibition
+    if (title && /공원/.test(title)) return '공원/놀이터'
+    return '전시/체험'
+  }
   if (contentTypeId === 28) return '수영/물놀이'
   if (contentTypeId === 12) {
     if (cat1 === 'A03') return '수영/물놀이'
-    if (title && /동물|아쿠아|수족|농장/.test(title)) return '동물/자연'
+    if (title && /동물|아쿠아|수족|농장|목장/.test(title)) return '동물/자연'
+    if (title && /공원|숲|자연|생태/.test(title)) return '공원/놀이터'
     return '전시/체험'
   }
   return '전시/체험'

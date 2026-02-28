@@ -284,6 +284,9 @@ async function processTarget(
     result.totalFetched += docs.documents.length
 
     for (const doc of docs.documents) {
+      // Skip non-baby-relevant landmarks (palaces, temples, historical sites)
+      if (shouldSkipKakaoPlace(doc.place_name, doc.category_name)) continue
+
       const lat = parseFloat(doc.y)
       const lng = parseFloat(doc.x)
       const address = doc.road_address_name || doc.address_name
@@ -311,14 +314,14 @@ async function processTarget(
         continue
       }
 
-      // New place → insert
+      // New place → insert with dynamic category mapping
       const districtCode = await getDistrictCode(lat, lng, address)
-      const category = target.babyCategory
+      const mapped = mapKakaoCategory(doc, target.babyCategory)
       const subCategory = normalizeSubCategory(doc.category_name)
 
       const { error } = await supabaseAdmin.from('places').insert({
         name: doc.place_name,
-        category,
+        category: mapped.category,
         sub_category: subCategory,
         address: doc.address_name || null,
         road_address: doc.road_address_name || null,
@@ -329,7 +332,7 @@ async function processTarget(
         source: 'kakao',
         source_id: doc.id,
         kakao_place_id: doc.id,
-        is_indoor: target.isIndoor,
+        is_indoor: mapped.isIndoor ?? target.isIndoor,
         is_active: true,
       })
 
@@ -401,6 +404,64 @@ async function fetchKakaoPage(
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * Skip non-baby-relevant places from Kakao results.
+ * Filters out historical landmarks, temples, streets, hotels, churches, pet parks.
+ */
+function shouldSkipKakaoPlace(name: string, categoryName: string): boolean {
+  // Name patterns for non-baby-relevant places
+  const skipNamePatterns = /궁$|궁궐|사찰|사당|서원$|향교|명륜|번사|총국|관아|왕릉|능묘|묘소|성곽|성터|성벽|봉수대|비석|기념비|전적지|유적|기념탑|사적|종묘|반려견|애견/
+  if (skipNamePatterns.test(name)) return true
+
+  // Sub-category patterns to skip (from Kakao category_name hierarchy)
+  const skipSubCategories = /테마거리|먹자골목|카페거리|도보여행|고궁|궁$|사적지|유적지|성지$|묘$|사찰|교회$|성당$|호텔$|여관|모텔|반려견/
+  if (skipSubCategories.test(categoryName)) return true
+
+  return false
+}
+
+/**
+ * Dynamically map Kakao category_name to BabyPlace PlaceCategory.
+ * AT4 (관광명소) is too broad — use sub-category for fine-grained mapping.
+ * Falls back to the target's babyCategory if no specific match.
+ */
+function mapKakaoCategory(
+  doc: KakaoDocument,
+  defaultCategory: PlaceCategory
+): { category: PlaceCategory; isIndoor: boolean | null } {
+  const catName = doc.category_name || ''
+  const name = doc.place_name || ''
+
+  // 동물원/아쿠아리움/농장 → 동물/자연
+  if (/동물원|아쿠아리움|수족관|농장|목장|곤충|파충류/.test(catName) ||
+      /동물원|아쿠아|수족|농장|목장/.test(name)) {
+    return { category: '동물/자연', isIndoor: /실내|아쿠아|수족/.test(name) }
+  }
+
+  // 워터파크/수영장 → 수영/물놀이
+  if (/워터|수영|물놀이/.test(catName) || /워터파크|수영|물놀이/.test(name)) {
+    return { category: '수영/물놀이', isIndoor: null }
+  }
+
+  // 박물관/미술관/과학관/전시 → 전시/체험
+  if (/박물관|미술관|과학관|전시관|체험관/.test(catName) ||
+      /박물관|미술관|과학관|전시|체험관/.test(name)) {
+    return { category: '전시/체험', isIndoor: true }
+  }
+
+  // 공원/놀이터 → 공원/놀이터
+  if (/공원|놀이터|유원지/.test(catName) || /공원|놀이터/.test(name)) {
+    return { category: '공원/놀이터', isIndoor: false }
+  }
+
+  // 테마파크 → keep as 동물/자연 (most theme parks in Korea have animal areas)
+  if (/테마파크/.test(catName)) {
+    return { category: '동물/자연', isIndoor: false }
+  }
+
+  return { category: defaultCategory, isIndoor: null }
+}
 
 /**
  * Extracts a sub-category label from Kakao's hierarchical category string.
