@@ -129,7 +129,7 @@ async function runReverseSearch(
   // Phase 1: uncrawled places first (initial coverage, evenly distributed)
   const { data: uncrawled, error: err1 } = await supabaseAdmin
     .from('places')
-    .select('id, name')
+    .select('id, name, road_address, address')
     .eq('is_active', true)
     .is('last_mentioned_at', null)
     .order('id', { ascending: true })
@@ -147,11 +147,11 @@ async function runReverseSearch(
   // Phase 2: popular places that haven't been refreshed recently
   // Prioritize high mention_count (active places get new posts frequently)
   // with staleness as tiebreaker (oldest refresh first)
-  let popularPlaces: Array<{ id: number; name: string }> = []
+  let popularPlaces: Array<{ id: number; name: string; road_address: string | null; address: string | null }> = []
   if (remaining > 0) {
     const { data, error: err2 } = await supabaseAdmin
       .from('places')
-      .select('id, name')
+      .select('id, name, road_address, address')
       .eq('is_active', true)
       .not('last_mentioned_at', 'is', null)
       .order('mention_count', { ascending: false })
@@ -173,7 +173,8 @@ async function runReverseSearch(
 
   for (const place of allPlaces) {
     try {
-      const newMentions = await reverseSearchPlace(place.id, place.name)
+      const district = extractDistrict(place.road_address || place.address || '')
+      const newMentions = await reverseSearchPlace(place.id, place.name, district)
       stats.newMentions += newMentions
       stats.placesProcessed++
     } catch (err) {
@@ -184,15 +185,19 @@ async function runReverseSearch(
 }
 
 /**
- * Searches Naver Blog and Café for a given place name.
- * Inserts new blog_mentions and updates the place's mention_count.
+ * Searches Naver Blog and Café for a given place name + district.
+ * Computes relevance_score per post (place name match in title/snippet).
+ * Only inserts posts with relevance >= 0.3.
  * Returns number of new mentions inserted.
  */
 async function reverseSearchPlace(
   placeId: number,
-  placeName: string
+  placeName: string,
+  district: string
 ): Promise<number> {
-  const query = encodeURIComponent(placeName)
+  // Append district to query for location specificity (e.g. "커피에리어 남양주")
+  const searchTerm = district ? `${placeName} ${district}` : placeName
+  const query = encodeURIComponent(searchTerm)
   let newCount = 0
 
   // Search both blog and cafe
@@ -212,11 +217,15 @@ async function reverseSearchPlace(
       const url = item.link
       if (!url) continue
 
-      // Check for advertisement signals (future use: weight down ad-sourced mentions)
-      const _isAd = isAdvertisement(item.description || item.title)
-      void _isAd
+      const title = stripHtml(item.title)
+      const snippet = stripHtml(item.description).slice(0, 500)
 
-      // Attempt to insert (url has UNIQUE constraint → skip if already exists)
+      // Compute relevance: does the post actually mention this place?
+      const relevance = computePostRelevance(placeName, district, title, snippet)
+
+      // Skip irrelevant posts (threshold 0.3)
+      if (relevance < 0.3) continue
+
       const postDate = parseNaverPostDate(
         'postdate' in item ? item.postdate : undefined
       )
@@ -224,10 +233,11 @@ async function reverseSearchPlace(
       const { error } = await supabaseAdmin.from('blog_mentions').insert({
         place_id: placeId,
         source_type: source.type,
-        title: stripHtml(item.title),
+        title,
         url,
         post_date: postDate,
-        snippet: stripHtml(item.description).slice(0, 500),
+        snippet,
+        relevance_score: relevance,
       })
 
       if (!error) {
@@ -242,6 +252,63 @@ async function reverseSearchPlace(
   }
 
   return newCount
+}
+
+/**
+ * Extract district/city name from address string.
+ * "경기 남양주시 와부읍 덕소로2번길 84" → "남양주"
+ * "서울 강남구 역삼동 123" → "강남"
+ */
+function extractDistrict(address: string): string {
+  if (!address) return ''
+  // Match 시/군/구 name: e.g. "남양주시" → "남양주", "강남구" → "강남"
+  const match = address.match(/([가-힣]+)[시군구]\b/)
+  return match ? match[1] : ''
+}
+
+/**
+ * Compute relevance score (0~1) for a blog post relative to a place.
+ * Checks if the post title/snippet actually mentions the place name or location.
+ */
+function computePostRelevance(
+  placeName: string,
+  district: string,
+  title: string,
+  snippet: string
+): number {
+  const text = `${title} ${snippet}`.toLowerCase()
+  const nameL = placeName.toLowerCase()
+  let score = 0
+
+  // Full place name match in title → highest signal
+  if (title.toLowerCase().includes(nameL)) {
+    score += 0.6
+  }
+  // Full place name in snippet
+  else if (text.includes(nameL)) {
+    score += 0.4
+  }
+  // Partial name match (for multi-word names like "키즈존 식당")
+  else {
+    const nameWords = nameL.split(/\s+/).filter((w) => w.length >= 2)
+    const matchedWords = nameWords.filter((w) => text.includes(w))
+    if (matchedWords.length > 0) {
+      score += 0.2 * (matchedWords.length / nameWords.length)
+    }
+  }
+
+  // District match boosts confidence
+  if (district && text.includes(district.toLowerCase())) {
+    score += 0.2
+  }
+
+  // Baby/kids related content bonus
+  const babyTerms = ['아기', '유아', '아이', '키즈', '어린이', '유모차', '수유']
+  if (babyTerms.some((t) => text.includes(t))) {
+    score += 0.1
+  }
+
+  return Math.min(score, 1.0)
 }
 
 /**

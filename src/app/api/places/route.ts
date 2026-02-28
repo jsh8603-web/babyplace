@@ -43,7 +43,8 @@ export async function GET(request: NextRequest) {
   const swLng = parseFloat(searchParams.get('swLng') ?? '')
   const neLat = parseFloat(searchParams.get('neLat') ?? '')
   const neLng = parseFloat(searchParams.get('neLng') ?? '')
-  const zoom = parseInt(searchParams.get('zoom') ?? '12', 10)
+  // zoom parsed for future use; currently bbox + limit handles density
+  const _zoom = parseInt(searchParams.get('zoom') ?? '12', 10)
 
   if (isNaN(swLat) || isNaN(swLng) || isNaN(neLat) || isNaN(neLng)) {
     return NextResponse.json(
@@ -84,15 +85,8 @@ export async function GET(request: NextRequest) {
     .lte('lng', neLng)
     .limit(fetchLimit)
 
-  // Zoom-based density control (Kakao Maps: level 1=zoomed in, level 14=zoomed out)
-  // At high levels (zoomed out) show only popular places to reduce clutter
-  // Scores are 0–1 scale; null means unscored (newly collected)
-  if (zoom >= 13) {
-    query = query.or('popularity_score.gte.0.3,popularity_score.is.null')
-  } else if (zoom >= 11) {
-    query = query.or('popularity_score.gte.0.1,popularity_score.is.null')
-  }
-  // zoom <= 10: show all places
+  // No zoom-based score filter — with ~2K places + limit 20, bbox alone controls density.
+  // The popularity_score ORDER BY already surfaces best places first.
 
   // Category filter
   if (categories.length > 0) {

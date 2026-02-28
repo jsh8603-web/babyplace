@@ -26,6 +26,8 @@ export async function GET(
       .from('blog_mentions')
       .select('*')
       .eq('place_id', placeId)
+      .gte('relevance_score', 0.3)
+      .order('relevance_score', { ascending: false })
       .order('post_date', { ascending: false })
       .limit(5),
     supabase.auth.getUser(),
