@@ -390,17 +390,32 @@ export default function HomePage() {
                   </p>
                 </div>
               ) : (
-                filteredPlaces.map((place) => (
-                  <PlaceCard
-                    key={place.id}
-                    place={place}
-                    isSelected={selectedPlace?.id === place.id}
-                    onClick={(p) => {
-                      setSelectedPlace(p)
-                      window.location.href = `/place/${p.id}`
-                    }}
-                  />
-                ))
+                <>
+                  {/* Selected place pinned at top */}
+                  {selectedPlace && (
+                    <PlaceCard
+                      key={`selected-${selectedPlace.id}`}
+                      place={selectedPlace}
+                      isSelected={true}
+                      label="현재장소"
+                      onClick={(p) => {
+                        window.location.href = `/place/${p.id}`
+                      }}
+                    />
+                  )}
+                  {/* Nearby or all places */}
+                  {filteredPlaces.map((place) => (
+                    <PlaceCard
+                      key={place.id}
+                      place={place}
+                      distance={'_distFromSelected' in place ? (place as Place & { _distFromSelected: number })._distFromSelected : undefined}
+                      onClick={(p) => {
+                        setSelectedPlace(p)
+                        window.location.href = `/place/${p.id}`
+                      }}
+                    />
+                  ))}
+                </>
               )}
             </div>
           </>

@@ -8,6 +8,7 @@ interface PlaceCardProps {
   distance?: number
   onClick?: (place: Place) => void
   isSelected?: boolean
+  label?: string
 }
 
 function formatDistance(meters: number): string {
@@ -31,7 +32,7 @@ function getCategoryColor(category: string): string {
   return colors[category] ?? 'bg-warm-100 text-warm-600'
 }
 
-export default function PlaceCard({ place, distance, onClick, isSelected }: PlaceCardProps) {
+export default function PlaceCard({ place, distance, onClick, isSelected, label }: PlaceCardProps) {
   return (
     <button
       onClick={() => onClick?.(place)}
@@ -52,6 +53,11 @@ export default function PlaceCard({ place, distance, onClick, isSelected }: Plac
             <h3 className="text-[17px] font-semibold text-warm-700 leading-snug truncate">
               {place.name}
             </h3>
+            {label && (
+              <span className="shrink-0 text-[11px] font-bold px-1.5 py-0.5 rounded bg-coral-500 text-white">
+                {label}
+              </span>
+            )}
             {place.is_indoor !== null && (
               <span
                 className={`
