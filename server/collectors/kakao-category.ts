@@ -414,9 +414,13 @@ function shouldSkipKakaoPlace(name: string, categoryName: string): boolean {
   const skipNamePatterns = /궁$|궁궐|사찰|사당|서원$|향교|명륜|번사|총국|관아|왕릉|능묘|묘소|성곽|성터|성벽|봉수대|비석|기념비|전적지|유적|기념탑|사적|종묘|반려견|애견/
   if (skipNamePatterns.test(name)) return true
 
-  // Sub-category patterns to skip (from Kakao category_name hierarchy)
-  const skipSubCategories = /테마거리|먹자골목|카페거리|도보여행|고궁|궁$|사적지|유적지|성지$|묘$|사찰|교회$|성당$|호텔$|여관|모텔|반려견/
-  if (skipSubCategories.test(categoryName)) return true
+  // Non-baby franchise chains: comic cafes, board game cafes, escape rooms
+  const skipBrands = /^(벌툰|놀숲|레드버튼|홈즈앤루팡|히어로보드게임|나인블럭|스타벅스|이디야|투썸플레이스|할리스|메가커피|컴포즈|빽다방)\s/
+  if (skipBrands.test(name)) return true
+
+  // Kakao category_name patterns to skip
+  const skipCategories = /테마거리|먹자골목|카페거리|도보여행|고궁|궁$|사적지|유적지|성지$|묘$|사찰|교회$|성당$|호텔$|여관|모텔|반려견|만화카페|보드게임|방탈출|스터디카페|코인노래방|PC방|당구|볼링장|노래방|네일|피부관리|미용실|안경/
+  if (skipCategories.test(categoryName)) return true
 
   return false
 }
