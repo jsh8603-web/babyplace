@@ -204,7 +204,7 @@ export default function HomePage() {
       {/* Map fills entire viewport */}
       <div className="absolute inset-0">
         <KakaoMap
-          places={filteredPlaces}
+          places={places}
           selectedPlaceId={selectedPlace?.id}
           onBoundsChanged={handleBoundsChanged}
           onPlaceClick={handlePlaceClick}
