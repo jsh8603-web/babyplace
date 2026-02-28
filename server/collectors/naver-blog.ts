@@ -58,8 +58,10 @@ interface NaverSearchResponse<T> {
 const NAVER_BLOG_URL = 'https://openapi.naver.com/v1/search/blog.json'
 const NAVER_CAFE_URL = 'https://openapi.naver.com/v1/search/cafearticle.json'
 
-/** Number of places to reverse-search per pipeline run. */
-const REVERSE_SEARCH_BATCH = 100
+/** Number of places to reverse-search per pipeline run.
+ *  Budget: each place = 2 API calls (blog + cafe).
+ *  Naver daily quota ~25K. 4 runs/day × 500 = 4,000 calls (well within budget). */
+const REVERSE_SEARCH_BATCH = 500
 
 /** Number of results per Naver API call (max 100). */
 const DISPLAY_COUNT = 10
