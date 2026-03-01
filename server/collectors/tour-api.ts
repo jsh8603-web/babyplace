@@ -387,7 +387,7 @@ async function processAsEvent(
     source: 'tour_api',
     source_id: String(item.contentid),
     source_url: intro?.eventhomepage || null,
-    poster_url: item.firstimage || null,
+    poster_url: item.firstimage ? item.firstimage.replace('http://', 'https://') : null,
     description: null,
   })
 

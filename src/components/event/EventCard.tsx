@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { Calendar, MapPin, Clock, DollarSign, Users } from 'lucide-react'
 import type { Event } from '@/types'
 
@@ -55,6 +56,7 @@ function formatDistance(meters: number): string {
 }
 
 export default function EventCard({ event, onClick, isSelected, distance }: EventCardProps) {
+  const [imgError, setImgError] = useState(false)
   const hasLocation = event.venue_address || (event.lat !== null && event.lng !== null)
   const hasPriceInfo = event.price_info && event.price_info.trim() !== ''
   const hasAgeRange = event.age_range && event.age_range.trim() !== ''
@@ -71,17 +73,18 @@ export default function EventCard({ event, onClick, isSelected, distance }: Even
       aria-label={`${event.name} 이벤트, ${event.category}`}
     >
       {/* Poster image or placeholder */}
-      {event.poster_url ? (
-        <div className="w-full h-[140px] overflow-hidden bg-warm-200">
+      {event.poster_url && !imgError ? (
+        <div className="w-full aspect-[4/3] overflow-hidden bg-warm-200">
           <img
             src={event.poster_url}
             alt={event.name}
             className="w-full h-full object-cover"
             loading="lazy"
+            onError={() => setImgError(true)}
           />
         </div>
       ) : (
-        <div className="w-full h-[140px] bg-gradient-to-br from-coral-100 to-coral-50 flex items-center justify-center">
+        <div className="w-full aspect-[4/3] bg-gradient-to-br from-coral-100 to-coral-50 flex items-center justify-center">
           <span className="text-4xl opacity-50">🎪</span>
         </div>
       )}

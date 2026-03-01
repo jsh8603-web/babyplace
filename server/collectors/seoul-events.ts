@@ -266,7 +266,7 @@ async function processSeoulEvent(
     source: 'seoul_events',
     source_id: sourceId,
     source_url: event.ORG_LINK || event.HMPG_ADDR || null,
-    poster_url: event.MAIN_IMG || null,
+    poster_url: event.MAIN_IMG ? event.MAIN_IMG.replace(/[&?]thumb=Y/i, '') : null,
     description: null,
   }
 

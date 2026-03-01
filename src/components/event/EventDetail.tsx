@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { Heart, Share2, Calendar, Clock, MapPin, DollarSign, Users, ExternalLink } from 'lucide-react'
 import type { Event } from '@/types'
 
@@ -53,6 +54,7 @@ export default function EventDetail({
   onShare,
   onBack,
 }: EventDetailProps) {
+  const [imgError, setImgError] = useState(false)
   const eventUrl = event.source_url ? new URL(event.source_url).hostname : null
 
   return (
@@ -88,12 +90,13 @@ export default function EventDetail({
 
       <div className="space-y-3 pb-8">
         {/* Poster image */}
-        {event.poster_url ? (
-          <div className="w-full h-[250px] overflow-hidden bg-warm-200">
+        {event.poster_url && !imgError ? (
+          <div className="w-full aspect-[3/4] overflow-hidden bg-warm-100">
             <img
               src={event.poster_url}
               alt={event.name}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain"
+              onError={() => setImgError(true)}
             />
           </div>
         ) : (
