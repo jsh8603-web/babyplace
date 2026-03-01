@@ -2,36 +2,45 @@
  * Seoul Cultural Events API collector
  *
  * Collects cultural events from Seoul Open Data Portal (data.seoul.go.kr).
- * This collector uses the Seoul city's public API for cultural events and performances.
- *
- * Endpoint: GET http://openapi.seoul.go.kr/json/{APIkey}/1/1000
- * Service: CulturalEventInfo
+ * Endpoint: http://openapi.seoul.go.kr:8088/{key}/json/culturalEventInfo/1/1000
  */
 
 import { supabaseAdmin } from '../lib/supabase-admin'
 import { classifySeoulEvent } from '../utils/event-classifier'
 
 interface SeoulEventItem {
-  CODENAME: string // event code
-  TITLE: string // event title
-  DATE: string // date info (e.g. "2024.01.01 ~ 2024.01.31")
-  PLACE: string // venue name
-  AREA: string // area/district
-  PROGRAM_COST?: string // price
-  ORG_LINK?: string // organizer website
-  MAIN_IMG?: string // main image URL
-  PROGRAM_ID?: string // program ID
+  CODENAME: string       // category: "전시/미술", "축제-시민화합", "클래식" etc.
+  GUNAME: string         // district: "강남구"
+  TITLE: string          // event title
+  DATE: string           // date range: "2026-03-01~2026-03-31"
+  PLACE: string          // venue name
+  ORG_NAME: string       // organizer
+  USE_TRGT: string       // target audience
+  USE_FEE: string        // price info
+  INQUIRY: string        // contact
+  ORG_LINK: string       // organizer website
+  MAIN_IMG: string       // poster image URL
+  RGSTDATE: string       // registration date
+  STRTDATE: string       // start datetime: "2026-03-01 00:00:00.0"
+  END_DATE: string       // end datetime: "2026-03-31 00:00:00.0"
+  THEMECODE: string      // theme code
+  LOT: string            // longitude (named LOT in API)
+  LAT: string            // latitude
+  IS_FREE: string        // "무료" or "유료"
+  HMPG_ADDR: string      // culture portal URL
+  PRO_TIME?: string      // time info
 }
 
 interface SeoulEventResponse {
-  CulturalEventInfo?: {
+  culturalEventInfo?: {
     row?: SeoulEventItem[]
     list_total_count?: number
+    RESULT?: { CODE: string; MESSAGE: string }
   }
 }
 
-const SEOUL_API_BASE = 'http://openapi.seoul.go.kr/json'
-const SEOUL_SERVICE = 'CulturalEventInfo'
+const SEOUL_API_BASE = 'http://openapi.seoul.go.kr:8088'
+const SEOUL_SERVICE = 'culturalEventInfo'
 const PAGE_SIZE = 1000
 
 export interface SeoulEventsCollectorResult {
@@ -62,14 +71,15 @@ export async function runSeoulEventsCollector(): Promise<SeoulEventsCollectorRes
 
     console.log('[seoul-events] Fetching cultural events from Seoul API')
 
-    const events = await fetchSeoulEvents()
+    const events = await fetchAllSeoulEvents()
     result.totalFetched = events.length
+    console.log(`[seoul-events] Fetched ${events.length} events`)
 
     for (const event of events) {
       try {
         await processSeoulEvent(event, result)
       } catch (err) {
-        console.error('[seoul-events] Error processing event:', err, event.CODENAME)
+        console.error('[seoul-events] Error processing event:', err, event.TITLE)
         result.errors++
       }
     }
@@ -98,18 +108,37 @@ export async function runSeoulEventsCollector(): Promise<SeoulEventsCollectorRes
 }
 
 /**
- * Fetch all events from Seoul API.
+ * Fetch all events with pagination (1000 per page).
  */
-async function fetchSeoulEvents(): Promise<SeoulEventItem[]> {
-  if (!process.env.SEOUL_API_KEY) {
-    return []
+async function fetchAllSeoulEvents(): Promise<SeoulEventItem[]> {
+  const allEvents: SeoulEventItem[] = []
+  let start = 1
+
+  while (true) {
+    const end = start + PAGE_SIZE - 1
+    const events = await fetchSeoulEventsPage(start, end)
+    if (events.length === 0) break
+
+    allEvents.push(...events)
+    console.log(`[seoul-events] Page ${start}-${end}: ${events.length} events`)
+
+    if (events.length < PAGE_SIZE) break
+    start += PAGE_SIZE
   }
 
-  const url = `${SEOUL_API_BASE}/${process.env.SEOUL_API_KEY}/1/${PAGE_SIZE}/${SEOUL_SERVICE}`
+  return allEvents
+}
 
-  // Set up abort controller for timeout
+/**
+ * Fetch a single page of events from Seoul API.
+ */
+async function fetchSeoulEventsPage(start: number, end: number): Promise<SeoulEventItem[]> {
+  if (!process.env.SEOUL_API_KEY) return []
+
+  const url = `${SEOUL_API_BASE}/${process.env.SEOUL_API_KEY}/json/${SEOUL_SERVICE}/${start}/${end}`
+
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 30000) // 30 second timeout
+  const timeout = setTimeout(() => controller.abort(), 30000)
 
   try {
     const response = await fetch(url, { signal: controller.signal })
@@ -120,15 +149,13 @@ async function fetchSeoulEvents(): Promise<SeoulEventItem[]> {
 
     const parsed = (await response.json()) as SeoulEventResponse
 
-    if (!parsed.CulturalEventInfo?.row) {
-      console.log('[seoul-events] No events found in response')
+    if (!parsed.culturalEventInfo?.row) {
       return []
     }
 
-    // Ensure row is always an array
-    const rows = Array.isArray(parsed.CulturalEventInfo.row)
-      ? parsed.CulturalEventInfo.row
-      : [parsed.CulturalEventInfo.row]
+    const rows = Array.isArray(parsed.culturalEventInfo.row)
+      ? parsed.culturalEventInfo.row
+      : [parsed.culturalEventInfo.row]
 
     return rows
   } catch (err) {
@@ -146,8 +173,8 @@ async function processSeoulEvent(
   event: SeoulEventItem,
   result: SeoulEventsCollectorResult
 ): Promise<void> {
-  // Use PROGRAM_ID as unique identifier; fall back to TITLE+DATE hash
-  const sourceId = event.PROGRAM_ID || `${event.TITLE}_${event.DATE}`
+  // Use culture portal URL as unique ID (contains cultcode), fallback to TITLE+DATE
+  const sourceId = extractCultCode(event.HMPG_ADDR) || `${event.TITLE}_${event.DATE}`
   if (!sourceId) return
 
   // Check for duplicate
@@ -163,31 +190,34 @@ async function processSeoulEvent(
     return
   }
 
-  // Parse date range from DATE field (format: "YYYY.MM.DD ~ YYYY.MM.DD")
-  const { startDate, endDate } = parseSeoulDateRange(event.DATE)
+  // Parse dates from STRTDATE/END_DATE ("2026-03-01 00:00:00.0") or DATE ("2026-03-01~2026-03-31")
+  const startDate = parseSeoulDateTime(event.STRTDATE) || parseSeoulDateRange(event.DATE).startDate
+  const endDate = parseSeoulDateTime(event.END_DATE) || parseSeoulDateRange(event.DATE).endDate
 
   if (!startDate) {
-    console.warn('[seoul-events] Skipping event with invalid date:', sourceId, event.DATE)
     return
   }
 
-  // Build event data
+  // Parse coordinates (API uses LOT for longitude, LAT for latitude)
+  const lat = event.LAT ? parseFloat(event.LAT) : null
+  const lng = event.LOT ? parseFloat(event.LOT) : null
+
   const eventData = {
     name: event.TITLE,
     category: '문화행사',
     sub_category: classifySeoulEvent(event.CODENAME, event.TITLE),
     venue_name: event.PLACE || null,
     venue_address: null,
-    lat: null,
-    lng: null,
+    lat: lat && !isNaN(lat) ? lat : null,
+    lng: lng && !isNaN(lng) ? lng : null,
     start_date: startDate,
     end_date: endDate,
-    time_info: null,
-    price_info: event.PROGRAM_COST || null,
-    age_range: null,
+    time_info: event.PRO_TIME || null,
+    price_info: event.USE_FEE || null,
+    age_range: event.USE_TRGT || null,
     source: 'seoul_events',
     source_id: sourceId,
-    source_url: event.ORG_LINK || null,
+    source_url: event.ORG_LINK || event.HMPG_ADDR || null,
     poster_url: event.MAIN_IMG || null,
     description: null,
   }
@@ -196,11 +226,10 @@ async function processSeoulEvent(
 
   if (error) {
     if (error.code === '23505') {
-      // Unique constraint on source_id
       result.duplicates++
     } else {
-      console.error('[seoul-events] Insert error:', error.message, eventCode)
-      throw error
+      console.error('[seoul-events] Insert error:', error.message, sourceId)
+      result.errors++
     }
   } else {
     result.newEvents++
@@ -208,7 +237,26 @@ async function processSeoulEvent(
 }
 
 /**
- * Parse Seoul date range: "YYYY.MM.DD ~ YYYY.MM.DD" → { startDate, endDate }
+ * Extract cultcode from HMPG_ADDR URL.
+ * Example: "https://culture.seoul.go.kr/.../view.do?cultcode=156698&menuNo=200009" → "156698"
+ */
+function extractCultCode(url: string): string | null {
+  if (!url) return null
+  const match = url.match(/cultcode=(\d+)/)
+  return match ? match[1] : null
+}
+
+/**
+ * Parse Seoul datetime: "2026-03-01 00:00:00.0" → "2026-03-01"
+ */
+function parseSeoulDateTime(dateStr: string): string | null {
+  if (!dateStr) return null
+  const match = dateStr.match(/^(\d{4}-\d{2}-\d{2})/)
+  return match ? match[1] : null
+}
+
+/**
+ * Parse Seoul date range: "2026-03-01~2026-03-31" → { startDate, endDate }
  */
 function parseSeoulDateRange(dateStr: string): {
   startDate: string | null
@@ -217,27 +265,19 @@ function parseSeoulDateRange(dateStr: string): {
   if (!dateStr) return { startDate: null, endDate: null }
 
   const parts = dateStr.split('~').map((s) => s.trim())
-  if (parts.length !== 2) {
-    return { startDate: null, endDate: null }
-  }
+  if (parts.length !== 2) return { startDate: null, endDate: null }
 
-  const startDate = convertSeoulDate(parts[0])
-  const endDate = convertSeoulDate(parts[1])
+  const startDate = parseSeoulDateTime(parts[0]) || convertDottedDate(parts[0])
+  const endDate = parseSeoulDateTime(parts[1]) || convertDottedDate(parts[1])
 
   return { startDate, endDate }
 }
 
 /**
- * Convert Seoul date format: "YYYY.MM.DD" → "YYYY-MM-DD"
+ * Convert dotted date format: "2026.03.01" → "2026-03-01"
  */
-function convertSeoulDate(dateStr: string): string | null {
+function convertDottedDate(dateStr: string): string | null {
   if (!dateStr) return null
-
   const match = dateStr.match(/^(\d{4})\.(\d{2})\.(\d{2})$/)
-  if (!match) {
-    console.warn('[seoul-events] Invalid date format:', dateStr)
-    return null
-  }
-
-  return `${match[1]}-${match[2]}-${match[3]}`
+  return match ? `${match[1]}-${match[2]}-${match[3]}` : null
 }
