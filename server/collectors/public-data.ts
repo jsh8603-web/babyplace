@@ -107,8 +107,8 @@ export async function runPublicData(): Promise<PublicDataResult> {
   const startedAt = Date.now()
 
   try {
-    console.log('[public-data] Fetching playgrounds...')
-    await fetchPlaygrounds(result.playgrounds)
+    // Playgrounds are already collected by children-facility collector (A003/A004/A013)
+    console.log('[public-data] Skipping playgrounds (covered by children-facility collector)')
 
     console.log('[public-data] Fetching parks...')
     await fetchParks(result.parks)
@@ -289,20 +289,28 @@ async function fetchParks(stats: ParkStats): Promise<void> {
 
   while (true) {
     try {
-      const url = new URL(baseUrl)
-      url.searchParams.set('serviceKey', serviceKey)
-      url.searchParams.set('pageNo', String(pageNo))
-      url.searchParams.set('numOfRows', String(pageSize))
-      url.searchParams.set('type', 'json')
+      // Build URL with raw serviceKey to avoid double-encoding
+      const params = new URLSearchParams({
+        pageNo: String(pageNo),
+        numOfRows: String(pageSize),
+        type: 'json',
+      })
+      const url = `${baseUrl}?serviceKey=${serviceKey}&${params.toString()}`
 
-      const response = await fetch(url.toString())
+      const response = await fetch(url)
       if (!response.ok) {
-        console.error(`[public-data] Parks HTTP ${response.status}`)
+        const body = await response.text().catch(() => '')
+        console.error(`[public-data] Parks HTTP ${response.status}:`, body.slice(0, 300))
         stats.errors++
         break
       }
 
       const data = (await response.json()) as DataGoKrResponse<ParkItem>
+      if (!data?.response?.body?.items) {
+        console.error('[public-data] Parks: unexpected response structure:', JSON.stringify(data).slice(0, 300))
+        stats.errors++
+        break
+      }
       const items = data.response.body.items.item || []
 
       if (!items || items.length === 0) break
@@ -397,20 +405,27 @@ async function fetchLibraries(stats: LibraryStats): Promise<void> {
 
   while (true) {
     try {
-      const url = new URL(baseUrl)
-      url.searchParams.set('serviceKey', serviceKey)
-      url.searchParams.set('pageNo', String(pageNo))
-      url.searchParams.set('numOfRows', String(pageSize))
-      url.searchParams.set('type', 'json')
+      const params = new URLSearchParams({
+        pageNo: String(pageNo),
+        numOfRows: String(pageSize),
+        type: 'json',
+      })
+      const url = `${baseUrl}?serviceKey=${serviceKey}&${params.toString()}`
 
-      const response = await fetch(url.toString())
+      const response = await fetch(url)
       if (!response.ok) {
-        console.error(`[public-data] Libraries HTTP ${response.status}`)
+        const body = await response.text().catch(() => '')
+        console.error(`[public-data] Libraries HTTP ${response.status}:`, body.slice(0, 300))
         stats.errors++
         break
       }
 
       const data = (await response.json()) as DataGoKrResponse<LibraryItem>
+      if (!data?.response?.body?.items) {
+        console.error('[public-data] Libraries: unexpected response structure:', JSON.stringify(data).slice(0, 300))
+        stats.errors++
+        break
+      }
       const items = data.response.body.items.item || []
 
       if (!items || items.length === 0) break
@@ -506,20 +521,27 @@ async function fetchMuseums(stats: MuseumStats): Promise<void> {
 
   while (true) {
     try {
-      const url = new URL(baseUrl)
-      url.searchParams.set('serviceKey', serviceKey)
-      url.searchParams.set('pageNo', String(pageNo))
-      url.searchParams.set('numOfRows', String(pageSize))
-      url.searchParams.set('type', 'json')
+      const params = new URLSearchParams({
+        pageNo: String(pageNo),
+        numOfRows: String(pageSize),
+        type: 'json',
+      })
+      const url = `${baseUrl}?serviceKey=${serviceKey}&${params.toString()}`
 
-      const response = await fetch(url.toString())
+      const response = await fetch(url)
       if (!response.ok) {
-        console.error(`[public-data] Museums HTTP ${response.status}`)
+        const body = await response.text().catch(() => '')
+        console.error(`[public-data] Museums HTTP ${response.status}:`, body.slice(0, 300))
         stats.errors++
         break
       }
 
       const data = (await response.json()) as DataGoKrResponse<MuseumItem>
+      if (!data?.response?.body?.items) {
+        console.error('[public-data] Museums: unexpected response structure:', JSON.stringify(data).slice(0, 300))
+        stats.errors++
+        break
+      }
       const items = data.response.body.items.item || []
 
       if (!items || items.length === 0) break

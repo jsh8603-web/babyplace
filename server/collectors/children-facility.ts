@@ -156,10 +156,15 @@ export async function runChildrenFacility(): Promise<ChildrenFacilityResult> {
 
   const startedAt = Date.now()
 
+  // Pre-fetch existing source_ids to avoid per-item DB duplicate checks
+  // (reduces ~15,000 DB roundtrips to 1 query)
+  const existingSourceIds = await prefetchExistingSourceIds()
+  console.log(`[children-facility] Pre-fetched ${existingSourceIds.size} existing source_ids`)
+
   for (const target of FACILITY_TARGETS) {
     try {
       console.log(`[children-facility] Fetching: ${target.label}`)
-      await processTarget(apiKey, target, result)
+      await processTarget(apiKey, target, result, existingSourceIds)
     } catch (err) {
       console.error(`[children-facility] Error for ${target.label}:`, err)
       result.errors++
@@ -180,10 +185,40 @@ export async function runChildrenFacility(): Promise<ChildrenFacilityResult> {
 
 // ─── Processing ─────────────────────────────────────────────────────────────
 
+async function prefetchExistingSourceIds(): Promise<Set<string>> {
+  const ids = new Set<string>()
+  let offset = 0
+  const batchSize = 1000
+
+  while (true) {
+    const { data, error } = await supabaseAdmin
+      .from('places')
+      .select('source_id')
+      .eq('source', 'children-facility')
+      .range(offset, offset + batchSize - 1)
+
+    if (error) {
+      console.error('[children-facility] Prefetch error:', error.message)
+      break
+    }
+    if (!data || data.length === 0) break
+
+    for (const row of data) {
+      if (row.source_id) ids.add(row.source_id)
+    }
+
+    if (data.length < batchSize) break
+    offset += batchSize
+  }
+
+  return ids
+}
+
 async function processTarget(
   apiKey: string,
   target: FacilityTarget,
-  result: ChildrenFacilityResult
+  result: ChildrenFacilityResult,
+  existingSourceIds: Set<string>
 ): Promise<void> {
   let page = 1
 
@@ -198,7 +233,7 @@ async function processTarget(
 
     for (const item of items) {
       try {
-        await processItem(item, target, result)
+        await processItem(item, target, result, existingSourceIds)
       } catch (err) {
         console.error('[children-facility] Item error:', err, item.pfctSn)
         result.errors++
@@ -214,7 +249,8 @@ async function processTarget(
 async function processItem(
   item: PfcItem,
   target: FacilityTarget,
-  result: ChildrenFacilityResult
+  result: ChildrenFacilityResult,
+  existingSourceIds: Set<string>
 ): Promise<void> {
   // Skip closed/non-operating facilities
   if (item.operYnCdNm && item.operYnCdNm !== '운영') {
@@ -244,6 +280,13 @@ async function processItem(
     return
   }
 
+  // Fast in-memory duplicate check using pre-fetched source_ids
+  if (existingSourceIds.has(item.pfctSn)) {
+    result.duplicates++
+    return
+  }
+
+  // Only run full duplicate check for genuinely new items
   const dup = await checkDuplicate({
     kakaoPlaceId: `pfc_${item.pfctSn}`,
     name: item.pfctNm,
@@ -297,14 +340,14 @@ async function fetchPage(
   instlPlaceCd: string,
   page: number
 ): Promise<PfcResponse | null> {
+  // Build URL with raw serviceKey to avoid double-encoding
   const params = new URLSearchParams({
-    serviceKey: apiKey,
     pageIndex: String(page),
     recordCountPerPage: String(PAGE_SIZE),
     instlPlaceCd,
   })
 
-  const url = `${API_BASE}?${params.toString()}`
+  const url = `${API_BASE}?serviceKey=${apiKey}&${params.toString()}`
 
   try {
     const response = await fetch(url)

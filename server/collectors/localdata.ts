@@ -302,8 +302,8 @@ async function fetchRectPage(
   rect: { minx: number; miny: number; maxx: number; maxy: number },
   page: number
 ): Promise<SdscItem[] | null> {
+  // Build URL with raw serviceKey to avoid double-encoding (data.go.kr keys contain +/=/%)
   const params = new URLSearchParams({
-    ServiceKey: apiKey,
     minx: String(rect.minx),
     miny: String(rect.miny),
     maxx: String(rect.maxx),
@@ -311,19 +311,18 @@ async function fetchRectPage(
     pageNo: String(page),
     numOfRows: String(PAGE_SIZE),
     type: 'json',
+    [target.divId]: target.key,
   })
 
-  // Apply industry code filter
-  params.set(target.divId, target.key)
-
-  const url = `${API_BASE}/storeListInRectangle?${params.toString()}`
+  const url = `${API_BASE}/storeListInRectangle?serviceKey=${apiKey}&${params.toString()}`
 
   try {
     const response = await fetch(url)
 
     if (!response.ok) {
+      const body = await response.text().catch(() => '')
       console.error(
-        `[small-biz] HTTP ${response.status} for ${target.label} page ${page}`
+        `[small-biz] HTTP ${response.status} for ${target.label} page ${page}:`, body.slice(0, 300)
       )
       return null
     }
@@ -331,7 +330,7 @@ async function fetchRectPage(
     const json = await response.json() as SdscResponse
 
     if (json.header?.resultCode !== '00') {
-      console.error(`[small-biz] API error: ${json.header?.resultMsg}`)
+      console.error(`[small-biz] API error: ${json.header?.resultMsg} (code: ${json.header?.resultCode})`)
       return null
     }
 
