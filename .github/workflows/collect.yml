@@ -25,7 +25,7 @@ jobs:
   collect:
     name: Run collection pipeline
     runs-on: ubuntu-latest
-    timeout-minutes: 90  # manual mode runs all pipelines; cron jobs finish within 55min each
+    timeout-minutes: 150  # manual mode runs all pipelines sequentially
 
     steps:
       - name: Checkout repository
