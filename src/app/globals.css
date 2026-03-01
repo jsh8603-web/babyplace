@@ -39,4 +39,6 @@ body {
   color: var(--color-warm-700);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Prevent Radix Dialog (vaul FilterPanel) from permanently blocking pointer events */
+  pointer-events: auto !important;
 }
