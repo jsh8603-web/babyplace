@@ -86,7 +86,7 @@ export async function runSeoulEventsCollector(): Promise<SeoulEventsCollectorRes
 
     // Step 1: Blacklist filter (immediate exclude)
     const afterBlacklist = allEvents.filter((e) => {
-      if (isBlacklisted(e.USE_TRGT)) {
+      if (isBlacklisted(e.USE_TRGT, e.TITLE)) {
         result.filtered++
         return false
       }

@@ -17,9 +17,10 @@ export interface EventForClassification {
   PLACE: string
 }
 
-// Step 1: Blacklist — adult/senior-only events
-const BLACKLIST_PATTERN =
+// Step 1: Blacklist — adult/senior-only events (USE_TRGT + TITLE)
+const BLACKLIST_TARGET_PATTERN =
   /성인|미취학.*입장불가|14세\s*이상|13세\s*이상|12세\s*이상|만\s*19세|시니어|65세/
+const BLACKLIST_TITLE_PATTERN = /개인전/
 
 // Step 2: Whitelist — clearly baby/child-related events
 const WHITELIST_PATTERN =
@@ -86,8 +87,8 @@ export function classifySeoulEvent(codename: string, title: string): string | nu
 /**
  * Step 1: Check if event is blacklisted (adult-only).
  */
-export function isBlacklisted(useTarget: string): boolean {
-  return BLACKLIST_PATTERN.test(useTarget || '')
+export function isBlacklisted(useTarget: string, title: string = ''): boolean {
+  return BLACKLIST_TARGET_PATTERN.test(useTarget || '') || BLACKLIST_TITLE_PATTERN.test(title || '')
 }
 
 /**
@@ -114,19 +115,24 @@ export async function classifyEventsWithLLM(
     return classifyWithFallbackRegex(events)
   }
 
-  const client = new Anthropic({ apiKey })
+  const client = new Anthropic({ apiKey, maxRetries: 5 })
   const BATCH_SIZE = 50
-  const CONCURRENCY = 5
+  const CONCURRENCY = 2
+  const DELAY_BETWEEN_CHUNKS_MS = 5000
   const batches: EventForClassification[][] = []
 
   for (let i = 0; i < events.length; i += BATCH_SIZE) {
     batches.push(events.slice(i, i + BATCH_SIZE))
   }
 
-  console.log(`[event-classifier] LLM classification: ${events.length} events in ${batches.length} batches`)
+  console.log(`[event-classifier] LLM classification: ${events.length} events in ${batches.length} batches (concurrency=${CONCURRENCY})`)
 
-  // Process batches with concurrency limit
+  // Process batches with concurrency limit + delay for rate limiting
   for (let i = 0; i < batches.length; i += CONCURRENCY) {
+    if (i > 0) {
+      await new Promise((r) => setTimeout(r, DELAY_BETWEEN_CHUNKS_MS))
+    }
+
     const chunk = batches.slice(i, i + CONCURRENCY)
     const promises = chunk.map((batch, chunkIdx) => {
       const batchIdx = i + chunkIdx
@@ -136,15 +142,18 @@ export async function classifyEventsWithLLM(
 
     const results = await Promise.allSettled(promises)
 
+    let chunkIncluded = 0
     for (const result of results) {
       if (result.status === 'fulfilled') {
         for (const idx of result.value) {
           includedIndices.add(idx)
+          chunkIncluded++
         }
       } else {
         console.error('[event-classifier] Batch failed:', result.reason)
       }
     }
+    console.log(`[event-classifier] Chunk ${i / CONCURRENCY + 1}/${Math.ceil(batches.length / CONCURRENCY)}: +${chunkIncluded} included`)
   }
 
   return includedIndices
