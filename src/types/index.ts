@@ -42,6 +42,7 @@ export interface Event {
   id: number
   name: string
   category: string
+  sub_category: string | null
   venue_name: string | null
   venue_address: string | null
   lat: number | null

@@ -31,6 +31,11 @@ function formatTimeInfo(timeInfo: string | null): string {
   return timeInfo
 }
 
+function isRunning(startDate: string, endDate: string | null): boolean {
+  const today = new Date().toISOString().split('T')[0]
+  return startDate <= today && (endDate === null || endDate >= today)
+}
+
 function getCategoryColor(category: string): string {
   const colors: Record<string, string> = {
     '전시': 'bg-purple-100 text-purple-700',
@@ -82,15 +87,22 @@ export default function EventCard({ event, onClick, isSelected }: EventCardProps
           {event.name}
         </h3>
 
-        {/* Category */}
+        {/* Category + status badges */}
         <div className="flex items-center gap-2 mb-3 flex-wrap">
           <span
             className={`text-[12px] font-semibold px-2 py-0.5 rounded-full ${getCategoryColor(
-              event.category
+              event.sub_category || event.category
             )}`}
           >
-            {event.category}
+            {event.sub_category || event.category}
           </span>
+
+          {/* Running badge */}
+          {isRunning(event.start_date, event.end_date) && (
+            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+              진행중
+            </span>
+          )}
 
           {/* Date badge */}
           <span className="flex items-center gap-1 text-[12px] font-medium text-warm-500 bg-warm-50 px-2 py-0.5 rounded-full">

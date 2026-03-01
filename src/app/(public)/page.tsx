@@ -18,6 +18,7 @@ import BottomSheet from '@/components/BottomSheet'
 import PlaceCard from '@/components/place/PlaceCard'
 import EventCard from '@/components/event/EventCard'
 import SeasonalCuration from '@/components/event/SeasonalCuration'
+import RunningExhibitions from '@/components/event/RunningExhibitions'
 import CategoryChips from '@/components/CategoryChips'
 import FilterPanel from '@/components/FilterPanel'
 import EmergencyOverlay, { EmergencyFAB } from '@/components/EmergencyOverlay'
@@ -431,6 +432,12 @@ export default function HomePage() {
         {/* Events tab */}
         {activeTab === 'events' && (
           <div className="flex-1 overflow-y-auto pb-[80px]">
+            <RunningExhibitions
+              onEventClick={(event: Event) => {
+                window.location.href = `/event/${event.id}`
+              }}
+            />
+            <div className="border-t border-warm-100 my-2" />
             <SeasonalCuration
               onEventClick={(event: Event) => {
                 window.location.href = `/event/${event.id}`

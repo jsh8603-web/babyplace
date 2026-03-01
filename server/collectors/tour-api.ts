@@ -369,9 +369,12 @@ async function processAsEvent(
   const startDate = parseYYYYMMDD(intro?.eventstartdate) || new Date().toISOString().split('T')[0]
   const endDate = parseYYYYMMDD(intro?.eventenddate)
 
+  const { classifyEventByTitle } = await import('../utils/event-classifier')
+
   const { error } = await supabaseAdmin.from('events').insert({
     name: item.title,
     category: '문화행사',
+    sub_category: classifyEventByTitle(item.title),
     venue_name: intro?.eventplace || null,
     venue_address: address || null,
     lat,

@@ -31,14 +31,21 @@ function decodeCursor(raw: string): CursorPayload | null {
 
 /**
  * GET /api/events
- * Query params: category?, cursor?, limit?
- * Returns: paginated events list (ordered by start_date DESC, then id DESC)
+ * Query params: category?, sub_category?, status?, cursor?, limit?
+ * - status=running → start_date <= today AND (end_date >= today OR end_date IS NULL)
+ * - sub_category=전시,체험 → comma-separated filter
+ * Returns: paginated events list
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl
 
   const categoryParam = searchParams.get('category')
   const categories = categoryParam ? categoryParam.split(',').map((c) => c.trim()).filter(Boolean) : []
+
+  const subCategoryParam = searchParams.get('sub_category')
+  const subCategories = subCategoryParam ? subCategoryParam.split(',').map((c) => c.trim()).filter(Boolean) : []
+
+  const status = searchParams.get('status')
 
   const cursorRaw = searchParams.get('cursor') ?? null
   const cursorPayload = cursorRaw ? decodeCursor(cursorRaw) : null
@@ -49,23 +56,42 @@ export async function GET(request: NextRequest) {
 
   const supabase = await createServerSupabase()
 
+  const today = new Date().toISOString().split('T')[0]
+
+  // When status=running, sort by end_date ASC (ending soonest first)
+  const isRunning = status === 'running'
+
   let query = supabase
     .from('events')
     .select('*')
-    .order('start_date', { ascending: false })
-    .order('id', { ascending: false })
-    .limit(fetchLimit)
+
+  if (isRunning) {
+    query = query
+      .lte('start_date', today)
+      .or(`end_date.gte.${today},end_date.is.null`)
+      .order('end_date', { ascending: true, nullsFirst: false })
+      .order('id', { ascending: false })
+  } else {
+    query = query
+      .order('start_date', { ascending: false })
+      .order('id', { ascending: false })
+  }
+
+  query = query.limit(fetchLimit)
 
   // Category filter
   if (categories.length > 0) {
     query = query.in('category', categories)
   }
 
-  // Keyset pagination cursor filter
-  if (cursorPayload?.type === 'recent') {
+  // Sub-category filter
+  if (subCategories.length > 0) {
+    query = query.in('sub_category', subCategories)
+  }
+
+  // Keyset pagination cursor filter (only for non-running queries)
+  if (!isRunning && cursorPayload?.type === 'recent') {
     const { createdAt, id } = cursorPayload
-    // Rows where (start_date, id) < (cursorDate, cursorId)
-    // Since we're ordering by start_date DESC, we want start_date < cursorDate OR (start_date = cursorDate AND id < cursorId)
     query = query.or(
       `start_date.lt.${createdAt},and(start_date.eq.${createdAt},id.lt.${id})`
     )

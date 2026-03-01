@@ -9,6 +9,7 @@
  */
 
 import { supabaseAdmin } from '../lib/supabase-admin'
+import { classifySeoulEvent } from '../utils/event-classifier'
 
 interface SeoulEventItem {
   CODENAME: string // event code
@@ -145,15 +146,16 @@ async function processSeoulEvent(
   event: SeoulEventItem,
   result: SeoulEventsCollectorResult
 ): Promise<void> {
-  const eventCode = event.CODENAME
-  if (!eventCode) return
+  // Use PROGRAM_ID as unique identifier; fall back to TITLE+DATE hash
+  const sourceId = event.PROGRAM_ID || `${event.TITLE}_${event.DATE}`
+  if (!sourceId) return
 
   // Check for duplicate
   const { data: existing } = await supabaseAdmin
     .from('events')
     .select('id')
     .eq('source', 'seoul_events')
-    .eq('source_id', eventCode)
+    .eq('source_id', sourceId)
     .maybeSingle()
 
   if (existing) {
@@ -165,25 +167,26 @@ async function processSeoulEvent(
   const { startDate, endDate } = parseSeoulDateRange(event.DATE)
 
   if (!startDate) {
-    console.warn('[seoul-events] Skipping event with invalid date:', eventCode, event.DATE)
+    console.warn('[seoul-events] Skipping event with invalid date:', sourceId, event.DATE)
     return
   }
 
   // Build event data
   const eventData = {
     name: event.TITLE,
-    category: '문화행사', // Seoul events are cultural events by default
+    category: '문화행사',
+    sub_category: classifySeoulEvent(event.CODENAME, event.TITLE),
     venue_name: event.PLACE || null,
-    venue_address: null, // Seoul API doesn't provide venue address
-    lat: null, // Would need reverse geocoding
+    venue_address: null,
+    lat: null,
     lng: null,
     start_date: startDate,
     end_date: endDate,
     time_info: null,
     price_info: event.PROGRAM_COST || null,
-    age_range: null, // Assume family-friendly unless specified
+    age_range: null,
     source: 'seoul_events',
-    source_id: eventCode,
+    source_id: sourceId,
     source_url: event.ORG_LINK || null,
     poster_url: event.MAIN_IMG || null,
     description: null,
