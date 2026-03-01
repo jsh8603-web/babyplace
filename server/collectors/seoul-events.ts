@@ -109,7 +109,7 @@ async function fetchSeoulEvents(): Promise<SeoulEventItem[]> {
 
   // Set up abort controller for timeout
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 10000) // 10 second timeout
+  const timeout = setTimeout(() => controller.abort(), 30000) // 30 second timeout
 
   try {
     const response = await fetch(url, { signal: controller.signal })
