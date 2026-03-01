@@ -13,12 +13,11 @@ import type {
   WeatherResponse,
   EmergencyResponse,
   Event,
+  EventsResponse,
 } from '@/types'
 import BottomSheet from '@/components/BottomSheet'
 import PlaceCard from '@/components/place/PlaceCard'
 import EventCard from '@/components/event/EventCard'
-import SeasonalCuration from '@/components/event/SeasonalCuration'
-import RunningExhibitions from '@/components/event/RunningExhibitions'
 import CategoryChips from '@/components/CategoryChips'
 import FilterPanel from '@/components/FilterPanel'
 import EmergencyOverlay, { EmergencyFAB } from '@/components/EmergencyOverlay'
@@ -88,6 +87,12 @@ async function fetchEmergency(lat: number, lng: number): Promise<EmergencyRespon
   return res.json()
 }
 
+async function fetchRunningEvents(): Promise<EventsResponse> {
+  const res = await fetch('/api/events?status=running&limit=100')
+  if (!res.ok) throw new Error('이벤트를 불러오지 못했습니다.')
+  return res.json()
+}
+
 export default function HomePage() {
   const [mapBounds, setMapBounds] = useState<MapBounds | null>(null)
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
@@ -125,6 +130,13 @@ export default function HomePage() {
         : Promise.resolve({ places: [], nextCursor: null }),
     enabled: !!mapBounds,
     staleTime: 30_000,
+  })
+
+  // Fetch running events
+  const { data: eventsData, isLoading: isEventsLoading } = useQuery({
+    queryKey: ['running-events'],
+    queryFn: fetchRunningEvents,
+    staleTime: 60 * 60_000, // 1 hour
   })
 
   // Fetch weather
@@ -166,6 +178,27 @@ export default function HomePage() {
         .filter((p) => p._distFromSelected <= 2000) // 2km radius
         .sort((a, b) => a._distFromSelected - b._distFromSelected)
     : places
+
+  // Events: sort by distance when reference location available, otherwise by end_date
+  const allEvents = eventsData?.events ?? []
+  const refLocation = selectedPlace
+    ? { lat: selectedPlace.lat, lng: selectedPlace.lng }
+    : userLocation
+  const sortedEvents = refLocation
+    ? allEvents
+        .map((e) => ({
+          ...e,
+          _dist: e.lat != null && e.lng != null
+            ? haversineMeters(refLocation.lat, refLocation.lng, e.lat, e.lng)
+            : null,
+        }))
+        .sort((a, b) => {
+          if (a._dist != null && b._dist != null) return a._dist - b._dist
+          if (a._dist != null) return -1
+          if (b._dist != null) return 1
+          return 0
+        })
+    : allEvents.map((e) => ({ ...e, _dist: null as number | null }))
 
   const handleBoundsChanged = useCallback((bounds: MapBounds) => {
     setMapBounds(bounds)
@@ -297,42 +330,43 @@ export default function HomePage() {
           if (snap !== null) setSnapPoint(snap)
         }}
         title="장소 및 이벤트"
+        headerContent={
+          <div className="flex gap-1 px-4 py-2 border-b border-warm-200">
+            <button
+              onClick={() => {
+                setActiveTab('places')
+                setSnapPoint(LIST_SNAP)
+              }}
+              className={`
+                px-4 py-2 text-[14px] font-semibold rounded-t-lg transition-colors
+                ${
+                  activeTab === 'places'
+                    ? 'text-coral-600 border-b-2 border-coral-500 bg-coral-50'
+                    : 'text-warm-500 hover:text-warm-600'
+                }
+              `}
+            >
+              장소
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab('events')
+                setSnapPoint(LIST_SNAP)
+              }}
+              className={`
+                px-4 py-2 text-[14px] font-semibold rounded-t-lg transition-colors
+                ${
+                  activeTab === 'events'
+                    ? 'text-coral-600 border-b-2 border-coral-500 bg-coral-50'
+                    : 'text-warm-500 hover:text-warm-600'
+                }
+              `}
+            >
+              이벤트
+            </button>
+          </div>
+        }
       >
-        {/* Tab buttons */}
-        <div className="flex gap-1 px-4 py-2 shrink-0 border-b border-warm-200">
-          <button
-            onClick={() => {
-              setActiveTab('places')
-              setSnapPoint(LIST_SNAP)
-            }}
-            className={`
-              px-4 py-2 text-[14px] font-semibold rounded-t-lg transition-colors
-              ${
-                activeTab === 'places'
-                  ? 'text-coral-600 border-b-2 border-coral-500 bg-coral-50'
-                  : 'text-warm-500 hover:text-warm-600'
-              }
-            `}
-          >
-            장소
-          </button>
-          <button
-            onClick={() => {
-              setActiveTab('events')
-              setSnapPoint(LIST_SNAP)
-            }}
-            className={`
-              px-4 py-2 text-[14px] font-semibold rounded-t-lg transition-colors
-              ${
-                activeTab === 'events'
-                  ? 'text-coral-600 border-b-2 border-coral-500 bg-coral-50'
-                  : 'text-warm-500 hover:text-warm-600'
-              }
-            `}
-          >
-            이벤트
-          </button>
-        </div>
 
         {/* Places tab */}
         {activeTab === 'places' && (
@@ -432,17 +466,41 @@ export default function HomePage() {
         {/* Events tab */}
         {activeTab === 'events' && (
           <div className="flex-1 overflow-y-auto pb-[80px]">
-            <RunningExhibitions
-              onEventClick={(event: Event) => {
-                window.location.href = `/event/${event.id}`
-              }}
-            />
-            <div className="border-t border-warm-100 my-2" />
-            <SeasonalCuration
-              onEventClick={(event: Event) => {
-                window.location.href = `/event/${event.id}`
-              }}
-            />
+            {/* Header */}
+            <div className="px-4 py-3">
+              <h3 className="text-[15px] font-bold text-warm-700 mb-1">
+                진행중인 이벤트 {sortedEvents.length}건
+              </h3>
+              <p className="text-[13px] text-warm-500">
+                {refLocation ? '가까운 순으로 보여드립니다.' : '마감 임박순으로 보여드립니다.'}
+              </p>
+            </div>
+
+            {isEventsLoading ? (
+              <div className="px-4 space-y-3">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="bg-white rounded-xl h-[180px] animate-pulse" />
+                ))}
+              </div>
+            ) : sortedEvents.length === 0 ? (
+              <div className="px-4 py-12 text-center">
+                <span className="text-3xl mb-2 block">🎪</span>
+                <p className="text-[15px] font-semibold text-warm-600">진행중인 이벤트가 없습니다</p>
+              </div>
+            ) : (
+              <div className="px-4 space-y-3">
+                {sortedEvents.map((event) => (
+                  <EventCard
+                    key={event.id}
+                    event={event}
+                    distance={event._dist}
+                    onClick={(e) => {
+                      window.location.href = `/event/${e.id}`
+                    }}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
       </BottomSheet>

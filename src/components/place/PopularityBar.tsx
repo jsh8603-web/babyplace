@@ -51,7 +51,7 @@ export default function PopularityBar({
           <span className="text-xs font-semibold text-warm-600">
             {clampedScore.toFixed(2)}
           </span>
-          {mentionCount !== undefined && (
+          {mentionCount !== undefined && mentionCount > 0 && (
             <span className="text-xs text-warm-400">
               ({mentionCount.toLocaleString()}건)
             </span>

@@ -7,6 +7,7 @@ interface EventCardProps {
   event: Event
   onClick?: (event: Event) => void
   isSelected?: boolean
+  distance?: number | null // meters from reference point
 }
 
 function formatDateRange(startDate: string, endDate: string | null): string {
@@ -48,7 +49,12 @@ function getCategoryColor(category: string): string {
   return colors[category] ?? 'bg-warm-100 text-warm-600'
 }
 
-export default function EventCard({ event, onClick, isSelected }: EventCardProps) {
+function formatDistance(meters: number): string {
+  if (meters < 1000) return `${Math.round(meters)}m`
+  return `${(meters / 1000).toFixed(1)}km`
+}
+
+export default function EventCard({ event, onClick, isSelected, distance }: EventCardProps) {
   const hasLocation = event.venue_address || (event.lat !== null && event.lng !== null)
   const hasPriceInfo = event.price_info && event.price_info.trim() !== ''
   const hasAgeRange = event.age_range && event.age_range.trim() !== ''
@@ -87,7 +93,7 @@ export default function EventCard({ event, onClick, isSelected }: EventCardProps
           {event.name}
         </h3>
 
-        {/* Category + status badges */}
+        {/* Category + status + distance badges */}
         <div className="flex items-center gap-2 mb-3 flex-wrap">
           <span
             className={`text-[12px] font-semibold px-2 py-0.5 rounded-full ${getCategoryColor(
@@ -109,6 +115,14 @@ export default function EventCard({ event, onClick, isSelected }: EventCardProps
             <Calendar size={12} />
             {formatDateRange(event.start_date, event.end_date)}
           </span>
+
+          {/* Distance badge */}
+          {distance != null && (
+            <span className="flex items-center gap-1 text-[12px] font-medium text-coral-500 bg-coral-50 px-2 py-0.5 rounded-full ml-auto">
+              <MapPin size={12} />
+              {formatDistance(distance)}
+            </span>
+          )}
         </div>
 
         {/* Meta info (time, location, price, age) */}
