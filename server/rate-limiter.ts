@@ -6,6 +6,10 @@
  * counts persist across GitHub Actions process restarts (each cron spawns a
  * fresh process, making in-memory counters useless for daily limits).
  *
+ * Performance: daily count is cached in memory after a single DB read at
+ * pipeline start. Flushed back to DB once at pipeline end.
+ * This eliminates ~7,000 DB round-trips per run (~18 min overhead).
+ *
  * Schema (created in 00002_place_candidates_unique.sql):
  *   rate_limit_counters(id, provider TEXT, date DATE, count INT, UNIQUE(provider, date))
  */
@@ -26,10 +30,54 @@ export class RateLimiter {
   // Sliding window: timestamps (ms) of requests in the last second
   private windowTimestamps: number[] = []
 
+  // Cached daily counter (loaded once, flushed once)
+  private cachedCount: number | null = null
+  private cachedDate: string | null = null
+  private countSinceLoad = 0
+
   constructor(options: RateLimiterOptions) {
     this.maxPerSecond = options.maxPerSecond
     this.maxPerDay = options.maxPerDay
     this.provider = options.provider
+  }
+
+  /**
+   * Load daily count from DB into memory cache.
+   * Call once at pipeline start. Skipping this is safe —
+   * throttle() will lazy-load on first call.
+   */
+  async initialize(): Promise<void> {
+    const today = new Date().toISOString().slice(0, 10)
+    this.cachedDate = today
+    this.cachedCount = await this.fetchDailyCount(today)
+    this.countSinceLoad = 0
+  }
+
+  /**
+   * Flush accumulated count back to DB.
+   * Call once at pipeline end.
+   */
+  async flush(): Promise<void> {
+    if (this.countSinceLoad === 0 || !this.cachedDate) return
+
+    const { error: rpcError } = await supabaseAdmin.rpc('increment_rate_limit_counter', {
+      p_provider: this.provider,
+      p_date: this.cachedDate,
+      p_increment: this.countSinceLoad,
+    })
+
+    if (rpcError) {
+      // Fallback: try single-increment RPC N times? No — just upsert the total.
+      const totalCount = (this.cachedCount ?? 0) + this.countSinceLoad
+      await supabaseAdmin
+        .from('rate_limit_counters')
+        .upsert(
+          { provider: this.provider, date: this.cachedDate, count: totalCount },
+          { onConflict: 'provider, date', ignoreDuplicates: false }
+        )
+    }
+
+    this.countSinceLoad = 0
   }
 
   /**
@@ -42,26 +90,30 @@ export class RateLimiter {
   }
 
   private async waitForSlot(): Promise<void> {
-    const today = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
+    const today = new Date().toISOString().slice(0, 10)
 
-    // --- Daily quota check (DB-backed, cross-process) ---
-    const currentCount = await this.fetchDailyCount(today)
-    if (currentCount >= this.maxPerDay) {
+    // Lazy-initialize cache if not done or date rolled over
+    if (this.cachedCount === null || this.cachedDate !== today) {
+      await this.initialize()
+    }
+
+    // Daily quota check (in-memory)
+    const currentTotal = (this.cachedCount ?? 0) + this.countSinceLoad
+    if (currentTotal >= this.maxPerDay) {
       throw new Error(
         `Daily API quota exceeded for "${this.provider}" ` +
-          `(${currentCount}/${this.maxPerDay}). Quota resets at midnight UTC.`
+          `(${currentTotal}/${this.maxPerDay}). Quota resets at midnight UTC.`
       )
     }
 
-    // --- Per-second enforcement: sliding window ---
+    // Per-second enforcement: sliding window
     while (true) {
       const now = Date.now()
       this.windowTimestamps = this.windowTimestamps.filter((ts) => now - ts < 1000)
 
       if (this.windowTimestamps.length < this.maxPerSecond) {
-        // Slot available — register timestamp and atomically increment DB counter
         this.windowTimestamps.push(now)
-        await this.incrementDailyCount(today)
+        this.countSinceLoad++
         return
       }
 
@@ -85,8 +137,6 @@ export class RateLimiter {
       .maybeSingle()
 
     if (error) {
-      // Non-fatal: if the table is missing or unreachable, fall back to allowing
-      // the request (in-memory limits will still apply per-second).
       console.warn(`[RateLimiter] Failed to fetch daily count for "${this.provider}":`, error)
       return 0
     }
@@ -94,39 +144,16 @@ export class RateLimiter {
     return data?.count ?? 0
   }
 
-  /**
-   * Atomically increments the daily counter by 1, upserting the row if absent.
-   */
-  private async incrementDailyCount(date: string): Promise<void> {
-    // Use an RPC for atomic increment to avoid race conditions between concurrent
-    // process runs. Falls back to a client-side upsert if the RPC is unavailable.
-    const { error: rpcError } = await supabaseAdmin.rpc('increment_rate_limit_counter', {
-      p_provider: this.provider,
-      p_date: date,
-    })
-
-    if (rpcError) {
-      // Fallback: upsert with count=1 (safe enough for low-concurrency pipelines)
-      const { error: upsertError } = await supabaseAdmin
-        .from('rate_limit_counters')
-        .upsert(
-          { provider: this.provider, date, count: 1 },
-          { onConflict: 'provider, date', ignoreDuplicates: false }
-        )
-
-      if (upsertError) {
-        console.warn(`[RateLimiter] Failed to increment daily count for "${this.provider}":`, upsertError)
-      }
-    }
-  }
-
-  /** Current daily call count (live DB read — for logging/monitoring). */
+  /** Current daily call count (cached + in-flight). */
   async getDailyCount(): Promise<number> {
+    if (this.cachedCount !== null) {
+      return (this.cachedCount ?? 0) + this.countSinceLoad
+    }
     const today = new Date().toISOString().slice(0, 10)
     return this.fetchDailyCount(today)
   }
 
-  /** Remaining daily calls (live DB read). */
+  /** Remaining daily calls. */
   async getRemainingDaily(): Promise<number> {
     const count = await this.getDailyCount()
     return Math.max(0, this.maxPerDay - count)
@@ -137,18 +164,14 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-// Singleton instances — shared across all collectors in one process run.
-// Per-second window is still in-memory (fine for single-process concurrency).
-// Daily quota is DB-backed to survive across GitHub Actions cron runs.
+// ─── Singleton instances ──────────────────────────────────────────────────────
+
 export const kakaoLimiter = new RateLimiter({
   maxPerSecond: 10,
   maxPerDay: 100_000,
   provider: 'kakao',
 })
 
-// Kakao Daum search API (blog search in Pipeline B).
-// Separate from kakaoLimiter (place search) for independent quota tracking.
-// Free tier: 300K/month ≈ 10K/day.
 export const kakaoSearchLimiter = new RateLimiter({
   maxPerSecond: 10,
   maxPerDay: 10_000,
@@ -172,3 +195,17 @@ export const tourLimiter = new RateLimiter({
   maxPerDay: 800,
   provider: 'tour',
 })
+
+// ─── Batch initialize / flush helpers ─────────────────────────────────────────
+
+const ALL_LIMITERS = [kakaoLimiter, kakaoSearchLimiter, naverLimiter, dataLabLimiter, tourLimiter]
+
+/** Initialize all rate limiters (call once at pipeline start). */
+export async function initializeAllLimiters(): Promise<void> {
+  await Promise.all(ALL_LIMITERS.map((l) => l.initialize()))
+}
+
+/** Flush all rate limiters (call once at pipeline end). */
+export async function flushAllLimiters(): Promise<void> {
+  await Promise.all(ALL_LIMITERS.map((l) => l.flush()))
+}

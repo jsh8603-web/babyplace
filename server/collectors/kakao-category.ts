@@ -419,7 +419,7 @@ function shouldSkipKakaoPlace(name: string, categoryName: string): boolean {
   if (skipBrands.test(name)) return true
 
   // Kakao category_name patterns to skip
-  const skipCategories = /테마거리|먹자골목|카페거리|도보여행|고궁|궁$|사적지|유적지|성지$|묘$|사찰|교회$|성당$|호텔$|여관|모텔|반려견|만화카페|보드게임|방탈출|스터디카페|코인노래방|PC방|당구|볼링장|노래방|네일|피부관리|미용실|안경/
+  const skipCategories = /테마거리|먹자골목|카페거리|도보여행|고궁|궁$|사적지|유적지|성지$|묘$|사찰|교회$|성당$|호텔$|여관|모텔|반려견|만화카페|보드게임|방탈출|스터디카페|코인노래방|PC방|당구|볼링장|노래방|네일|피부관리|미용실|안경|영화관|CGV|롯데시네마|메가박스|시네마/
   if (skipCategories.test(categoryName)) return true
 
   return false

@@ -42,6 +42,7 @@ import { runEventDeduplication } from './matchers/event-dedup'
 import { runKeywordRotation } from './keywords/keyword-rotation'
 import { runDataLabTrendDetection } from './keywords/datalab'
 import { runSeasonalTransition } from './keywords/seasonal-calendar'
+import { initializeAllLimiters, flushAllLimiters } from './rate-limiter'
 
 // ─── Schedule dispatch ────────────────────────────────────────────────────────
 
@@ -59,6 +60,9 @@ async function main(): Promise<void> {
   console.log(`[run] Time: ${new Date().toISOString()}`)
 
   validateEnv()
+
+  // Load daily API counters from DB once (avoids ~7,000 DB round-trips during pipeline)
+  await initializeAllLimiters()
 
   try {
     switch (schedule) {
@@ -100,9 +104,11 @@ async function main(): Promise<void> {
     }
 
     console.log('[run] Pipeline run completed successfully')
+    await flushAllLimiters()
     process.exit(0)
   } catch (err) {
     console.error('[run] Fatal error:', err)
+    await flushAllLimiters()
     process.exit(1)
   }
 }
