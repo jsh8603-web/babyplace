@@ -16,6 +16,8 @@ interface KakaoMapProps {
   onPlaceClick?: (place: Place) => void
   initialCenter?: { lat: number; lng: number }
   initialZoom?: number
+  /** When set, the map smoothly pans to this location */
+  center?: { lat: number; lng: number } | null
 }
 
 declare global {
@@ -40,6 +42,8 @@ interface KakaoMapInstance {
   getCenter: () => { getLat: () => number; getLng: () => number }
   getBounds: () => KakaoBoundsInstance
   getLevel: () => number
+  panTo: (latlng: object) => void
+  setLevel: (level: number) => void
 }
 
 interface KakaoBoundsInstance {
@@ -93,6 +97,7 @@ export default function KakaoMap({
   onPlaceClick,
   initialCenter = { lat: 37.5665, lng: 126.978 },
   initialZoom = 8,
+  center,
 }: KakaoMapProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<KakaoMapInstance | null>(null)
@@ -148,6 +153,17 @@ export default function KakaoMap({
 
     return () => { cancelled = true }
   }, [initialCenter.lat, initialCenter.lng, initialZoom, handleBoundsChanged])
+
+  // Pan to center when it changes
+  useEffect(() => {
+    if (!mapReady || !mapRef.current || !center) return
+    const map = mapRef.current
+    map.panTo(new window.kakao.maps.LatLng(center.lat, center.lng))
+    // Zoom in to neighborhood level if currently zoomed out
+    if (map.getLevel() > 5) {
+      map.setLevel(5)
+    }
+  }, [mapReady, center?.lat, center?.lng])
 
   // Render place overlays
   useEffect(() => {

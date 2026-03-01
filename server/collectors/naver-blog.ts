@@ -182,8 +182,9 @@ async function runReverseSearch(
 
   for (const place of allPlaces) {
     try {
-      const district = extractDistrict(place.road_address || place.address || '')
-      const newMentions = await reverseSearchPlace(place.id, place.name, district)
+      const addr = parseAddressComponents(place.road_address, place.address)
+      const isCommon = isCommonWordName(place.name)
+      const newMentions = await reverseSearchPlace(place.id, place.name, addr, isCommon)
       stats.newMentions += newMentions
       stats.placesProcessed++
     } catch (err) {
@@ -202,16 +203,17 @@ async function runReverseSearch(
 async function reverseSearchPlace(
   placeId: number,
   placeName: string,
-  district: string
+  addr: AddressComponents,
+  isCommon: boolean
 ): Promise<number> {
-  const searchTerm = district ? `${placeName} ${district}` : placeName
+  const searchTerm = buildSearchTerm(placeName, addr, isCommon)
   let newCount = 0
 
   // --- Naver Blog ---
-  newCount += await searchNaverBlog(placeId, placeName, district, searchTerm)
+  newCount += await searchNaverBlog(placeId, placeName, addr, isCommon, searchTerm)
 
   // --- Daum Blog (Kakao) — covers 티스토리 + Daum 블로그 ---
-  newCount += await searchDaumBlog(placeId, placeName, district, searchTerm)
+  newCount += await searchDaumBlog(placeId, placeName, addr, isCommon, searchTerm)
 
   if (newCount > 0) {
     await updateMentionCount(placeId, newCount)
@@ -224,7 +226,8 @@ async function reverseSearchPlace(
 async function searchNaverBlog(
   placeId: number,
   placeName: string,
-  district: string,
+  addr: AddressComponents,
+  isCommon: boolean,
   searchTerm: string
 ): Promise<number> {
   const query = encodeURIComponent(searchTerm)
@@ -238,7 +241,7 @@ async function searchNaverBlog(
     if (!item.link) continue
     const title = stripHtml(item.title)
     const snippet = stripHtml(item.description).slice(0, 500)
-    const relevance = computePostRelevance(placeName, district, title, snippet)
+    const relevance = computePostRelevance(placeName, addr, isCommon, title, snippet)
     if (relevance < 0.3) continue
 
     const { error } = await supabaseAdmin.from('blog_mentions').insert({
@@ -259,7 +262,8 @@ async function searchNaverBlog(
 async function searchDaumBlog(
   placeId: number,
   placeName: string,
-  district: string,
+  addr: AddressComponents,
+  isCommon: boolean,
   searchTerm: string
 ): Promise<number> {
   const items = await fetchDaumSearch(searchTerm)
@@ -270,7 +274,7 @@ async function searchDaumBlog(
     if (!item.url) continue
     const title = stripHtml(item.title)
     const snippet = stripHtml(item.contents).slice(0, 500)
-    const relevance = computePostRelevance(placeName, district, title, snippet)
+    const relevance = computePostRelevance(placeName, addr, isCommon, title, snippet)
     if (relevance < 0.3) continue
 
     const postDate = item.datetime ? item.datetime.slice(0, 10) : null // "2024-01-15"
@@ -289,25 +293,156 @@ async function searchDaumBlog(
   return count
 }
 
-/**
- * Extract district/city name from address string.
- * "경기 남양주시 와부읍 덕소로2번길 84" → "남양주"
- * "서울 강남구 역삼동 123" → "강남"
- */
-function extractDistrict(address: string): string {
-  if (!address) return ''
-  // Match 시/군/구 name: e.g. "남양주시" → "남양주", "강남구" → "강남"
-  const match = address.match(/([가-힣]+)[시군구]\b/)
-  return match ? match[1] : ''
+// ─── Layer 1: Address component parser ────────────────────────────────────────
+
+interface AddressComponents {
+  city: string          // "서울" | "경기" | "인천"
+  district: string      // "중구" | "강남구" (접미사 포함)
+  dong: string | null   // "남창동" | "와부읍"
+  road: string | null   // "퇴계로" (숫자 제거)
+}
+
+const CITY_NORMALIZE: Record<string, string> = {
+  서울특별시: '서울', 서울시: '서울', 서울: '서울',
+  경기도: '경기', 경기: '경기',
+  인천광역시: '인천', 인천시: '인천', 인천: '인천',
+}
+
+function parseAddressComponents(
+  roadAddress: string | null,
+  address: string | null
+): AddressComponents {
+  const result: AddressComponents = { city: '', district: '', dong: null, road: null }
+  const raw = roadAddress || address || ''
+  if (!raw) return result
+
+  const tokens = raw.replace(/\(([^)]+)\)/g, ' $1 ').split(/\s+/)
+
+  for (const t of tokens) {
+    // City
+    if (!result.city && CITY_NORMALIZE[t]) {
+      result.city = CITY_NORMALIZE[t]
+      continue
+    }
+    // District (구/군/시 with suffix kept)
+    if (!result.district && /^[가-힣]{1,5}[구군시]$/.test(t) && !CITY_NORMALIZE[t]) {
+      result.district = t
+      continue
+    }
+    // Dong (동/읍/면/리)
+    if (!result.dong && /^[가-힣]{1,10}[동읍면리]$/.test(t)) {
+      result.dong = t
+      continue
+    }
+    // Road name (로/길 ending, strip trailing numbers)
+    if (!result.road && /[가-힣]+[로길]/.test(t)) {
+      result.road = t.replace(/[0-9가-]*$/, '').replace(/길$/, '').replace(/로$/, '') || t.replace(/[0-9가-]*$/, '')
+      // Keep the base road name (e.g. "퇴계로6가길" → "퇴계로" or "퇴계")
+      const roadMatch = t.match(/^([가-힣]+[로])/)
+      if (roadMatch) result.road = roadMatch[1]
+      continue
+    }
+  }
+
+  // Fallback dong from parentheses in road_address
+  if (!result.dong && roadAddress) {
+    const parenMatch = roadAddress.match(/\(([가-힣]+[동읍면리])\)/)
+    if (parenMatch) result.dong = parenMatch[1]
+  }
+
+  return result
+}
+
+// ─── Layer 2: Common-word name detector ───────────────────────────────────────
+
+const COMMON_WORDS = new Set([
+  // Korean common nouns used as venue names
+  '피크닉', '놀이터', '카페', '맛집', '숲', '하늘', '바다', '나무', '꽃', '공원',
+  '봄', '여름', '가을', '겨울', '별', '달', '사랑', '행복', '소풍', '나들이',
+  '마을', '뜰', '정원', '아뜰리에', '작업실', '공방', '부엌', '식탁', '마당',
+  '다락', '골목', '언덕', '숲속', '들판', '호수', '강', '산', '바위', '섬',
+  // Transliterated English common words
+  '파크', '가든', '키즈', '드림', '포레스트', '베이비', '리틀', '해피', '스마일',
+  '플레이', '조이', '러브', '원더', '매직', '판타지', '빌리지', '하우스', '스토리',
+  '아이', '아트', '플라워', '레인보우', '선샤인', '문', '스타',
+])
+
+function isCommonWordName(name: string): boolean {
+  const normalized = name.replace(/\s+/g, '')
+  // 2 chars or fewer in Korean → likely common word
+  if (normalized.length <= 2) return true
+  // 3 chars → check against set
+  if (normalized.length <= 3 && COMMON_WORDS.has(normalized)) return true
+  // Exact match in common words set
+  if (COMMON_WORDS.has(normalized)) return true
+  // Multi-word name but each word is common (e.g. "해피 키즈")
+  const words = name.split(/\s+/)
+  if (words.length >= 2 && words.every((w) => COMMON_WORDS.has(w))) return true
+  return false
+}
+
+// ─── Layer 3: Search query builder ────────────────────────────────────────────
+
+function buildSearchTerm(
+  name: string,
+  addr: AddressComponents,
+  isCommon: boolean
+): string {
+  if (isCommon) {
+    // Common-word names need location specificity
+    const quotedName = `"${name}"`
+    if (addr.dong) return `${quotedName} ${addr.dong}`
+    if (addr.road) return `${quotedName} ${addr.road}`
+    if (addr.district) return `${quotedName} ${addr.district}`
+    return quotedName
+  }
+  // Unique names: name + best available location
+  if (addr.dong) return `${name} ${addr.dong}`
+  if (addr.district) return `${name} ${addr.district}`
+  return name
+}
+
+// ─── Layer 4: Relevance scoring (rewritten) ───────────────────────────────────
+
+// Layer 5 helpers integrated below
+
+const COMPETING_LOCATIONS = new Set([
+  // Metro cities & provinces outside service area (서울/경기/인천)
+  '부산', '대구', '광주', '대전', '울산', '세종',
+  '강원', '충북', '충남', '충청', '전북', '전남', '전라', '경북', '경남', '경상', '제주',
+  // Major non-capital cities
+  '진주', '김해', '창원', '포항', '구미', '거제', '통영', '양산',
+  '여수', '순천', '목포', '군산', '전주', '익산',
+  '천안', '아산', '청주',
+  '춘천', '원주', '강릉', '속초', '동해',
+])
+
+const PRODUCT_REVIEW_TERMS = [
+  '구매후기', '제품리뷰', '상품평', '배송후기', '가격비교', '할인코드',
+  '쿠팡', '네이버쇼핑', '11번가', '지마켓', '옥션',
+  '사용후기', '언박싱', '개봉기',
+]
+
+function hasCompetingLocation(text: string, ownCity: string): boolean {
+  for (const loc of COMPETING_LOCATIONS) {
+    if (loc === ownCity) continue
+    if (text.includes(loc)) return true
+  }
+  return false
+}
+
+function hasProductReviewSignals(text: string): boolean {
+  return PRODUCT_REVIEW_TERMS.some((t) => text.includes(t))
 }
 
 /**
- * Compute relevance score (0~1) for a blog post relative to a place.
- * Checks if the post title/snippet actually mentions the place name or location.
+ * Compute relevance score (0~1) for a blog post relative to a specific place.
+ * Uses address verification and negative signals to filter false positives.
  */
 function computePostRelevance(
   placeName: string,
-  district: string,
+  addr: AddressComponents,
+  isCommon: boolean,
   title: string,
   snippet: string
 ): number {
@@ -315,35 +450,73 @@ function computePostRelevance(
   const nameL = placeName.toLowerCase()
   let score = 0
 
-  // Full place name match in title → highest signal
+  // --- Positive signals ---
+
+  // Place name in title (expected from search, reduced weight)
   if (title.toLowerCase().includes(nameL)) {
-    score += 0.6
-  }
-  // Full place name in snippet
-  else if (text.includes(nameL)) {
-    score += 0.4
-  }
-  // Partial name match (for multi-word names like "키즈존 식당")
-  else {
+    score += 0.25
+  } else if (text.includes(nameL)) {
+    score += 0.15
+  } else {
+    // Partial name match for multi-word names
     const nameWords = nameL.split(/\s+/).filter((w) => w.length >= 2)
     const matchedWords = nameWords.filter((w) => text.includes(w))
     if (matchedWords.length > 0) {
-      score += 0.2 * (matchedWords.length / nameWords.length)
+      score += 0.10 * (matchedWords.length / nameWords.length)
     }
   }
 
-  // District match boosts confidence
-  if (district && text.includes(district.toLowerCase())) {
-    score += 0.2
+  // Address component matches (strong location verification)
+  if (addr.dong && text.includes(addr.dong)) {
+    score += 0.30
+  }
+  if (addr.road && text.includes(addr.road)) {
+    score += 0.20
+  }
+  if (addr.district && text.includes(addr.district)) {
+    score += 0.10
   }
 
-  // Baby/kids related content bonus
+  // Baby/kids content bonus
   const babyTerms = ['아기', '유아', '아이', '키즈', '어린이', '유모차', '수유']
   if (babyTerms.some((t) => text.includes(t))) {
-    score += 0.1
+    score += 0.10
   }
 
-  return Math.min(score, 1.0)
+  // --- Negative signals ---
+
+  // Mentions a different city/province
+  if (hasCompetingLocation(text, addr.city)) {
+    score -= 0.50
+  }
+
+  // Product review patterns
+  if (hasProductReviewSignals(text)) {
+    score -= 0.20
+  }
+
+  // Common-word name without address verification
+  if (isCommon && !addr.dong?.length && !addr.road?.length) {
+    // No address components to verify — can't penalize for missing match
+    // but also can't trust name-only match
+    score = Math.min(score, 0.20)
+  } else if (isCommon) {
+    // Have address data but post doesn't mention dong or road
+    const hasDongMatch = addr.dong ? text.includes(addr.dong) : false
+    const hasRoadMatch = addr.road ? text.includes(addr.road) : false
+    if (!hasDongMatch && !hasRoadMatch) {
+      score -= 0.25
+    }
+  }
+
+  return Math.max(0, Math.min(score, 1.0))
+}
+
+/** @deprecated Use parseAddressComponents instead */
+function extractDistrict(address: string): string {
+  if (!address) return ''
+  const match = address.match(/([가-힣]+)[시군구]\b/)
+  return match ? match[1] : ''
 }
 
 /**

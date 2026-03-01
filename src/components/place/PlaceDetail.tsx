@@ -1,6 +1,6 @@
 'use client'
 
-import { Heart, Share2, Phone, Clock, MapPin, Navigation, ExternalLink, CalendarCheck } from 'lucide-react'
+import { Heart, Share2, Phone, Clock, MapPin, Navigation, ExternalLink, CalendarCheck, Globe, Info } from 'lucide-react'
 import type { Place, BlogMention } from '@/types'
 import FacilityIcons from './FacilityIcons'
 import PopularityBar from './PopularityBar'
@@ -80,9 +80,9 @@ export default function PlaceDetail({
       </div>
 
       <div className="space-y-3 pb-8">
-        {/* Hero image placeholder */}
-        <div className="w-full h-[200px] bg-gradient-to-br from-coral-100 to-coral-50 flex items-center justify-center">
-          <span className="text-5xl opacity-50">
+        {/* Compact hero with category icon */}
+        <div className="w-full h-[100px] bg-gradient-to-br from-coral-100 to-coral-50 flex items-center justify-center">
+          <span className="text-4xl opacity-40">
             {place.category === '놀이' ? '🎪' :
              place.category === '공원/놀이터' ? '🌳' :
              place.category === '전시/체험' ? '🏛' :
@@ -121,11 +121,16 @@ export default function PlaceDetail({
             </div>
           </div>
 
-          {/* Category + distance */}
+          {/* Category + sub_category + distance */}
           <div className="flex items-center gap-2 mb-3 flex-wrap">
             <span className="text-[13px] font-medium text-warm-500 bg-warm-100 px-2 py-0.5 rounded-full">
               {place.category}
             </span>
+            {place.sub_category && (
+              <span className="text-[13px] font-medium text-warm-400 bg-warm-50 px-2 py-0.5 rounded-full border border-warm-200">
+                {place.sub_category}
+              </span>
+            )}
             {place.is_indoor !== null && (
               <span className={`text-[13px] font-medium px-2 py-0.5 rounded-full ${place.is_indoor ? 'bg-blue-50 text-blue-600' : 'bg-green-50 text-green-600'}`}>
                 {place.is_indoor ? '실내' : '실외'}
@@ -189,22 +194,54 @@ export default function PlaceDetail({
             </div>
           )}
 
-          {/* Navigation CTA */}
-          <a
-            href={kakaoNavUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="
-              mt-2 flex items-center justify-center gap-2
-              w-full py-3.5 rounded-xl
-              bg-coral-500 text-white text-[15px] font-semibold
-              shadow-md active:bg-coral-600 transition-colors
-            "
-            aria-label="카카오맵에서 길찾기"
-          >
-            <Navigation size={18} />
-            카카오맵에서 길찾기
-          </a>
+          {/* Action buttons */}
+          <div className="mt-2 flex gap-2">
+            <a
+              href={kakaoNavUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="
+                flex-1 flex items-center justify-center gap-2
+                py-3.5 rounded-xl
+                bg-coral-500 text-white text-[15px] font-semibold
+                shadow-md active:bg-coral-600 transition-colors
+              "
+              aria-label="카카오맵에서 길찾기"
+            >
+              <Navigation size={18} />
+              길찾기
+            </a>
+            {place.kakao_place_id && (
+              <a
+                href={`https://place.map.kakao.com/${place.kakao_place_id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="
+                  flex items-center justify-center gap-2
+                  px-5 py-3.5 rounded-xl
+                  bg-warm-100 text-warm-700 text-[15px] font-semibold
+                  border border-warm-200 active:bg-warm-200 transition-colors
+                "
+                aria-label="카카오맵에서 상세보기"
+              >
+                <Globe size={18} />
+                상세정보
+              </a>
+            )}
+          </div>
+
+          {/* Source info */}
+          <div className="mt-3 flex items-center gap-1.5">
+            <Info size={13} className="text-warm-300 shrink-0" />
+            <span className="text-[12px] text-warm-400">
+              출처: {place.source === 'kakao' ? '카카오맵' :
+                     place.source === 'tour_api' ? '한국관광공사' :
+                     place.source === 'data_go_kr' ? '공공데이터포털' :
+                     place.source === 'seoul_opendata' ? '서울열린데이터' :
+                     place.source}
+              {place.source_count > 1 && ` 외 ${place.source_count - 1}개 출처`}
+            </span>
+          </div>
         </div>
 
         {/* Top 5 blog posts */}

@@ -90,6 +90,7 @@ async function fetchEmergency(lat: number, lng: number): Promise<EmergencyRespon
 export default function HomePage() {
   const [mapBounds, setMapBounds] = useState<MapBounds | null>(null)
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number } | null>(null)
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [isFilterOpen, setIsFilterOpen] = useState(false)
@@ -180,11 +181,16 @@ export default function HomePage() {
     if (!navigator.geolocation) return
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+        setUserLocation(loc)
+        setMapCenter(loc)
+        setSelectedPlace(null)
       },
       () => {
         // Fallback: Seoul city hall
-        setUserLocation({ lat: 37.5665, lng: 126.978 })
+        const loc = { lat: 37.5665, lng: 126.978 }
+        setUserLocation(loc)
+        setMapCenter(loc)
       },
       { enableHighAccuracy: true, timeout: 5000 },
     )
@@ -201,13 +207,14 @@ export default function HomePage() {
 
   return (
     <main className="h-dvh flex flex-col relative overflow-hidden bg-warm-50">
-      {/* Map fills entire viewport */}
-      <div className="absolute inset-0">
+      {/* Map fills entire viewport — z-0 creates stacking context to contain SDK z-indices */}
+      <div className="absolute inset-0 z-0">
         <KakaoMap
           places={places}
           selectedPlaceId={selectedPlace?.id}
           onBoundsChanged={handleBoundsChanged}
           onPlaceClick={handlePlaceClick}
+          center={mapCenter}
         />
       </div>
 
