@@ -6,9 +6,14 @@
  */
 
 import { supabaseAdmin } from '../lib/supabase-admin'
-import { classifySeoulEvent } from '../utils/event-classifier'
+import {
+  classifySeoulEvent,
+  isBlacklisted,
+  isWhitelisted,
+  classifyEventsWithLLM,
+} from '../utils/event-classifier'
 
-interface SeoulEventItem {
+export interface SeoulEventItem {
   CODENAME: string       // category: "전시/미술", "축제-시민화합", "클래식" etc.
   GUNAME: string         // district: "강남구"
   TITLE: string          // event title
@@ -45,6 +50,8 @@ const PAGE_SIZE = 1000
 
 export interface SeoulEventsCollectorResult {
   totalFetched: number
+  filtered: number
+  llmClassified: number
   newEvents: number
   duplicates: number
   errors: number
@@ -56,6 +63,8 @@ export interface SeoulEventsCollectorResult {
 export async function runSeoulEventsCollector(): Promise<SeoulEventsCollectorResult> {
   const result: SeoulEventsCollectorResult = {
     totalFetched: 0,
+    filtered: 0,
+    llmClassified: 0,
     newEvents: 0,
     duplicates: 0,
     errors: 0,
@@ -71,11 +80,50 @@ export async function runSeoulEventsCollector(): Promise<SeoulEventsCollectorRes
 
     console.log('[seoul-events] Fetching cultural events from Seoul API')
 
-    const events = await fetchAllSeoulEvents()
-    result.totalFetched = events.length
-    console.log(`[seoul-events] Fetched ${events.length} events`)
+    const allEvents = await fetchAllSeoulEvents()
+    result.totalFetched = allEvents.length
+    console.log(`[seoul-events] Fetched ${allEvents.length} events`)
 
-    for (const event of events) {
+    // Step 1: Blacklist filter (immediate exclude)
+    const afterBlacklist = allEvents.filter((e) => {
+      if (isBlacklisted(e.USE_TRGT)) {
+        result.filtered++
+        return false
+      }
+      return true
+    })
+    console.log(`[seoul-events] Step 1 blacklist: excluded ${result.filtered}`)
+
+    // Step 2: Whitelist filter (immediate include)
+    const whitelisted: SeoulEventItem[] = []
+    const remaining: SeoulEventItem[] = []
+    for (const event of afterBlacklist) {
+      if (isWhitelisted(event.USE_TRGT)) {
+        whitelisted.push(event)
+      } else {
+        remaining.push(event)
+      }
+    }
+    console.log(`[seoul-events] Step 2 whitelist: ${whitelisted.length} included, ${remaining.length} remaining`)
+
+    // Step 3: LLM classification for remaining events
+    const llmIncludedIndices = await classifyEventsWithLLM(
+      remaining.map((e) => ({
+        TITLE: e.TITLE,
+        USE_TRGT: e.USE_TRGT,
+        CODENAME: e.CODENAME,
+        PLACE: e.PLACE,
+      }))
+    )
+    const llmIncluded = remaining.filter((_, i) => llmIncludedIndices.has(i))
+    result.llmClassified = llmIncluded.length
+    console.log(`[seoul-events] Step 3 LLM: ${llmIncluded.length}/${remaining.length} included`)
+
+    // Combine whitelisted + LLM-included events
+    const eventsToProcess = [...whitelisted, ...llmIncluded]
+    console.log(`[seoul-events] Total to process: ${eventsToProcess.length}`)
+
+    for (const event of eventsToProcess) {
       try {
         await processSeoulEvent(event, result)
       } catch (err) {
