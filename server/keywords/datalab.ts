@@ -108,6 +108,9 @@ export async function runDataLabTrendDetection(): Promise<{
 /**
  * Fetch trend data from Naver DataLab API for a list of keywords.
  * Compares current month vs 3 months ago.
+ *
+ * Naver DataLab API allows max 5 keywordGroups per request,
+ * so we batch keywords into groups of 5.
  */
 async function fetchDataLabTrends(keywords: string[]): Promise<DataLabKeywordTrend[]> {
   try {
@@ -124,38 +127,50 @@ async function fetchDataLabTrends(keywords: string[]): Promise<DataLabKeywordTre
 
     console.log(`[datalab] Fetching trends from ${startDate} to ${endDate}`)
 
-    // Call Naver DataLab API via rate limiter
-    const response = await dataLabLimiter.throttle(async () => {
-      return fetch('https://openapi.naver.com/v1/datalab/search', {
-        method: 'POST',
-        headers: {
-          'X-Naver-Client-Id': process.env.NAVER_CLIENT_ID,
-          'X-Naver-Client-Secret': process.env.NAVER_CLIENT_SECRET,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          startDate,
-          endDate,
-          timeUnit: 'month',
-          keywordGroups: keywords.map((keyword) => ({
-            groupName: keyword,
-            keywords: [keyword],
-          })),
-        }),
-      })
-    })
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      throw new Error(`Naver DataLab API error: ${response.status} - ${errorText}`)
+    // Batch keywords into groups of 5 (API limit)
+    const BATCH_SIZE = 5
+    const batches: string[][] = []
+    for (let i = 0; i < keywords.length; i += BATCH_SIZE) {
+      batches.push(keywords.slice(i, i + BATCH_SIZE))
     }
 
-    const data = (await response.json()) as DataLabSearchResponse
-
-    // Flatten results: collect all keyword trends
     const allTrends: DataLabKeywordTrend[] = []
-    for (const result of data.results) {
-      allTrends.push(...result.keywords)
+
+    for (let batchIdx = 0; batchIdx < batches.length; batchIdx++) {
+      const batch = batches[batchIdx]
+      console.log(`[datalab] Batch ${batchIdx + 1}/${batches.length}: ${batch.join(', ')}`)
+
+      const response = await dataLabLimiter.throttle(async () => {
+        return fetch('https://openapi.naver.com/v1/datalab/search', {
+          method: 'POST',
+          headers: {
+            'X-Naver-Client-Id': process.env.NAVER_CLIENT_ID,
+            'X-Naver-Client-Secret': process.env.NAVER_CLIENT_SECRET,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            startDate,
+            endDate,
+            timeUnit: 'month',
+            keywordGroups: batch.map((keyword) => ({
+              groupName: keyword,
+              keywords: [keyword],
+            })),
+          }),
+        })
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error(`[datalab] Batch ${batchIdx + 1} API error: ${response.status} - ${errorText}`)
+        continue
+      }
+
+      const data = (await response.json()) as DataLabSearchResponse
+
+      for (const result of data.results) {
+        allTrends.push(...result.keywords)
+      }
     }
 
     console.log(`[datalab] Fetched ${allTrends.length} keyword trends`)

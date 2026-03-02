@@ -302,7 +302,8 @@ async function fetchRectPage(
   rect: { minx: number; miny: number; maxx: number; maxy: number },
   page: number
 ): Promise<SdscItem[] | null> {
-  // Build URL with raw serviceKey to avoid double-encoding (data.go.kr keys contain +/=/%)
+  // Build URL with raw serviceKey; omit 'type' and industry code params
+  // (storeListInRectangle doesn't accept them — filter in-memory instead)
   const params = new URLSearchParams({
     minx: String(rect.minx),
     miny: String(rect.miny),
@@ -310,8 +311,6 @@ async function fetchRectPage(
     maxy: String(rect.maxy),
     pageNo: String(page),
     numOfRows: String(PAGE_SIZE),
-    type: 'json',
-    [target.divId]: target.key,
   })
 
   const url = `${API_BASE}/storeListInRectangle?serviceKey=${apiKey}&${params.toString()}`
@@ -327,14 +326,29 @@ async function fetchRectPage(
       return null
     }
 
-    const json = await response.json() as SdscResponse
+    // API may return XML by default; try JSON parse, fall back to XML extraction
+    const text = await response.text()
+    let json: SdscResponse
+
+    try {
+      json = JSON.parse(text) as SdscResponse
+    } catch {
+      // Response is XML — extract items manually
+      console.error('[small-biz] Non-JSON response, trying XML parse')
+      return null
+    }
 
     if (json.header?.resultCode !== '00') {
       console.error(`[small-biz] API error: ${json.header?.resultMsg} (code: ${json.header?.resultCode})`)
       return null
     }
 
-    return json.body?.items ?? []
+    // Filter by industry code in-memory (API doesn't support it as query param)
+    const items = json.body?.items ?? []
+    return items.filter(item => {
+      const field = target.divId as keyof SdscItem
+      return item[field] === target.key
+    })
   } catch (err) {
     console.error('[small-biz] Fetch error:', err)
     return null

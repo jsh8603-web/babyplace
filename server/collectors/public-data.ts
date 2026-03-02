@@ -1,20 +1,21 @@
 /**
- * Public Data Collectors — data.go.kr API integration
+ * Public Data Collectors — data.go.kr 표준데이터 API integration
  *
  * Covers plan.md sections 18-15, 18-6 (public data).
  *
- * Four separate data sources:
- *   1. Children playgrounds (divId=I)
- *   2. City parks (filter by children's parks)
- *   3. Libraries (filter by children's libraries)
- *   4. Museums/galleries (collect all then tag)
+ * Three data sources (playgrounds handled by children-facility collector):
+ *   1. City parks — 전국도시공원정보표준데이터 (15012890)
+ *   2. Libraries — 전국도서관표준데이터 (15013109)
+ *   3. Museums/galleries — 전국박물관미술관정보표준데이터 (15017323)
+ *
+ * API base: http://api.data.go.kr/openapi/{service}
+ * Auth: DATA_GO_KR_API_KEY (shared key)
  *
  * Flow:
- *   - Fetch paginated results from data.go.kr APIs
- *   - Convert coordinates to WGS84 (lng, lat)
+ *   - Fetch paginated results from 표준데이터 APIs
  *   - Filter to Seoul/Gyeonggi service area
  *   - Check for duplicates
- *   - Upsert into places table
+ *   - Insert into places table
  *   - Log results to collection_logs
  */
 
@@ -24,62 +25,41 @@ import { isInServiceRegion } from '../enrichers/region'
 import { getDistrictCode } from '../enrichers/district'
 import { PlaceCategory } from '../../src/types/index'
 
-// API Response Types
+// ─── Standard Data API response format ───────────────────────────────────────
 
-interface DataGoKrResponse<T> {
+interface StandardDataResponse {
   response: {
     header: {
       resultCode: string
       resultMsg: string
-      type: string
+      type?: string
     }
     body: {
-      items: {
-        item: T[]
-      }
-      numOfRows: number
-      pageNo: number
-      totalCount: number
+      items: Record<string, string>[] | { item: Record<string, string>[] }
+      totalCount: string | number
+      pageNo: string | number
+      numOfRows: string | number
     }
   }
 }
 
-interface PlaygroundItem {
-  bizplcNm: string
-  facilityNm: string
-  addr: string
-  lat: string
-  lng: string
-  telNo: string
+/**
+ * Extract items array from response, handling both formats:
+ *   - items: [ ... ]          (표준데이터 format)
+ *   - items: { item: [ ... ]} (legacy format)
+ */
+function extractItems(data: StandardDataResponse): Record<string, string>[] {
+  const items = data?.response?.body?.items
+  if (!items) return []
+  if (Array.isArray(items)) return items
+  if (items && typeof items === 'object' && 'item' in items) {
+    const inner = (items as { item: Record<string, string>[] }).item
+    return Array.isArray(inner) ? inner : []
+  }
+  return []
 }
 
-interface ParkItem {
-  parkNm: string
-  parkAddr: string
-  latitude: string
-  longitude: string
-  facilityDtls?: string
-}
-
-interface LibraryItem {
-  lbrryNm: string
-  lbrryTyNm: string
-  addr: string
-  latitude: string
-  longitude: string
-  telNo?: string
-}
-
-interface MuseumItem {
-  mnmusNm: string
-  addr: string
-  latitude: string
-  longitude: string
-  telNo?: string
-  admssnCharge?: string
-}
-
-// Main export
+// ─── Main export ─────────────────────────────────────────────────────────────
 
 export interface PublicDataResult {
   playgrounds: { fetched: number; new: number; duplicates: number; errors: number }
@@ -157,116 +137,71 @@ export async function runPublicData(): Promise<PublicDataResult> {
   return result
 }
 
-// Data Source 1: Playgrounds
+// ─── Shared fetch helper ─────────────────────────────────────────────────────
 
-interface PlaygroundStats {
-  fetched: number
-  new: number
-  duplicates: number
-  errors: number
-}
+async function fetchStandardPage(
+  apiUrl: string,
+  serviceKey: string,
+  page: number,
+  pageSize: number,
+  label: string
+): Promise<{ items: Record<string, string>[]; totalCount: number } | null> {
+  const params = new URLSearchParams({
+    pageNo: String(page),
+    numOfRows: String(pageSize),
+    type: 'json',
+  })
+  const url = `${apiUrl}?serviceKey=${serviceKey}&${params.toString()}`
 
-async function fetchPlaygrounds(stats: PlaygroundStats): Promise<void> {
-  const serviceKey = process.env.DATA_GO_KR_API_KEY
-  if (!serviceKey) {
-    console.warn('[public-data] DATA_GO_KR_API_KEY not set, skipping playgrounds')
-    stats.errors++
-    return
-  }
-
-  const baseUrl = 'https://apis.data.go.kr/B553077/api/open/sdsc2/storeListInDong'
-  let pageNo = 1
-  const pageSize = 100
-
-  while (true) {
-    try {
-      const url = new URL(baseUrl)
-      url.searchParams.set('serviceKey', serviceKey)
-      url.searchParams.set('pageNo', String(pageNo))
-      url.searchParams.set('numOfRows', String(pageSize))
-      url.searchParams.set('type', 'json')
-      url.searchParams.set('divId', 'I')
-
-      const response = await fetch(url.toString())
-      if (!response.ok) {
-        console.error(`[public-data] Playgrounds HTTP ${response.status}`)
-        stats.errors++
-        break
-      }
-
-      const data = (await response.json()) as DataGoKrResponse<PlaygroundItem>
-      const items = data.response.body.items.item || []
-
-      if (!items || items.length === 0) break
-
-      for (const item of items) {
-        try {
-          const lat = parseFloat(item.lat)
-          const lng = parseFloat(item.lng)
-          const address = item.addr || ''
-
-          if (!isInServiceRegion(lat, lng, address)) continue
-
-          const name = item.bizplcNm || item.facilityNm
-          const dup = await checkDuplicate({
-            kakaoPlaceId: `playground_${item.bizplcNm}_${item.addr}`.replace(/\s+/g, '_'),
-            name,
-            address,
-            lat,
-            lng,
-          })
-
-          if (dup.isDuplicate && dup.existingId) {
-            stats.duplicates++
-            continue
-          }
-
-          const districtCode = await getDistrictCode(lat, lng, address)
-
-          const { error } = await supabaseAdmin.from('places').insert({
-            name,
-            category: '공원/놀이터' as PlaceCategory,
-            sub_category: item.facilityNm || 'Children playground',
-            address,
-            lat,
-            lng,
-            district_code: districtCode,
-            phone: item.telNo || null,
-            source: 'public-data-go.kr',
-            source_id: `playground_${item.bizplcNm}`,
-            is_indoor: false,
-            is_active: true,
-          })
-
-          if (error) {
-            if (error.code === '23505') {
-              stats.duplicates++
-            } else {
-              console.error('[public-data] Playground insert error:', error.message)
-              stats.errors++
-            }
-          } else {
-            stats.new++
-          }
-
-          stats.fetched++
-        } catch (err) {
-          console.error('[public-data] Playground item error:', err)
-          stats.errors++
-        }
-      }
-
-      if (items.length < pageSize) break
-      pageNo++
-    } catch (err) {
-      console.error('[public-data] Playgrounds fetch error:', err)
-      stats.errors++
-      break
+  try {
+    const response = await fetch(url)
+    if (!response.ok) {
+      const body = await response.text().catch(() => '')
+      console.error(`[public-data] ${label} HTTP ${response.status}:`, body.slice(0, 300))
+      return null
     }
+
+    const text = await response.text()
+    let data: StandardDataResponse
+
+    try {
+      data = JSON.parse(text) as StandardDataResponse
+    } catch {
+      console.error(`[public-data] ${label}: non-JSON response:`, text.slice(0, 300))
+      return null
+    }
+
+    if (data?.response?.header?.resultCode !== '00') {
+      console.error(
+        `[public-data] ${label} API error: ${data?.response?.header?.resultMsg} (code: ${data?.response?.header?.resultCode})`
+      )
+      return null
+    }
+
+    const items = extractItems(data)
+
+    // Log first item's keys on first page for debugging field names
+    if (page === 1 && items.length > 0) {
+      console.log(`[public-data] ${label} fields:`, Object.keys(items[0]).join(', '))
+      console.log(`[public-data] ${label} sample:`, JSON.stringify(items[0]).slice(0, 500))
+    }
+
+    const totalCount = parseInt(String(data?.response?.body?.totalCount || '0'), 10)
+    return { items, totalCount }
+  } catch (err) {
+    console.error(`[public-data] ${label} fetch error:`, err)
+    return null
   }
 }
 
-// Data Source 2: Parks
+// ─── Data Source 1: Parks (전국도시공원정보표준데이터) ────────────────────────
+
+// Confirmed fields from data.go.kr docs (15012890):
+// MANAGE_NO, PARK_NM, PARK_SE, RDNMADR, LNMADR, LATITUDE, LONGITUDE,
+// PARK_AR, MVM_FCLTY, AMSMT_FCLTY, CNVNNC_FCLTY, CLTR_FCLTY, ETC_FCLTY,
+// APPN_NTFC_DATE, INSTITUTION_NM, PHONE_NUMBER, REFERENCE_DATE
+
+const PARKS_API = 'http://api.data.go.kr/openapi/tn_pubr_public_cty_park_info_api'
 
 interface ParkStats {
   fetched: number
@@ -283,51 +218,34 @@ async function fetchParks(stats: ParkStats): Promise<void> {
     return
   }
 
-  const baseUrl = 'https://apis.data.go.kr/B553881/CityParkInfoService/cityParkList'
   let pageNo = 1
-  const pageSize = 100
+  const pageSize = 1000
 
   while (true) {
     try {
-      // Build URL with raw serviceKey to avoid double-encoding
-      const params = new URLSearchParams({
-        pageNo: String(pageNo),
-        numOfRows: String(pageSize),
-        type: 'json',
-      })
-      const url = `${baseUrl}?serviceKey=${serviceKey}&${params.toString()}`
+      const result = await fetchStandardPage(PARKS_API, serviceKey, pageNo, pageSize, 'Parks')
+      if (!result || result.items.length === 0) break
 
-      const response = await fetch(url)
-      if (!response.ok) {
-        const body = await response.text().catch(() => '')
-        console.error(`[public-data] Parks HTTP ${response.status}:`, body.slice(0, 300))
-        stats.errors++
-        break
-      }
-
-      const data = (await response.json()) as DataGoKrResponse<ParkItem>
-      if (!data?.response?.body?.items) {
-        console.error('[public-data] Parks: unexpected response structure:', JSON.stringify(data).slice(0, 300))
-        stats.errors++
-        break
-      }
-      const items = data.response.body.items.item || []
-
-      if (!items || items.length === 0) break
-
-      for (const item of items) {
+      for (const item of result.items) {
         try {
-          if (!item.parkNm || !item.parkNm.includes('어린이')) continue
+          const name = item.PARK_NM || item.parkNm || ''
+          if (!name) continue
 
-          const lat = parseFloat(item.latitude)
-          const lng = parseFloat(item.longitude)
-          const address = item.parkAddr || ''
+          // Filter: only children's parks (어린이공원)
+          const parkType = item.PARK_SE || item.parkSe || ''
+          if (!name.includes('어린이') && !parkType.includes('어린이')) continue
 
+          const lat = parseFloat(item.LATITUDE || item.latitude || '')
+          const lng = parseFloat(item.LONGITUDE || item.longitude || '')
+          const address = item.RDNMADR || item.LNMADR || item.rdnmadr || item.lnmadr || ''
+
+          if (isNaN(lat) || isNaN(lng) || !lat || !lng) continue
           if (!isInServiceRegion(lat, lng, address)) continue
 
+          const sourceId = item.MANAGE_NO || `park_${name}`.replace(/\s+/g, '_')
           const dup = await checkDuplicate({
-            kakaoPlaceId: `park_${item.parkNm}`.replace(/\s+/g, '_'),
-            name: item.parkNm,
+            kakaoPlaceId: `park_${sourceId}`,
+            name,
             address,
             lat,
             lng,
@@ -341,15 +259,17 @@ async function fetchParks(stats: ParkStats): Promise<void> {
           const districtCode = await getDistrictCode(lat, lng, address)
 
           const { error } = await supabaseAdmin.from('places').insert({
-            name: item.parkNm,
+            name,
             category: '공원/놀이터' as PlaceCategory,
-            sub_category: 'City park',
+            sub_category: parkType || '어린이공원',
             address,
+            road_address: item.RDNMADR || item.rdnmadr || null,
             lat,
             lng,
             district_code: districtCode,
+            phone: item.PHONE_NUMBER || item.phoneNumber || null,
             source: 'public-data-go.kr',
-            source_id: `park_${item.parkNm}`,
+            source_id: sourceId,
             is_indoor: false,
             is_active: true,
           })
@@ -372,7 +292,7 @@ async function fetchParks(stats: ParkStats): Promise<void> {
         }
       }
 
-      if (items.length < pageSize) break
+      if (result.items.length < pageSize) break
       pageNo++
     } catch (err) {
       console.error('[public-data] Parks fetch error:', err)
@@ -382,7 +302,18 @@ async function fetchParks(stats: ParkStats): Promise<void> {
   }
 }
 
-// Data Source 3: Libraries
+// ─── Data Source 2: Libraries (전국도서관표준데이터) ──────────────────────────
+
+// Expected fields (15013109):
+// LBRRY_NM, CTPRVN_NM, SIGNGU_NM, LBRRY_SE_NM, CLOSE_DAY,
+// WEEKDAY_OPER_OPEN_HHMM, WEEKDAY_OPER_CLOSE_HHMM,
+// SAT_OPER_OPEN_HHMM, SAT_OPER_CLOSE_HHMM,
+// HOLIDAY_OPER_OPEN_HHMM, HOLIDAY_OPER_CLOSE_HHMM,
+// SEAT_CO, BOOK_CO, PBLICTN_CO, NONBOOK_CO, LON_CO, LONDAY_CNT,
+// RDNMADR, LNMADR, LATITUDE, LONGITUDE,
+// HOMEPG_URL, TEL_NO, INSTITUTION_NM, REFERENCE_DATE
+
+const LIBRARIES_API = 'http://api.data.go.kr/openapi/tn_pubr_public_lbrry_api'
 
 interface LibraryStats {
   fetched: number
@@ -399,50 +330,34 @@ async function fetchLibraries(stats: LibraryStats): Promise<void> {
     return
   }
 
-  const baseUrl = 'https://apis.data.go.kr/B553881/LibraryInfoService/libraryListOpenApi'
   let pageNo = 1
-  const pageSize = 100
+  const pageSize = 1000
 
   while (true) {
     try {
-      const params = new URLSearchParams({
-        pageNo: String(pageNo),
-        numOfRows: String(pageSize),
-        type: 'json',
-      })
-      const url = `${baseUrl}?serviceKey=${serviceKey}&${params.toString()}`
+      const result = await fetchStandardPage(LIBRARIES_API, serviceKey, pageNo, pageSize, 'Libraries')
+      if (!result || result.items.length === 0) break
 
-      const response = await fetch(url)
-      if (!response.ok) {
-        const body = await response.text().catch(() => '')
-        console.error(`[public-data] Libraries HTTP ${response.status}:`, body.slice(0, 300))
-        stats.errors++
-        break
-      }
-
-      const data = (await response.json()) as DataGoKrResponse<LibraryItem>
-      if (!data?.response?.body?.items) {
-        console.error('[public-data] Libraries: unexpected response structure:', JSON.stringify(data).slice(0, 300))
-        stats.errors++
-        break
-      }
-      const items = data.response.body.items.item || []
-
-      if (!items || items.length === 0) break
-
-      for (const item of items) {
+      for (const item of result.items) {
         try {
-          if (!item.lbrryTyNm || !item.lbrryTyNm.includes('어린이')) continue
+          const name = item.LBRRY_NM || item.lbrryNm || ''
+          if (!name) continue
 
-          const lat = parseFloat(item.latitude)
-          const lng = parseFloat(item.longitude)
-          const address = item.addr || ''
+          // Filter: only children's libraries (어린이도서관)
+          const libraryType = item.LBRRY_SE_NM || item.lbrrySeNm || item.lbrryTyNm || ''
+          if (!name.includes('어린이') && !libraryType.includes('어린이')) continue
 
+          const lat = parseFloat(item.LATITUDE || item.latitude || '')
+          const lng = parseFloat(item.LONGITUDE || item.longitude || '')
+          const address = item.RDNMADR || item.LNMADR || item.rdnmadr || item.lnmadr || item.addr || ''
+
+          if (isNaN(lat) || isNaN(lng) || !lat || !lng) continue
           if (!isInServiceRegion(lat, lng, address)) continue
 
+          const sourceId = `library_${name}`.replace(/\s+/g, '_')
           const dup = await checkDuplicate({
-            kakaoPlaceId: `library_${item.lbrryNm}`.replace(/\s+/g, '_'),
-            name: item.lbrryNm,
+            kakaoPlaceId: sourceId,
+            name,
             address,
             lat,
             lng,
@@ -456,16 +371,17 @@ async function fetchLibraries(stats: LibraryStats): Promise<void> {
           const districtCode = await getDistrictCode(lat, lng, address)
 
           const { error } = await supabaseAdmin.from('places').insert({
-            name: item.lbrryNm,
+            name,
             category: '도서관' as PlaceCategory,
-            sub_category: item.lbrryTyNm || 'Children library',
+            sub_category: libraryType || '어린이도서관',
             address,
+            road_address: item.RDNMADR || item.rdnmadr || null,
             lat,
             lng,
             district_code: districtCode,
-            phone: item.telNo || null,
+            phone: item.TEL_NO || item.telNo || null,
             source: 'public-data-go.kr',
-            source_id: `library_${item.lbrryNm}`,
+            source_id: sourceId,
             is_indoor: true,
             is_active: true,
           })
@@ -488,7 +404,7 @@ async function fetchLibraries(stats: LibraryStats): Promise<void> {
         }
       }
 
-      if (items.length < pageSize) break
+      if (result.items.length < pageSize) break
       pageNo++
     } catch (err) {
       console.error('[public-data] Libraries fetch error:', err)
@@ -498,7 +414,15 @@ async function fetchLibraries(stats: LibraryStats): Promise<void> {
   }
 }
 
-// Data Source 4: Museums
+// ─── Data Source 3: Museums (전국박물관미술관정보표준데이터) ───────────────────
+
+// Expected fields (15017323):
+// FCLTY_NM, CTPRVN_NM, SIGNGU_NM, FCLTY_SE_NM (박물관/미술관),
+// RDNMADR, LNMADR, LATITUDE, LONGITUDE,
+// OPER_INSTT_TELNO, OPER_INSTT_NM, HOMEPG_URL,
+// ENTRC_FEE, REST_DAY, REFERENCE_DATE
+
+const MUSEUMS_API = 'http://api.data.go.kr/openapi/tn_pubr_public_museum_artgr_info_api'
 
 interface MuseumStats {
   fetched: number
@@ -515,48 +439,30 @@ async function fetchMuseums(stats: MuseumStats): Promise<void> {
     return
   }
 
-  const baseUrl = 'https://apis.data.go.kr/B553881/MuseumInfoService/museumListOpenApi'
   let pageNo = 1
-  const pageSize = 100
+  const pageSize = 1000
 
   while (true) {
     try {
-      const params = new URLSearchParams({
-        pageNo: String(pageNo),
-        numOfRows: String(pageSize),
-        type: 'json',
-      })
-      const url = `${baseUrl}?serviceKey=${serviceKey}&${params.toString()}`
+      const result = await fetchStandardPage(MUSEUMS_API, serviceKey, pageNo, pageSize, 'Museums')
+      if (!result || result.items.length === 0) break
 
-      const response = await fetch(url)
-      if (!response.ok) {
-        const body = await response.text().catch(() => '')
-        console.error(`[public-data] Museums HTTP ${response.status}:`, body.slice(0, 300))
-        stats.errors++
-        break
-      }
-
-      const data = (await response.json()) as DataGoKrResponse<MuseumItem>
-      if (!data?.response?.body?.items) {
-        console.error('[public-data] Museums: unexpected response structure:', JSON.stringify(data).slice(0, 300))
-        stats.errors++
-        break
-      }
-      const items = data.response.body.items.item || []
-
-      if (!items || items.length === 0) break
-
-      for (const item of items) {
+      for (const item of result.items) {
         try {
-          const lat = parseFloat(item.latitude)
-          const lng = parseFloat(item.longitude)
-          const address = item.addr || ''
+          const name = item.FCLTY_NM || item.fcltyNm || item.mnmusNm || ''
+          if (!name) continue
 
+          const lat = parseFloat(item.LATITUDE || item.latitude || '')
+          const lng = parseFloat(item.LONGITUDE || item.longitude || '')
+          const address = item.RDNMADR || item.LNMADR || item.rdnmadr || item.lnmadr || item.addr || ''
+
+          if (isNaN(lat) || isNaN(lng) || !lat || !lng) continue
           if (!isInServiceRegion(lat, lng, address)) continue
 
+          const sourceId = `museum_${name}`.replace(/\s+/g, '_')
           const dup = await checkDuplicate({
-            kakaoPlaceId: `museum_${item.mnmusNm}`.replace(/\s+/g, '_'),
-            name: item.mnmusNm,
+            kakaoPlaceId: sourceId,
+            name,
             address,
             lat,
             lng,
@@ -568,19 +474,23 @@ async function fetchMuseums(stats: MuseumStats): Promise<void> {
           }
 
           const districtCode = await getDistrictCode(lat, lng, address)
+          const facilityType = item.FCLTY_SE_NM || item.fcltySeNm || ''
           const category = '전시/체험' as PlaceCategory
 
           const { error } = await supabaseAdmin.from('places').insert({
-            name: item.mnmusNm,
+            name,
             category,
-            sub_category: item.mnmusNm.includes('미술관') ? 'Art gallery' : 'Museum',
+            sub_category: facilityType.includes('미술관') || name.includes('미술관')
+              ? '미술관'
+              : '박물관',
             address,
+            road_address: item.RDNMADR || item.rdnmadr || null,
             lat,
             lng,
             district_code: districtCode,
-            phone: item.telNo || null,
+            phone: item.OPER_INSTT_TELNO || item.operInsttTelno || item.telNo || null,
             source: 'public-data-go.kr',
-            source_id: `museum_${item.mnmusNm}`,
+            source_id: sourceId,
             is_indoor: true,
             is_active: true,
           })
@@ -603,7 +513,7 @@ async function fetchMuseums(stats: MuseumStats): Promise<void> {
         }
       }
 
-      if (items.length < pageSize) break
+      if (result.items.length < pageSize) break
       pageNo++
     } catch (err) {
       console.error('[public-data] Museums fetch error:', err)

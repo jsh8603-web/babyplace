@@ -67,6 +67,12 @@ export async function runSeasonalTransition(): Promise<{
       `[seasonal-calendar] Seasonal transition check: current=${currentMonth}, next=${nextMonth}`
     )
 
+    // --- Phase 0: Seed default seasonal keywords if not already present ---
+    const seedResult = await initializeDefaultSeasonalKeywords()
+    if (seedResult.inserted > 0) {
+      console.log(`[seasonal-calendar] Seeded ${seedResult.inserted} new seasonal keywords`)
+    }
+
     // --- Phase 1: Activate keywords for upcoming season (1 month early) ---
     console.log('[seasonal-calendar] Phase 1: Activate upcoming season keywords...')
     const upcomingSeasonKeywords = await getSeasonalKeywordsForMonth(nextMonth)
