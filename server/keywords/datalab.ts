@@ -58,6 +58,8 @@ const PARENT_TREND_KEYWORDS = [
   '유모차',
   '아기 외식',
   '키즈 식당',
+  '돌잔치 식당',
+  '아기 한정식',
 ]
 
 
@@ -294,6 +296,8 @@ const DISCOVERY_QUERIES = [
   '아기랑 식당 추천',
   '키즈존 맛집 후기',
   '유아 외식 브런치',
+  '돌잔치 레스토랑 추천',
+  '아기 돈까스 맛집 서울',
 ]
 
 const DISCOVERY_STOP_WORDS = new Set([
