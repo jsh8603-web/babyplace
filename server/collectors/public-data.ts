@@ -84,6 +84,14 @@ export async function runPublicData(): Promise<PublicDataResult> {
     totalErrors: 0,
   }
 
+  // Run Tue/Fri only — data changes slowly, saves ~71% API calls
+  const dayOfWeek = new Date().getUTCDay() // 0=Sun, ..., 2=Tue, 5=Fri
+  const isCollectionDay = dayOfWeek === 2 || dayOfWeek === 5
+  if (!isCollectionDay && process.argv[2] !== 'manual') {
+    console.log(`[public-data] Skipping — runs Tue/Fri only (today: ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dayOfWeek]})`)
+    return result
+  }
+
   const startedAt = Date.now()
 
   try {
@@ -231,9 +239,10 @@ async function fetchParks(stats: ParkStats): Promise<void> {
           const name = item.PARK_NM || item.parkNm || ''
           if (!name) continue
 
-          // Filter: only children's parks (어린이공원)
+          // Filter: children's parks (어린이/유아/키즈/꿈나무 등)
           const parkType = item.PARK_SE || item.parkSe || ''
-          if (!name.includes('어린이') && !parkType.includes('어린이')) continue
+          const parkChildFilter = /어린이|유아|아이숲|아이들|키즈|꿈나무/
+          if (!parkChildFilter.test(name) && !parkChildFilter.test(parkType)) continue
 
           const lat = parseFloat(item.LATITUDE || item.latitude || '')
           const lng = parseFloat(item.LONGITUDE || item.longitude || '')
@@ -343,9 +352,10 @@ async function fetchLibraries(stats: LibraryStats): Promise<void> {
           const name = item.LBRRY_NM || item.lbrryNm || ''
           if (!name) continue
 
-          // Filter: only children's libraries (어린이도서관)
+          // Filter: children's libraries (어린이/유아/영유아/키즈/꿈나무/그림책 등)
           const libraryType = item.LBRRY_SE_NM || item.lbrrySeNm || item.lbrryTyNm || ''
-          if (!name.includes('어린이') && !libraryType.includes('어린이')) continue
+          const libChildFilter = /어린이|유아|영유아|아기|키즈|꿈나무|그림책/
+          if (!libChildFilter.test(name) && !libChildFilter.test(libraryType)) continue
 
           const lat = parseFloat(item.LATITUDE || item.latitude || '')
           const lng = parseFloat(item.LONGITUDE || item.longitude || '')

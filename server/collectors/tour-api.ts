@@ -120,6 +120,7 @@ const CONTENT_TYPES: ContentTypeConfig[] = [
   { id: 14, label: '문화시설', storeTo: 'places', babyCategory: '전시/체험', isIndoor: true },
   { id: 12, label: '관광지', storeTo: 'places', babyCategory: '동물/자연', isIndoor: false },
   { id: 28, label: '레포츠', storeTo: 'places', babyCategory: '수영/물놀이', isIndoor: null },
+  { id: 39, label: '음식점', storeTo: 'places', babyCategory: '식당/카페', isIndoor: true },
   { id: 15, label: '축제/행사', storeTo: 'events', babyCategory: '문화행사', isIndoor: null },
 ]
 
@@ -204,6 +205,9 @@ async function fetchAndProcess(
   result: TourAPICollectorResult
 ): Promise<void> {
   let pageNo = 1
+  let fetchedTotal = 0
+  let skippedTotal = 0
+  let processedTotal = 0
 
   while (true) {
     const resp = await fetchListPage(ct.id, areaCode, pageNo)
@@ -212,6 +216,10 @@ async function fetchAndProcess(
 
     const items = Array.isArray(body.items.item) ? body.items.item : [body.items.item]
     result.totalFetched += items.length
+    fetchedTotal += items.length
+
+    const prevNew = result.newPlaces + result.newEvents
+    const prevDup = result.duplicates
 
     for (const item of items) {
       try {
@@ -226,10 +234,18 @@ async function fetchAndProcess(
       }
     }
 
+    const newAfter = result.newPlaces + result.newEvents
+    const dupAfter = result.duplicates
+    const pageProcessed = (newAfter - prevNew) + (dupAfter - prevDup)
+    processedTotal += pageProcessed
+    skippedTotal += items.length - pageProcessed
+
     const totalCount = body.totalCount || 0
     if (pageNo * PAGE_SIZE >= totalCount) break
     pageNo++
   }
+
+  console.log(`[tour-api] ${ct.label} area=${areaCode}: fetched=${fetchedTotal}, skipped=${skippedTotal}, processed=${processedTotal}`)
 }
 
 async function fetchListPage(
@@ -274,7 +290,7 @@ async function processAsPlace(
   if (!item.contentid) return
 
   // Skip non-baby-relevant landmarks (palaces, temples, historical sites, etc.)
-  if (shouldSkipPlace(item.title || '', item.cat1, item.cat2, item.cat3)) return
+  if (shouldSkipPlace(item.title || '', item.contenttypeid, item.cat3)) return
 
   // Coordinates are WGS84 decimal (no division needed)
   const lat = item.mapy || null
@@ -294,9 +310,16 @@ async function processAsPlace(
 
   if (dup.isDuplicate && dup.existingId) {
     result.duplicates++
-    // Enrich existing place with tour data if not already enriched
-    await enrichWithIntro(item.contentid, item.contenttypeid, dup.existingId)
-    result.enriched++
+    // Enrich existing place with tour data only if not already enriched (tags is null)
+    const { data: existing } = await supabaseAdmin
+      .from('places')
+      .select('tags')
+      .eq('id', dup.existingId)
+      .maybeSingle()
+    if (!existing?.tags) {
+      await enrichWithIntro(item.contentid, item.contenttypeid, dup.existingId)
+      result.enriched++
+    }
     return
   }
 
@@ -307,7 +330,11 @@ async function processAsPlace(
 
   // Store human-readable sub_category instead of raw cat3 code
   const whitelisted = item.cat3 ? BABY_RELEVANT_CAT3.get(item.cat3) : undefined
-  const subCategory = whitelisted?.name || item.cat3 || item.cat2 || ct.label
+  const subCategory = whitelisted?.name
+    || (ct.id === 14 ? guessCultureSubCategory(item.title || '', item.cat3)
+      : ct.id === 28 ? guessLeportsSubCategory(item.title || '')
+      : ct.id === 39 ? guessRestaurantSubCategory(item.title || '')
+      : item.cat3 || ct.label)
 
   const { error } = await supabaseAdmin.from('places').insert({
     name: item.title,
@@ -482,10 +509,7 @@ async function fetchIntro(
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 /**
- * WHITELIST of baby-relevant Tour API cat3 codes.
- * Only places matching these codes are collected.
- * This replaces the previous blacklist approach which couldn't catch all
- * non-baby landmarks (palaces, temples, monuments, hiking trails, etc.).
+ * WHITELIST of baby-relevant Tour API cat3 codes (primarily for type 12 관광지).
  */
 const BABY_RELEVANT_CAT3 = new Map<string, { name: string; category: PlaceCategory }>([
   // A0206 문화시설
@@ -496,6 +520,8 @@ const BABY_RELEVANT_CAT3 = new Map<string, { name: string; category: PlaceCatego
   ['A02060900', { name: '도서관', category: '도서관' }],
   // A0203 체험관광
   ['A02030100', { name: '체험마을', category: '전시/체험' }],
+  ['A02030200', { name: '농어촌체험', category: '전시/체험' }],
+  ['A02030300', { name: '전통체험', category: '전시/체험' }],
   ['A02030400', { name: '이색체험', category: '놀이' }],
   // A0101 자연관광지
   ['A01010500', { name: '생태관광지', category: '동물/자연' }],
@@ -504,14 +530,88 @@ const BABY_RELEVANT_CAT3 = new Map<string, { name: string; category: PlaceCatego
   ['A02020600', { name: '테마공원', category: '놀이' }],
 ])
 
+// Common blacklist — historical landmarks, adult-only, pet facilities (kakao-category.ts pattern)
+const TOUR_BLACKLIST = /궁$|궁궐|사찰|사당|서원$|향교|왕릉|묘소|성곽|유적|기념탑|사적|종묘|반려견|애견|카지노|나이트클럽|성인/
+
+// Type 28 (레포츠) whitelist — only baby/family-relevant leisure passes
+const LEPORTS_WHITELIST = /수영|워터파크|물놀이|스케이트|아이스링크|썰매|캠핑|글램핑|어린이|키즈|유아|아기|가족|체험|자전거.*공원|인라인|트램폴린|짚라인.*키즈|놀이/
+
+// Type 39 (음식점) whitelist — only kids/family-friendly restaurants pass
+const RESTAURANT_WHITELIST = /키즈|어린이|유아|패밀리|아이|아기|베이비|kids|baby|놀이방|키즈존|이유식/
+
+// Type 12 (관광지) title rescue — when cat3 doesn't match whitelist
+const TITLE_RESCUE = /동물|아쿠아|수족|농장|목장|체험|키즈|어린이|유아|놀이|박물관|미술관|과학관|생태|수목원|식물원|플레이|교육관|학습원/
+
 /**
  * Skip non-baby-relevant places from Tour API.
- * Uses a WHITELIST: if cat3 is available, only allow whitelisted codes.
- * Content type 14 (문화시설) and 28 (레포츠) pass through to mapToCategory.
+ * Branching by contenttypeid:
+ *   - Common blacklist for all types
+ *   - Type 14 (문화시설): default INCLUDE, cat3 blacklist only
+ *   - Type 28 (레포츠): default EXCLUDE, title whitelist only
+ *   - Type 12 (관광지): cat3 whitelist + title rescue
  */
-function shouldSkipPlace(_title: string, _cat1?: string, _cat2?: string, cat3?: string): boolean {
-  if (cat3 && !BABY_RELEVANT_CAT3.has(cat3)) return true
-  return false
+function shouldSkipPlace(title: string, contenttypeid?: number, cat3?: string): boolean {
+  // 1) Common blacklist (all types)
+  if (TOUR_BLACKLIST.test(title)) return true
+
+  // 2) Type 14 (문화시설): default include, only blacklist specific cat3
+  if (contenttypeid === 14) {
+    if (cat3 === 'A02060200') return true   // 기념관 (전쟁/역사)
+    if (cat3 === 'A02060400') return true   // 컨벤션센터
+    if (cat3 === 'A02060800') return true   // 외국문화원
+    return false
+  }
+
+  // 3) Type 28 (레포츠): default exclude, only whitelist passes
+  if (contenttypeid === 28) {
+    if (LEPORTS_WHITELIST.test(title)) return false
+    return true
+  }
+
+  // 4) Type 39 (음식점): default exclude, only kids/family whitelist passes
+  if (contenttypeid === 39) {
+    if (RESTAURANT_WHITELIST.test(title)) return false
+    return true
+  }
+
+  // 4) Type 12 (관광지): cat3 whitelist + title rescue
+  if (cat3 && BABY_RELEVANT_CAT3.has(cat3)) return false
+  if (TITLE_RESCUE.test(title)) return false
+  return true
+}
+
+/** Guess sub_category for type 14 (문화시설) from title */
+function guessCultureSubCategory(title: string, cat3?: string): string {
+  if (/박물관/.test(title)) return '박물관'
+  if (/미술관/.test(title)) return '미술관'
+  if (/도서관/.test(title)) return '도서관'
+  if (/전시/.test(title)) return '전시관'
+  if (/공연|극장|아트홀/.test(title)) return '공연장'
+  if (/과학관/.test(title)) return '과학관'
+  if (/체험/.test(title)) return '체험관'
+  return cat3 || '문화시설'
+}
+
+/** Guess sub_category for type 39 (음식점) from title */
+function guessRestaurantSubCategory(title: string): string {
+  if (/키즈존|키즈카페/.test(title)) return '키즈존식당'
+  if (/패밀리|가족/.test(title)) return '패밀리레스토랑'
+  if (/이유식/.test(title)) return '이유식카페'
+  if (/놀이방/.test(title)) return '놀이방식당'
+  if (/뷔페/.test(title)) return '키즈뷔페'
+  return '키즈식당'
+}
+
+/** Guess sub_category for type 28 (레포츠) from title */
+function guessLeportsSubCategory(title: string): string {
+  if (/수영|풀/.test(title)) return '수영장'
+  if (/워터파크|물놀이/.test(title)) return '워터파크'
+  if (/캠핑|글램핑/.test(title)) return '캠핑장'
+  if (/스케이트|아이스/.test(title)) return '스케이트장'
+  if (/썰매/.test(title)) return '썰매장'
+  if (/트램폴린/.test(title)) return '트램폴린'
+  if (/자전거/.test(title)) return '자전거공원'
+  return '레포츠'
 }
 
 function mapToCategory(
@@ -529,6 +629,7 @@ function mapToCategory(
     return '전시/체험'
   }
   if (contentTypeId === 28) return '수영/물놀이'
+  if (contentTypeId === 39) return '식당/카페'
   if (contentTypeId === 12) {
     if (cat1 === 'A03') return '수영/물놀이'
     if (title && /동물|아쿠아|수족|농장|목장/.test(title)) return '동물/자연'

@@ -58,6 +58,39 @@ export interface SeoulEventsCollectorResult {
 }
 
 /**
+ * Pre-fetch known Seoul event source_ids from DB to skip LLM classification.
+ * Reuses the children-facility.ts prefetch pattern.
+ */
+async function prefetchKnownSourceIds(): Promise<Set<string>> {
+  const ids = new Set<string>()
+  let offset = 0
+  const batchSize = 1000
+
+  while (true) {
+    const { data, error } = await supabaseAdmin
+      .from('events')
+      .select('source_id')
+      .eq('source', 'seoul_events')
+      .range(offset, offset + batchSize - 1)
+
+    if (error) {
+      console.error('[seoul-events] Prefetch error:', error.message)
+      break
+    }
+    if (!data || data.length === 0) break
+
+    for (const row of data) {
+      if (row.source_id) ids.add(row.source_id)
+    }
+
+    if (data.length < batchSize) break
+    offset += batchSize
+  }
+
+  return ids
+}
+
+/**
  * Run Seoul Events collector.
  */
 export async function runSeoulEventsCollector(): Promise<SeoulEventsCollectorResult> {
@@ -80,12 +113,34 @@ export async function runSeoulEventsCollector(): Promise<SeoulEventsCollectorRes
 
     console.log('[seoul-events] Fetching cultural events from Seoul API')
 
+    // Pre-fetch known source_ids to skip LLM for events already in DB
+    const knownSourceIds = await prefetchKnownSourceIds()
+    console.log(`[seoul-events] Pre-fetched ${knownSourceIds.size} known source_ids`)
+
     const allEvents = await fetchAllSeoulEvents()
     result.totalFetched = allEvents.length
     console.log(`[seoul-events] Fetched ${allEvents.length} events`)
 
+    // Step 0: Filter out past events (END_DATE < today) to avoid wasting LLM calls
+    const today = new Date().toISOString().split('T')[0]
+    const currentEvents = allEvents.filter((e) => {
+      const endDate = parseSeoulDateTime(e.END_DATE)
+      if (endDate && endDate < today) return false
+      return true
+    })
+    const pastExcluded = allEvents.length - currentEvents.length
+    console.log(`[seoul-events] Step 0 date filter: ${pastExcluded} past events excluded, ${currentEvents.length} current/future`)
+
+    // Step 0.5: Skip events already in DB (avoid LLM calls for known events)
+    const unknownEvents = currentEvents.filter((e) => {
+      const sourceId = extractCultCode(e.HMPG_ADDR) || `${e.TITLE}_${e.DATE}`
+      return !knownSourceIds.has(sourceId)
+    })
+    const knownSkipped = currentEvents.length - unknownEvents.length
+    console.log(`[seoul-events] Step 0.5 known filter: ${knownSkipped} already in DB, ${unknownEvents.length} to classify`)
+
     // Step 1: Blacklist filter (immediate exclude)
-    const afterBlacklist = allEvents.filter((e) => {
+    const afterBlacklist = unknownEvents.filter((e) => {
       if (isBlacklisted(e.USE_TRGT, e.TITLE)) {
         result.filtered++
         return false

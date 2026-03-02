@@ -132,6 +132,21 @@ export interface ChildrenFacilityResult {
 }
 
 export async function runChildrenFacility(): Promise<ChildrenFacilityResult> {
+  // Run Mon/Thu only — data changes slowly, saves API calls
+  const dayOfWeek = new Date().getUTCDay() // 0=Sun, 1=Mon, ..., 4=Thu
+  const isCollectionDay = dayOfWeek === 1 || dayOfWeek === 4
+  if (!isCollectionDay && process.argv[2] !== 'manual') {
+    console.log(`[children-facility] Skipping — runs Mon/Thu only (today: ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dayOfWeek]})`)
+    return {
+      totalFetched: 0,
+      newPlaces: 0,
+      duplicates: 0,
+      skippedOutOfArea: 0,
+      skippedClosed: 0,
+      errors: 0,
+    }
+  }
+
   const apiKey = process.env.DATA_GO_KR_API_KEY
   if (!apiKey) {
     console.warn('[children-facility] DATA_GO_KR_API_KEY not set, skipping')

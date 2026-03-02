@@ -148,6 +148,21 @@ export interface LocalDataResult {
 }
 
 export async function runLocalData(): Promise<LocalDataResult> {
+  // Run Wed/Sat only — data changes slowly, saves API calls
+  const dayOfWeek = new Date().getUTCDay() // 0=Sun, ..., 3=Wed, 6=Sat
+  const isCollectionDay = dayOfWeek === 3 || dayOfWeek === 6
+  if (!isCollectionDay && process.argv[2] !== 'manual') {
+    console.log(`[small-biz] Skipping — runs Wed/Sat only (today: ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dayOfWeek]})`)
+    return {
+      totalFetched: 0,
+      newPlaces: 0,
+      duplicates: 0,
+      skippedOutOfArea: 0,
+      skippedByNameFilter: 0,
+      errors: 0,
+    }
+  }
+
   const apiKey = process.env.DATA_GO_KR_API_KEY
   if (!apiKey) {
     console.warn('[small-biz] DATA_GO_KR_API_KEY not set, skipping')

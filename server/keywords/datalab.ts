@@ -15,7 +15,8 @@
  */
 
 import { supabaseAdmin } from '../lib/supabase-admin'
-import { dataLabLimiter } from '../rate-limiter'
+import { dataLabLimiter, naverLimiter } from '../rate-limiter'
+import { fetchNaverSearch, stripHtml } from '../collectors/naver-blog'
 
 /**
  * Naver DataLab API response type.
@@ -65,9 +66,10 @@ const PARENT_TREND_KEYWORDS = [
 export async function runDataLabTrendDetection(): Promise<{
   newKeywordsInserted: number
   trendDataProcessed: number
+  discoveryInserted: number
   errors: number
 }> {
-  const result = { newKeywordsInserted: 0, trendDataProcessed: 0, errors: 0 }
+  const result = { newKeywordsInserted: 0, trendDataProcessed: 0, discoveryInserted: 0, errors: 0 }
 
   try {
     console.log('[datalab] Starting monthly trend detection...')
@@ -93,8 +95,11 @@ export async function runDataLabTrendDetection(): Promise<{
       }
     }
 
+    // Discovery Queries: broad blog search for novel keywords
+    result.discoveryInserted = await runDiscoveryQueries()
+
     console.log(
-      `[datalab] Trend detection complete: ${result.newKeywordsInserted} new keywords inserted`
+      `[datalab] Trend detection complete: ${result.newKeywordsInserted} trend keywords, ${result.discoveryInserted} discovery keywords`
     )
 
     return result
@@ -274,4 +279,107 @@ export async function getDataLabDailyRemaining(): Promise<number> {
 export async function getDataLabDailyCount(): Promise<number> {
   const remaining = await getDataLabDailyRemaining()
   return 1_000 - remaining
+}
+
+// ─── Discovery Queries — broad blog search for novel keywords ───────────────
+
+const DISCOVERY_QUERIES = [
+  '아기랑 갈만한곳 추천',
+  '영유아 나들이 추천',
+  '아이랑 주말 서울',
+  '육아맘 추천 장소',
+  '아기 체험 추천',
+]
+
+const DISCOVERY_STOP_WORDS = new Set([
+  '추천', '후기', '방문', '리뷰', '블로그', '서울', '경기', '인천',
+  '아기', '아이', '유아', '영유아', '어린이', '키즈', '육아',
+  '엄마', '아빠', '맘', '베이비', '가족', '나들이', '주말',
+  '좋은', '최고', '진짜', '우리', '오늘', '사진', '장소',
+  '갈만한곳', '데려', '함께', '같이', '대박', '완전',
+])
+
+const BABY_ANCHOR_WORDS = ['아기', '유아', '키즈', '어린이', '영유아', '베이비']
+
+interface NaverBlogItem {
+  title: string
+  description: string
+  link: string
+}
+
+/**
+ * Search broad parenting queries on Naver Blog, extract novel place-type tokens,
+ * and insert as NEW keywords. Max 10/month to avoid spam.
+ */
+async function runDiscoveryQueries(): Promise<number> {
+  const NAVER_BLOG_URL = 'https://openapi.naver.com/v1/search/blog.json'
+  let inserted = 0
+  const tokenFreq = new Map<string, number>()
+
+  for (const query of DISCOVERY_QUERIES) {
+    try {
+      const encoded = encodeURIComponent(query)
+      const url = `${NAVER_BLOG_URL}?query=${encoded}&display=30&sort=sim`
+      const items = await fetchNaverSearch<NaverBlogItem>(url)
+      if (!items) continue
+
+      for (const item of items) {
+        const text = stripHtml(`${item.title} ${item.description}`)
+        const tokens = text.match(/[가-힣]{2,5}/g) ?? []
+        for (const token of tokens) {
+          if (DISCOVERY_STOP_WORDS.has(token)) continue
+          tokenFreq.set(token, (tokenFreq.get(token) ?? 0) + 1)
+        }
+      }
+    } catch (err) {
+      console.error(`[datalab] Discovery query error "${query}":`, err)
+    }
+  }
+
+  // Filter: freq >= 2 AND related to baby keywords
+  const candidates: string[] = []
+  for (const [token, freq] of tokenFreq) {
+    if (freq < 2) continue
+    // Must co-occur with baby anchor context (token itself is the novel part)
+    if (BABY_ANCHOR_WORDS.includes(token)) continue
+    candidates.push(token)
+  }
+
+  // Sort by frequency descending, take top candidates
+  candidates.sort((a, b) => (tokenFreq.get(b) ?? 0) - (tokenFreq.get(a) ?? 0))
+
+  // Check existing keywords to avoid duplicates
+  const { data: existing } = await supabaseAdmin
+    .from('keywords')
+    .select('keyword')
+    .eq('provider', 'naver')
+
+  const existingSet = new Set((existing ?? []).map((k: { keyword: string }) => k.keyword.toLowerCase()))
+
+  for (const token of candidates.slice(0, 20)) {
+    if (inserted >= 10) break
+
+    const newKeyword = `아기 ${token}`
+    if (existingSet.has(newKeyword.toLowerCase())) continue
+    if (existingSet.has(token.toLowerCase())) continue
+
+    const { error } = await supabaseAdmin.from('keywords').insert({
+      keyword: newKeyword,
+      provider: 'naver',
+      status: 'NEW',
+      source: 'discovery',
+      efficiency_score: 0.5,
+      cycle_count: 0,
+      consecutive_zero_new: 0,
+    })
+
+    if (!error) {
+      console.log(`[datalab] Discovery: inserted "${newKeyword}" (freq: ${tokenFreq.get(token)})`)
+      inserted++
+      existingSet.add(newKeyword.toLowerCase())
+    }
+  }
+
+  console.log(`[datalab] Discovery: searched ${DISCOVERY_QUERIES.length} queries, inserted ${inserted} new keywords`)
+  return inserted
 }

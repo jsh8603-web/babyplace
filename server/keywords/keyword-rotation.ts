@@ -10,7 +10,7 @@
  */
 
 import { runSeasonalTransition } from './seasonal-calendar'
-import { checkKeywordHealthAndGenerate, getActiveKeywords } from './rotation-engine'
+import { checkKeywordHealthAndGenerate, getActiveKeywords, reviveExhaustedKeywords } from './rotation-engine'
 import { generateNewKeywordCandidates } from './candidate-generator'
 
 interface ProviderHealth {
@@ -26,6 +26,7 @@ export interface KeywordRotationResult {
     deactivated: number
     errors: number
   }
+  revived: { naver: number; kakao: number }
   naverKeywordHealth: ProviderHealth
   kakaoKeywordHealth: ProviderHealth
   newKeywordGeneration?: {
@@ -46,6 +47,7 @@ export async function runKeywordRotation(): Promise<KeywordRotationResult> {
   }
   const result: KeywordRotationResult = {
     seasonalTransition: { activated: 0, deactivated: 0, errors: 0 },
+    revived: { naver: 0, kakao: 0 },
     naverKeywordHealth: { ...emptyHealth },
     kakaoKeywordHealth: { ...emptyHealth },
     activeKeywords: 0,
@@ -61,6 +63,17 @@ export async function runKeywordRotation(): Promise<KeywordRotationResult> {
     console.log('[keyword-rotation] Phase 1: Running seasonal transition...')
     const seasonalResult = await runSeasonalTransition()
     result.seasonalTransition = seasonalResult
+
+    // --- Phase 1.5: Revive old EXHAUSTED keywords (30+ days) ---
+    console.log('[keyword-rotation] Phase 1.5: Reviving old EXHAUSTED keywords...')
+    const [naverRevived, kakaoRevived] = await Promise.all([
+      reviveExhaustedKeywords('naver'),
+      reviveExhaustedKeywords('kakao'),
+    ])
+    result.revived = { naver: naverRevived, kakao: kakaoRevived }
+    if (naverRevived + kakaoRevived > 0) {
+      console.log(`[keyword-rotation] Phase 1.5: Revived naver=${naverRevived}, kakao=${kakaoRevived}`)
+    }
 
     // --- Phase 2: Check keyword health per provider ---
     console.log('[keyword-rotation] Phase 2: Checking keyword health (naver + kakao)...')

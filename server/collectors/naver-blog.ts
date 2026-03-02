@@ -70,13 +70,13 @@ const DAUM_BLOG_URL = 'https://dapi.kakao.com/v2/search/blog'
  *  Budget: each place = 2 API calls (naver blog + daum blog).
  *  Naver daily quota ~25K, Kakao search ~300K/month (~10K/day).
  *  4 runs/day × 500 = 4,000 calls per provider (well within budget). */
-const REVERSE_SEARCH_BATCH = 500
+const REVERSE_SEARCH_BATCH = 750
 
 /** Number of results per API call. */
 const DISPLAY_COUNT = 30
 
 /** Max keywords to cycle per run (budget: each keyword = 2 API calls). */
-const MAX_KEYWORDS_PER_RUN = 60
+const MAX_KEYWORDS_PER_RUN = 150
 
 // ─── Main export ──────────────────────────────────────────────────────────────
 
@@ -768,7 +768,7 @@ async function updateKeywordMetrics(
 
 // ─── Naver API fetch ──────────────────────────────────────────────────────────
 
-async function fetchNaverSearch<T>(url: string): Promise<T[] | null> {
+export async function fetchNaverSearch<T>(url: string): Promise<T[] | null> {
   try {
     const response = await naverLimiter.throttle(() =>
       fetch(url, {
@@ -823,7 +823,7 @@ async function fetchDaumSearch(query: string): Promise<DaumBlogItem[] | null> {
 // ─── Text processing helpers ─────────────────────────────────────────────────
 
 /** Strips HTML tags and decodes common HTML entities. */
-function stripHtml(html: string): string {
+export function stripHtml(html: string): string {
   return html
     .replace(/<[^>]+>/g, '')
     .replace(/&lt;/g, '<')

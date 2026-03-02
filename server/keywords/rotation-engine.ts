@@ -305,6 +305,41 @@ export async function checkKeywordHealthAndGenerate(provider?: string): Promise<
 }
 
 /**
+ * Revive EXHAUSTED keywords after 30+ days of inactivity.
+ * Non-seasonal keywords transition: EXHAUSTED → DECLINING (fresh chance).
+ * Resets counters so the keyword gets re-evaluated on next cycle.
+ * Limited to 10 per provider per run to avoid flooding pipelines.
+ */
+export async function reviveExhaustedKeywords(provider: string): Promise<number> {
+  const cutoff = new Date()
+  cutoff.setDate(cutoff.getDate() - 30)
+
+  const { data, error } = await supabaseAdmin
+    .from('keywords')
+    .update({
+      status: 'DECLINING',
+      consecutive_zero_new: 0,
+      efficiency_score: 0.15,
+    })
+    .eq('status', 'EXHAUSTED')
+    .eq('provider', provider)
+    .is('seasonal_months', null)
+    .lt('updated_at', cutoff.toISOString())
+    .lt('cycle_count', 20) // 20+ cycles = permanently retired
+    .limit(10)
+    .select('id, keyword')
+
+  if (error) {
+    console.error(`[keyword-rotation] Revive error (${provider}):`, error)
+    return 0
+  }
+  if (data?.length) {
+    console.log(`[keyword-rotation] Revived ${data.length} ${provider} keywords: ${data.map(k => k.keyword).join(', ')}`)
+  }
+  return data?.length ?? 0
+}
+
+/**
  * Fetch all ACTIVE + NEW keywords for rotation (excluding DECLINING, EXHAUSTED, SEASONAL).
  * Used by pipeline B keyword search (plan.md 18-2, Method 2).
  */

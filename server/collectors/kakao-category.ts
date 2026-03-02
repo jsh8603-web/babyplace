@@ -150,19 +150,25 @@ export async function runPipelineA(): Promise<PipelineAResult> {
 
   const startedAt = Date.now()
 
-  // Phase 1: Category codes (CT1, AT4) — no tracking
-  for (const target of CATEGORY_CODE_TARGETS) {
-    for (const rect of SERVICE_AREA_RECTS) {
-      try {
-        await processTarget(target, rect, result)
-      } catch (err) {
-        console.error(
-          `[pipeline-a] Error processing category ${target.kakaoCategory} rect=${rect}:`,
-          err
-        )
-        result.errors++
+  // Phase 1: Category codes (CT1, AT4) — Wed/Sat only (saves ~380 Kakao Local calls/week)
+  const dayOfWeek = new Date().getUTCDay() // 0=Sun, 1=Mon, ..., 6=Sat
+  const isCategoryDay = dayOfWeek === 3 || dayOfWeek === 6 // Wed, Sat
+  if (isCategoryDay || process.argv[2] === 'manual') {
+    for (const target of CATEGORY_CODE_TARGETS) {
+      for (const rect of SERVICE_AREA_RECTS) {
+        try {
+          await processTarget(target, rect, result)
+        } catch (err) {
+          console.error(
+            `[pipeline-a] Error processing category ${target.kakaoCategory} rect=${rect}:`,
+            err
+          )
+          result.errors++
+        }
       }
     }
+  } else {
+    console.log(`[pipeline-a] Phase 1 skipped — category search runs Wed/Sat only (today: ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dayOfWeek]})`)
   }
 
   // Phase 2: DB keywords with per-keyword tracking

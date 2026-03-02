@@ -126,6 +126,10 @@ const KAKAO_CATEGORY_TEMPLATES: { keyword: string; group: string; isIndoor: bool
   { keyword: '유아식당', group: '식당/카페', isIndoor: true },
   { keyword: '키즈존카페', group: '식당/카페', isIndoor: true },
   { keyword: '아이맛집', group: '식당/카페', isIndoor: true },
+  { keyword: '놀이방식당', group: '식당/카페', isIndoor: true },
+  { keyword: '키즈레스토랑', group: '식당/카페', isIndoor: true },
+  { keyword: '이유식카페', group: '식당/카페', isIndoor: true },
+  { keyword: '아기의자 식당', group: '식당/카페', isIndoor: true },
   // 수영/물놀이
   { keyword: '영유아수영', group: '수영/물놀이', isIndoor: true },
   { keyword: '베이비풀', group: '수영/물놀이', isIndoor: true },
