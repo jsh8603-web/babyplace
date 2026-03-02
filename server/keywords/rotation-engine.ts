@@ -26,65 +26,39 @@
 import { supabaseAdmin } from '../lib/supabase-admin'
 
 /**
- * Compute dynamic relevance score from blog_mentions table.
- * Queries the last 30 days of blog mentions for a keyword's discovered places.
- * Returns average relevance_score (0-1), or 0.5 (neutral default) if no mentions found.
- *
- * Process:
- * 1. Find all places discovered via this keyword (from keyword_logs + keyword_id lookup)
- * 2. Query blog_mentions for those places in the last 30 days
- * 3. Average the relevance_score values
- * 4. Normalize to 0-1 range and clamp
+ * Compute keyword-specific relevance score from its historical performance.
+ * Uses keyword_logs to calculate average yield rate across recent cycles.
+ * Returns 0-1, or 0.5 (neutral default) if no logs found.
  */
 async function computeRelevanceScore(keywordId: number): Promise<number> {
+  const DEFAULT_RELEVANCE = 0.5
+
   try {
-    // Query recent blog mentions related to places discovered by this keyword
-    // We assume places found through keyword searches have relevant blog mentions
-    // Alternative: join through keyword_logs → keyword search results
-    const DAYS_LOOKBACK = 30
-    const DEFAULT_RELEVANCE = 0.5
+    const { data: logs, error } = await supabaseAdmin
+      .from('keyword_logs')
+      .select('api_results, new_places, duplicates')
+      .eq('keyword_id', keywordId)
+      .order('ran_at', { ascending: false })
+      .limit(10)
 
-    // Fetch recent blog mentions across all places (proxy: active places with recent mentions)
-    // More precisely: this keyword's discovery contributes to places with blog mentions
-    const { data: mentions, error } = await supabaseAdmin
-      .from('blog_mentions')
-      .select('relevance_score')
-      .gt('created_at', new Date(Date.now() - DAYS_LOOKBACK * 24 * 60 * 60 * 1000).toISOString())
-
-    if (error) {
-      console.warn(
-        `[keyword-rotation] Failed to fetch blog mentions for keyword ${keywordId}:`,
-        error
-      )
+    if (error || !logs || logs.length === 0) {
       return DEFAULT_RELEVANCE
     }
 
-    // If no mentions found, return neutral default
-    if (!mentions || mentions.length === 0) {
-      return DEFAULT_RELEVANCE
+    // Relevance = average yield rate (new_places / api_results) across recent cycles
+    let totalResults = 0
+    let totalNew = 0
+    for (const log of logs) {
+      totalResults += log.api_results ?? 0
+      totalNew += log.new_places ?? 0
     }
 
-    // Calculate average relevance score from mentions
-    const relevanceScores = (mentions as { relevance_score: number }[]).filter(
-      (m) => m.relevance_score !== null && !isNaN(m.relevance_score)
-    )
+    if (totalResults === 0) return DEFAULT_RELEVANCE
 
-    if (relevanceScores.length === 0) {
-      return DEFAULT_RELEVANCE
-    }
-
-    const sum = relevanceScores.reduce((acc, m) => acc + m.relevance_score, 0)
-    const averageRelevance = sum / relevanceScores.length
-
-    // Normalize and clamp to 0-1 range
-    // (handles both 0-1 and 0-100 scales automatically)
-    const normalized = averageRelevance > 1 ? averageRelevance / 100 : averageRelevance
-    const clamped = Math.min(Math.max(normalized, 0), 1)
-
-    return clamped
+    return Math.min(totalNew / totalResults, 1.0)
   } catch (err) {
     console.error(`[keyword-rotation] Unexpected error computing relevance for keyword ${keywordId}:`, err)
-    return 0.5 // Default to neutral on error
+    return DEFAULT_RELEVANCE
   }
 }
 
@@ -180,27 +154,22 @@ export async function evaluateKeywordCycle(
     // --- State transition logic ---
     const oldStatus = currentKeyword.status
     let newStatus = oldStatus
-    let shouldTransition = false
 
     if (oldStatus === 'NEW' || oldStatus === 'ACTIVE') {
       if (newEfficiencyScore < EFFICIENCY_THRESHOLD_DECLINING) {
         newStatus = 'DECLINING'
-        shouldTransition = true
       }
     } else if (oldStatus === 'DECLINING') {
-      if (newEfficiencyScore < EFFICIENCY_THRESHOLD_ACTIVE) {
-        newStatus = newEfficiencyScore < EFFICIENCY_THRESHOLD_DECLINING ? 'EXHAUSTED' : 'DECLINING'
-        shouldTransition = newStatus === 'EXHAUSTED'
+      if (newEfficiencyScore < EFFICIENCY_THRESHOLD_DECLINING) {
+        newStatus = 'DECLINING' // stay declining, not yet exhausted
       } else if (newEfficiencyScore >= EFFICIENCY_THRESHOLD_ACTIVE) {
         newStatus = 'ACTIVE'
-        shouldTransition = true
       }
     }
 
-    // EXHAUSTED: triggered by 3 consecutive zeros OR efficiency < 0.1
-    if (newConsecutiveZero >= 3 || newEfficiencyScore < EFFICIENCY_THRESHOLD_DECLINING) {
+    // EXHAUSTED: triggered by 3 consecutive zeros only
+    if (newConsecutiveZero >= 3) {
       newStatus = 'EXHAUSTED'
-      shouldTransition = true
     }
 
     // --- Update keywords table ---

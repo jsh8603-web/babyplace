@@ -82,7 +82,7 @@ interface TourIntroItem {
   chkbabycarriageculture?: string
   usetimeculture?: string
   restdateculture?: string
-  usefee?: string
+  usefeeculture?: string
   spendtime?: string
   // 축제(15)
   eventstartdate?: string
@@ -309,6 +309,7 @@ async function processAsPlace(
   })
 
   if (dup.isDuplicate && dup.existingId) {
+    await supabaseAdmin.rpc('increment_source_count', { p_place_id: dup.existingId })
     result.duplicates++
     // Enrich existing place with tour data only if not already enriched (tags is null)
     const { data: existing } = await supabaseAdmin

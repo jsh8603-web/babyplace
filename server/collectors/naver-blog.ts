@@ -23,10 +23,11 @@
 
 import Anthropic from '@anthropic-ai/sdk'
 import { supabaseAdmin } from '../lib/supabase-admin'
-import { naverLimiter, kakaoSearchLimiter, kakaoLimiter } from '../rate-limiter'
+import { naverLimiter, kakaoSearchLimiter } from '../rate-limiter'
 import { findMatchingPlace } from '../matchers/duplicate'
-import { similarity } from '../matchers/similarity'
+import { searchKakaoPlace } from '../lib/kakao-search'
 import { isValidServiceAddress } from '../enrichers/region'
+import { evaluateKeywordCycle } from '../keywords/rotation-engine'
 
 // ─── Naver API types ──────────────────────────────────────────────────────────
 
@@ -95,7 +96,6 @@ const MAX_KEYWORDS_PER_RUN = 150
 const LLM_BATCH_SIZE = 30
 const LLM_CONCURRENCY = 2
 const LLM_DELAY_MS = 5000
-const KAKAO_KEYWORD_URL = 'https://dapi.kakao.com/v2/local/search/keyword'
 const KAKAO_SIMILARITY_THRESHOLD = 0.7
 
 interface LLMExtractedPlace {
@@ -607,13 +607,6 @@ function computePostRelevance(
   return Math.max(0, Math.min(score, 1.0))
 }
 
-/** @deprecated Use parseAddressComponents instead */
-function extractDistrict(address: string): string {
-  if (!address) return ''
-  const match = address.match(/([가-힣]+)[시군구]\b/)
-  return match ? match[1] : ''
-}
-
 /**
  * Atomically increments mention_count for a place.
  * Uses a DB-side function so concurrent calls never lose increments
@@ -671,8 +664,13 @@ async function runKeywordSearch(
       stats.kakaoValidated += result.kakaoValidated
       stats.keywordsProcessed++
 
-      // Update keyword efficiency metrics
-      await updateKeywordMetrics(kw, result)
+      // Update keyword efficiency via rotation engine (unified scoring)
+      await evaluateKeywordCycle(
+        kw.id,
+        result.apiResults,
+        result.newMentions + result.newCandidates,
+        result.duplicates
+      )
     } catch (err) {
       console.error(`[pipeline-b] Keyword error "${kw.keyword}":`, err)
       stats.errors++
@@ -773,13 +771,7 @@ async function processKeyword(
     )
   }
 
-  // Log keyword cycle
-  await supabaseAdmin.from('keyword_logs').insert({
-    keyword_id: keywordId,
-    api_results: result.apiResults,
-    new_places: result.newMentions + result.newCandidates,
-    duplicates: result.duplicates,
-  })
+  // keyword_logs insertion is handled by evaluateKeywordCycle() in the caller
 
   return result
 }
@@ -834,75 +826,6 @@ async function upsertCandidate(
       ...(kakaoSimilarity != null ? { kakao_similarity: kakaoSimilarity } : {}),
     })
   }
-}
-
-// ─── Keyword metrics update ───────────────────────────────────────────────────
-
-interface KeywordRow {
-  id: number
-  keyword: string
-  status: string
-  efficiency_score: number
-  cycle_count: number
-  consecutive_zero_new: number
-  seasonal_months: number[] | null
-}
-
-async function updateKeywordMetrics(
-  kw: KeywordRow,
-  result: KeywordProcessResult
-): Promise<void> {
-  const yieldRate =
-    result.apiResults > 0
-      ? (result.newMentions + result.newCandidates) / result.apiResults
-      : 0
-  const duplicateRatio =
-    result.apiResults > 0 ? result.duplicates / result.apiResults : 0
-
-  // Simple efficiency formula (plan.md 9-1)
-  const newCycleCount = kw.cycle_count + 1
-  const newConsecZero =
-    result.newMentions + result.newCandidates === 0
-      ? kw.consecutive_zero_new + 1
-      : 0
-
-  const efficiency =
-    0.4 * yieldRate * (1 - duplicateRatio) +
-    0.25 * Math.max(0, 1 - duplicateRatio) +
-    0.2 * Math.exp(-newCycleCount / 10) +
-    0.15 * (1 - newConsecZero * 0.3)
-
-  // State transitions (plan.md 9-2)
-  let newStatus = kw.status
-  if (kw.status !== 'SEASONAL') {
-    if (efficiency >= 0.3) newStatus = 'ACTIVE'
-    else if (efficiency >= 0.1) newStatus = 'DECLINING'
-    else if (efficiency < 0.1 || newConsecZero >= 3) newStatus = 'EXHAUSTED'
-  }
-
-  // Fetch current counters before updating
-  const { data: current } = await supabaseAdmin
-    .from('keywords')
-    .select('total_results, new_places_found')
-    .eq('id', kw.id)
-    .single()
-
-  await supabaseAdmin
-    .from('keywords')
-    .update({
-      efficiency_score: Math.round(efficiency * 1000) / 1000,
-      cycle_count: newCycleCount,
-      consecutive_zero_new: newConsecZero,
-      duplicate_ratio: Math.round(duplicateRatio * 1000) / 1000,
-      total_results: (current?.total_results ?? 0) + result.apiResults,
-      new_places_found:
-        (current?.new_places_found ?? 0) +
-        result.newMentions +
-        result.newCandidates,
-      status: newStatus,
-      last_used_at: new Date().toISOString(),
-    })
-    .eq('id', kw.id)
 }
 
 // ─── LLM place name extraction ───────────────────────────────────────────────
@@ -1025,51 +948,26 @@ async function validateWithKakao(
   name: string,
   addressHint: string | null
 ): Promise<KakaoValidation | null> {
-  const query = addressHint ? `${name} ${addressHint}` : name
-  const params = new URLSearchParams({ query, size: '5' })
-
   try {
-    const response = await kakaoLimiter.throttle(() =>
-      fetch(`${KAKAO_KEYWORD_URL}?${params.toString()}`, {
-        headers: {
-          Authorization: `KakaoAK ${process.env.KAKAO_REST_KEY}`,
-        },
-      })
-    )
+    const match = await searchKakaoPlace(name, addressHint, {
+      limiter: kakaoSearchLimiter,
+      threshold: KAKAO_SIMILARITY_THRESHOLD,
+      addressWords: 0, // use raw addressHint without slicing
+    })
 
-    if (!response.ok) return null
+    if (!match) return null
 
-    const data = await response.json()
-    const documents = data.documents ?? []
-    if (documents.length === 0) return null
+    // Verify it's in Seoul/Gyeonggi/Incheon service area
+    if (!isValidServiceAddress(match.address)) return null
 
-    let bestDoc: (typeof documents)[0] | null = null
-    let bestScore = 0
-
-    for (const doc of documents) {
-      const score = similarity(name, doc.place_name)
-      if (score > bestScore) {
-        bestScore = score
-        bestDoc = doc
-      }
+    return {
+      kakaoPlaceId: match.id,
+      name: match.name,
+      address: match.roadAddress || match.address,
+      lat: match.lat,
+      lng: match.lng,
+      similarity: match.similarity,
     }
-
-    if (bestScore >= KAKAO_SIMILARITY_THRESHOLD && bestDoc) {
-      // Verify it's in Seoul/Gyeonggi/Incheon service area
-      const addr = bestDoc.address_name ?? ''
-      if (!isValidServiceAddress(addr)) return null
-
-      return {
-        kakaoPlaceId: bestDoc.id,
-        name: bestDoc.place_name,
-        address: bestDoc.road_address_name || bestDoc.address_name,
-        lat: parseFloat(bestDoc.y),
-        lng: parseFloat(bestDoc.x),
-        similarity: bestScore,
-      }
-    }
-
-    return null
   } catch (err) {
     console.error('[pipeline-b] Kakao validation error:', err)
     return null
@@ -1144,50 +1042,6 @@ export function stripHtml(html: string): string {
     .trim()
 }
 
-/**
- * Attempts to extract place name candidates from blog text.
- * Uses the search keyword as context to anchor extraction.
- */
-function extractPlaceNamesFromText(keyword: string, text: string): string[] {
-  const names: string[] = []
-
-  // Pattern 1: look for quoted names near the keyword context
-  // e.g. "코코몽에코파크" or 『키즈카페 아무개』
-  const quoteMatterns = [
-    /[「『"']([가-힣a-zA-Z0-9\s]{2,20})[」』"']/g,
-    /\[([가-힣a-zA-Z0-9\s]{2,20})\]/g,
-  ]
-
-  for (const pattern of quoteMatterns) {
-    let m: RegExpExecArray | null
-    while ((m = pattern.exec(text)) !== null) {
-      const candidate = m[1].trim()
-      if (candidate.length >= 2) names.push(candidate)
-    }
-  }
-
-  // Pattern 2: keyword itself often IS the place name in title
-  // e.g. "키즈카페 코코몽 후기" → extract "코코몽"
-  const keywordParts = keyword.split(/\s+/)
-  for (const part of keywordParts) {
-    if (part.length >= 2) names.push(keyword)
-  }
-
-  // Deduplicate
-  return [...new Set(names)]
-}
-
-/**
- * Attempts to extract a district-level address from blog text.
- * Returns the first recognized Seoul/Gyeonggi address pattern.
- */
-function extractAddressFromText(text: string): string | null {
-  const addressPattern =
-    /(서울|경기|인천)[^\s]*?\s*[가-힣]+[구군시]\s*[가-힣]+[동읍면]?/
-  const m = addressPattern.exec(text)
-  return m ? m[0].trim() : null
-}
-
 /** Converts Naver's YYYYMMDD post date to ISO date string. */
 function parseNaverPostDate(postdate?: string): string | null {
   if (!postdate || postdate.length !== 8) return null
@@ -1197,8 +1051,3 @@ function parseNaverPostDate(postdate?: string): string | null {
   return `${y}-${mo}-${d}`
 }
 
-/** Returns true if the text contains advertisement signals. */
-function isAdvertisement(text: string): boolean {
-  const adPatterns = ['협찬', '제공받아', '광고', '유료광고', '제품을 받아']
-  return adPatterns.some((p) => text.includes(p))
-}

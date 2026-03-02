@@ -107,19 +107,18 @@ export async function runBlogNoiseFilter(): Promise<BlogNoiseFilterResult> {
     }
   }
 
-  if (irrelevantIds.length > 0) {
-    const downgraded = await downgradeIrrelevantMentions(irrelevantIds)
-    result.downgraded = downgraded
-  }
-
-  // 4. Mark all samples as reviewed
-  await markAsReviewed(samples.map((s) => s.id))
-
-  // 5. Upsert extracted terms
-  if (extractedTerms.length > 0) {
-    await upsertExtractedTerms(extractedTerms)
-    result.termsExtracted = extractedTerms.length
-  }
+  // 3+4+5 run in parallel: downgrade, mark reviewed, upsert terms
+  const [downgraded] = await Promise.all([
+    irrelevantIds.length > 0
+      ? downgradeIrrelevantMentions(irrelevantIds)
+      : Promise.resolve(0),
+    markAsReviewed(samples.map((s) => s.id)),
+    extractedTerms.length > 0
+      ? upsertExtractedTerms(extractedTerms)
+      : Promise.resolve(),
+  ])
+  result.downgraded = downgraded
+  result.termsExtracted = extractedTerms.length
 
   // 6. Promote qualified terms
   const promoted = await promoteQualifiedTerms()
@@ -291,17 +290,18 @@ async function markAsReviewed(mentionIds: number[]): Promise<void> {
 async function upsertExtractedTerms(
   terms: Array<{ term: string; placeId: number; title: string | null }>
 ): Promise<void> {
-  for (const { term, placeId, title } of terms) {
-    const { error } = await supabaseAdmin.rpc('upsert_blacklist_term', {
-      p_term: term,
-      p_place_id: placeId,
-      p_sample_title: title,
+  await Promise.all(
+    terms.map(async ({ term, placeId, title }) => {
+      const { error } = await supabaseAdmin.rpc('upsert_blacklist_term', {
+        p_term: term,
+        p_place_id: placeId,
+        p_sample_title: title,
+      })
+      if (error) {
+        console.error(`[blog-noise-filter] Upsert term "${term}" error:`, error)
+      }
     })
-
-    if (error) {
-      console.error(`[blog-noise-filter] Upsert term "${term}" error:`, error)
-    }
-  }
+  )
 }
 
 // ─── Step 6: Promote qualified terms ────────────────────────────────────────
@@ -377,24 +377,25 @@ async function retroactiveCleanup(
 // ─── Step 8: Recalculate mention counts ─────────────────────────────────────
 
 async function recalculateMentionCounts(placeIds: number[]): Promise<void> {
-  for (const placeId of placeIds) {
-    // Count only mentions with score > DOWNGRADE_SCORE (i.e., not noise)
-    const { count, error } = await supabaseAdmin
-      .from('blog_mentions')
-      .select('id', { count: 'exact', head: true })
-      .eq('place_id', placeId)
-      .gt('relevance_score', DOWNGRADE_SCORE)
+  await Promise.all(
+    placeIds.map(async (placeId) => {
+      const { count, error } = await supabaseAdmin
+        .from('blog_mentions')
+        .select('id', { count: 'exact', head: true })
+        .eq('place_id', placeId)
+        .gt('relevance_score', DOWNGRADE_SCORE)
 
-    if (error) {
-      console.error(`[blog-noise-filter] Count error for place ${placeId}:`, error)
-      continue
-    }
+      if (error) {
+        console.error(`[blog-noise-filter] Count error for place ${placeId}:`, error)
+        return
+      }
 
-    await supabaseAdmin
-      .from('places')
-      .update({ mention_count: count ?? 0 })
-      .eq('id', placeId)
-  }
+      await supabaseAdmin
+        .from('places')
+        .update({ mention_count: count ?? 0 })
+        .eq('id', placeId)
+    })
+  )
 }
 
 // ─── Exported: Load active blacklist terms (for Pipeline B) ─────────────────

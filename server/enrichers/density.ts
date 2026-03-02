@@ -36,32 +36,38 @@ export async function runDensityControl(): Promise<DensityControlResult> {
   const startedAt = Date.now()
 
   try {
-    // Fetch all districts that have places
-    const { data: allPlacesData, error: fetchDistrictsError } = await supabaseAdmin
+    // Single query: fetch all places with district_code and popularity_score
+    const { data: allPlacesData, error: fetchError } = await supabaseAdmin
       .from('places')
-      .select('district_code')
-      .eq('is_active', true)
+      .select('id, name, district_code, popularity_score, is_active')
       .not('district_code', 'is', null)
+      .not('popularity_score', 'is', null)
+      .order('popularity_score', { ascending: false })
 
-    if (fetchDistrictsError || !allPlacesData) {
-      console.error('[density] Failed to fetch districts:', fetchDistrictsError)
+    if (fetchError || !allPlacesData) {
+      console.error('[density] Failed to fetch places:', fetchError)
       result.errors++
       return result
     }
 
-    // Get unique district codes
-    const uniqueDistricts = new Set(
-      allPlacesData.map((p) => p.district_code).filter((dc) => dc)
-    )
+    // Group by district_code in memory (already sorted by popularity_score DESC)
+    const districtMap = new Map<string, typeof allPlacesData>()
+    for (const place of allPlacesData) {
+      if (!place.district_code) continue
+      const list = districtMap.get(place.district_code)
+      if (list) {
+        list.push(place)
+      } else {
+        districtMap.set(place.district_code, [place])
+      }
+    }
 
-    console.log(`[density] Processing ${uniqueDistricts.size} districts`)
+    console.log(`[density] Processing ${districtMap.size} districts (${allPlacesData.length} places)`)
 
-    // For each district, enforce Top-N by popularity_score
-    for (const districtCode of uniqueDistricts) {
-      if (!districtCode) continue
-
+    // For each district, enforce Top-N from in-memory data
+    for (const [districtCode, places] of districtMap) {
       try {
-        await enforceDistrictTopN(districtCode, PLACES_PER_DISTRICT_TOP_N)
+        await enforceDistrictTopN(districtCode, PLACES_PER_DISTRICT_TOP_N, places)
         result.districtsProcessed++
       } catch (err) {
         console.error(`[density] Error processing district "${districtCode}":`, err)
@@ -97,32 +103,25 @@ export async function runDensityControl(): Promise<DensityControlResult> {
 // ─── District enforcement ─────────────────────────────────────────────────────
 
 /**
- * Enforces Top-N rule for a single district:
- *   1. Fetch top N places by popularity_score (DESC)
- *   2. Fetch remaining places (rank > N)
- *   3. Deactivate places beyond top N
- *
- * Side effect: Updates places.is_active = false for low-ranked places.
+ * Enforces Top-N rule for a single district using pre-fetched data.
+ * Places are already sorted by popularity_score DESC.
  */
 async function enforceDistrictTopN(
   districtCode: string,
-  topN: number
+  topN: number,
+  allPlaces: Array<{ id: number; name: string; popularity_score: number | null; is_active: boolean }>
 ): Promise<void> {
-  // Fetch all places in the district, ordered by popularity_score DESC
-  const { data: allPlaces, error: fetchError } = await supabaseAdmin
-    .from('places')
-    .select('id, name, popularity_score, is_active')
-    .eq('district_code', districtCode)
-    .order('popularity_score', { ascending: false })
-
-  if (fetchError || !allPlaces) {
-    throw new Error(
-      `Failed to fetch places for district "${districtCode}": ${fetchError?.message}`
-    )
+  // Reactivate top-N places that were previously deactivated (score recovered)
+  const topNPlaces = allPlaces.slice(0, topN)
+  const toReactivate = topNPlaces.filter((p) => !p.is_active).map((p) => p.id)
+  if (toReactivate.length > 0) {
+    await supabaseAdmin
+      .from('places')
+      .update({ is_active: true, updated_at: new Date().toISOString() })
+      .in('id', toReactivate)
   }
 
   if (allPlaces.length <= topN) {
-    // All places fit within Top-N — no deactivation needed
     return
   }
 

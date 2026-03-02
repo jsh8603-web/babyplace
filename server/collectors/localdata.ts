@@ -276,6 +276,7 @@ async function processItem(
   })
 
   if (dup.isDuplicate && dup.existingId) {
+    await supabaseAdmin.rpc('increment_source_count', { p_place_id: dup.existingId })
     result.duplicates++
     return
   }
@@ -320,6 +321,7 @@ async function fetchRectPage(
   // Build URL with raw serviceKey; omit 'type' and industry code params
   // (storeListInRectangle doesn't accept them — filter in-memory instead)
   const params = new URLSearchParams({
+    type: 'json',
     minx: String(rect.minx),
     miny: String(rect.miny),
     maxx: String(rect.maxx),

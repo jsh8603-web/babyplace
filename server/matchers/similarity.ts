@@ -81,37 +81,3 @@ export function similarity(a: string, b: string): number {
   return Math.round(dice * 1000) / 1000 // round to 3 decimal places
 }
 
-/**
- * Returns true if two place names are similar enough to be considered
- * the same place (used for duplicate detection from blog content).
- */
-export function isSimilarPlace(a: string, b: string, threshold = 0.7): boolean {
-  return similarity(a, b) >= threshold
-}
-
-/**
- * Given a candidate name and a list of existing place names,
- * returns the best matching place index and its similarity score.
- * Returns null if no match exceeds the threshold.
- */
-export function findBestMatch(
-  candidateName: string,
-  existingNames: string[],
-  threshold = 0.7
-): { index: number; score: number } | null {
-  let bestIndex = -1
-  let bestScore = 0
-
-  for (let i = 0; i < existingNames.length; i++) {
-    const score = similarity(candidateName, existingNames[i])
-    if (score > bestScore) {
-      bestScore = score
-      bestIndex = i
-    }
-  }
-
-  if (bestIndex >= 0 && bestScore >= threshold) {
-    return { index: bestIndex, score: bestScore }
-  }
-  return null
-}

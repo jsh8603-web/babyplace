@@ -40,7 +40,6 @@ import { runEventDeduplication } from './matchers/event-dedup'
 import { runKeywordRotation } from './keywords/keyword-rotation'
 import { runBlogNoiseFilter } from './utils/blog-noise-filter'
 import { runDataLabTrendDetection } from './keywords/datalab'
-import { runSeasonalTransition } from './keywords/seasonal-calendar'
 import { initializeAllLimiters, flushAllLimiters } from './rate-limiter'
 
 // ─── Schedule dispatch ────────────────────────────────────────────────────────
@@ -90,15 +89,27 @@ async function main(): Promise<void> {
         break
 
       case 'manual':
-      default:
-        // Run all pipelines — Pipeline A+B in parallel (independent collectors)
-        console.log('[run] Manual mode — running all pipelines')
+        // Run all daily pipelines — Pipeline A+B in parallel (independent collectors)
+        console.log('[run] Manual mode — running all daily pipelines (use "manual-monthly" to include DataLab)')
         console.log('[run] Running Pipeline A + B in parallel...')
         await Promise.all([runPipelineAJob(), runPipelineBJob()])
         await runPublicDataJob()
         await runEventsJob()
         await runScoringJob()
+        break
+
+      case 'manual-monthly':
+        // Run everything including monthly DataLab trend detection
+        console.log('[run] Manual-monthly mode — running all pipelines including DataLab')
+        await Promise.all([runPipelineAJob(), runPipelineBJob()])
+        await runPublicDataJob()
+        await runEventsJob()
+        await runScoringJob()
         await runMonthlyJob()
+        break
+
+      default:
+        console.error(`[run] Unknown schedule: "${schedule}"`)
         break
     }
 
@@ -207,17 +218,14 @@ async function runScoringJob(): Promise<void> {
 }
 
 async function runMonthlyJob(): Promise<void> {
-  console.log('[run] === Monthly: DataLab trends + seasonal transition ===')
+  console.log('[run] === Monthly: DataLab trends ===')
 
   // Naver DataLab: detect trending keywords for baby/parenting
   console.log('[run] Running DataLab trend detection...')
   const dataLabResult = await runDataLabTrendDetection()
   console.log('[run] DataLab result:', JSON.stringify(dataLabResult, null, 2))
 
-  // Seasonal transition: activate/deactivate seasonal keywords based on month
-  console.log('[run] Running seasonal transition...')
-  const seasonalResult = await runSeasonalTransition()
-  console.log('[run] Seasonal transition result:', JSON.stringify(seasonalResult, null, 2))
+  // Note: seasonal transition is handled daily by runKeywordRotation() in scoringJob
 }
 
 // ─── Environment validation ───────────────────────────────────────────────────

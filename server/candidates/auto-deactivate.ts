@@ -24,11 +24,8 @@
  */
 
 import { supabaseAdmin } from '../lib/supabase-admin'
-import { kakaoLimiter } from '../rate-limiter'
-import { similarity } from '../matchers/similarity'
+import { searchKakaoPlace } from '../lib/kakao-search'
 import type { PlaceCategory } from '../../src/types/index'
-
-const KAKAO_KEYWORD_URL = 'https://dapi.kakao.com/v2/local/search/keyword'
 
 /** Category-specific TTL in days (Task #5 enhancement) */
 const CATEGORY_TTL_DAYS: Record<PlaceCategory, number> = {
@@ -85,6 +82,12 @@ export async function runAutoDeactivate(): Promise<AutoDeactivateResult> {
     .order('last_mentioned_at', { ascending: true, nullsFirst: true })
     .limit(REVALIDATE_BATCH * 2)  // fetch 2x to account for filtering
 
+  if (error) {
+    console.error('[auto-deactivate] Failed to fetch places:', error)
+    result.errors++
+    return result
+  }
+
   // Filter by category-specific TTL
   const places = (allPlaces || [])
     .filter((place) => {
@@ -95,12 +98,6 @@ export async function runAutoDeactivate(): Promise<AutoDeactivateResult> {
       return lastMentioned < cutoffDate
     })
     .slice(0, REVALIDATE_BATCH)  // limit after filtering
-
-  if (error) {
-    console.error('[auto-deactivate] Failed to fetch places:', error)
-    result.errors++
-    return result
-  }
 
   if (!places || places.length === 0) {
     console.log('[auto-deactivate] No places to check')
@@ -170,48 +167,17 @@ async function checkKakaoAlive(
   kakaoPlaceId: string | null,
   address: string | null
 ): Promise<boolean> {
-  const query = address
-    ? `${name} ${address.split(/\s+/).slice(0, 2).join(' ')}`
-    : name
-
-  const params = new URLSearchParams({ query, size: '5' })
-
   try {
-    const response = await kakaoLimiter.throttle(() =>
-      fetch(`${KAKAO_KEYWORD_URL}?${params.toString()}`, {
-        headers: {
-          Authorization: `KakaoAK ${process.env.KAKAO_REST_KEY}`,
-        },
-      })
-    )
+    const match = await searchKakaoPlace(name, address, {
+      threshold: MATCH_THRESHOLD,
+      addressWords: 2,
+      kakaoPlaceId,
+    })
 
-    if (!response.ok) {
-      // If the API call itself fails, be conservative — don't deactivate
-      console.warn(`[auto-deactivate] Kakao API HTTP ${response.status} for "${name}"`)
-      return true
-    }
-
-    const data = await response.json()
-    const documents: Array<{ id: string; place_name: string }> =
-      data.documents ?? []
-
-    if (documents.length === 0) return false
-
-    // If we have the original Kakao ID, check for direct ID match first
-    if (kakaoPlaceId) {
-      const idMatch = documents.some((doc) => doc.id === kakaoPlaceId)
-      if (idMatch) return true
-    }
-
-    // Fallback: name similarity match
-    for (const doc of documents) {
-      const score = similarity(name, doc.place_name)
-      if (score >= MATCH_THRESHOLD) return true
-    }
-
-    return false
+    // match found (either by ID or by similarity) → place is alive
+    return match !== null
   } catch (err) {
-    // Network error → be conservative and keep the place active
+    // Network/API error → be conservative and keep the place active
     console.error(`[auto-deactivate] Kakao check error for "${name}":`, err)
     return true
   }

@@ -21,28 +21,6 @@ import {
 } from './rotation-engine'
 
 /**
- * Season definition: months (1-12) when season is active.
- * Transition happens 1 month early (e.g., Feb activates March/April/May keywords).
- */
-const SEASONAL_MONTHS: Record<string, number[]> = {
-  spring: [3, 4, 5], // Mar-May
-  summer: [6, 7, 8], // Jun-Aug
-  autumn: [9, 10, 11], // Sep-Nov
-  winter: [12, 1, 2], // Dec-Feb
-}
-
-/**
- * Get the transition month (when to activate a season).
- * Example: Spring (3-5) activates on month 2 (Feb 1).
- */
-function getTransitionMonth(seasonMonths: number[]): number {
-  // Sort and wrap around year
-  const sorted = [...seasonMonths].sort((a, b) => a - b)
-  const firstMonth = sorted[0]
-  return firstMonth === 1 ? 12 : firstMonth - 1 // Wrap: if March, activate in Feb
-}
-
-/**
  * Run seasonal keyword transitions for the current date.
  * Called daily during scoring job (plan.md 10-2).
  *
@@ -135,72 +113,6 @@ export async function runSeasonalTransition(): Promise<{
     result.errors++
     return result
   }
-}
-
-/**
- * Manually set seasonal months for a keyword.
- * Used by admin API to configure seasonal keywords.
- *
- * Example: setKeywordSeasonalMonths(42, [12, 1, 2]) → Winter keyword
- */
-export async function setKeywordSeasonalMonths(
-  keywordId: number,
-  months: number[]
-): Promise<boolean> {
-  try {
-    if (months.length === 0 || months.some((m) => m < 1 || m > 12)) {
-      console.error('[seasonal-calendar] Invalid month range:', months)
-      return false
-    }
-
-    const { error } = await supabaseAdmin
-      .from('keywords')
-      .update({
-        seasonal_months: months,
-        status: 'SEASONAL',
-      })
-      .eq('id', keywordId)
-
-    if (error) {
-      console.error(`[seasonal-calendar] Failed to set seasonal months for keyword ${keywordId}:`, error)
-      return false
-    }
-
-    console.log(
-      `[seasonal-calendar] Set seasonal months for keyword ${keywordId}: ${months.join(',')}`
-    )
-    return true
-  } catch (err) {
-    console.error(
-      `[seasonal-calendar] Unexpected error setting seasonal months for keyword ${keywordId}:`,
-      err
-    )
-    return false
-  }
-}
-
-/**
- * Get current season name (for logging/monitoring).
- */
-export function getCurrentSeasonName(month?: number): string {
-  const m = month ?? (new Date().getMonth() + 1)
-
-  if ([3, 4, 5].includes(m)) return 'spring'
-  if ([6, 7, 8].includes(m)) return 'summer'
-  if ([9, 10, 11].includes(m)) return 'autumn'
-  if ([12, 1, 2].includes(m)) return 'winter'
-
-  return 'unknown'
-}
-
-/**
- * Get upcoming season name.
- */
-export function getUpcomingSeasonName(month?: number): string {
-  const m = month ?? (new Date().getMonth() + 1)
-  const nextMonth = m === 12 ? 1 : m + 1
-
-  return getCurrentSeasonName(nextMonth)
 }
 
 /**

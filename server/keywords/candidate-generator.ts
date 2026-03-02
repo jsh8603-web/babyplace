@@ -616,13 +616,3 @@ function deduplicateCandidates(
   return Array.from(map.values())
 }
 
-/**
- * Estimate relevance of a keyword to baby/parenting (0~1).
- * Simple heuristic: count baby keywords in string.
- */
-export function estimateKeywordRelevance(keyword: string): number {
-  const lower = keyword.toLowerCase()
-  const babyKeywordCount = BABY_KEYWORDS.filter((bk) => lower.includes(bk)).length
-  const maxBabyKeywords = 3
-  return Math.min(babyKeywordCount / maxBabyKeywords, 1.0)
-}

@@ -62,7 +62,6 @@ function extractItems(data: StandardDataResponse): Record<string, string>[] {
 // ─── Main export ─────────────────────────────────────────────────────────────
 
 export interface PublicDataResult {
-  playgrounds: { fetched: number; new: number; duplicates: number; errors: number }
   parks: { fetched: number; new: number; duplicates: number; errors: number }
   libraries: { fetched: number; new: number; duplicates: number; errors: number }
   museums: { fetched: number; new: number; duplicates: number; errors: number }
@@ -74,7 +73,6 @@ export interface PublicDataResult {
 
 export async function runPublicData(): Promise<PublicDataResult> {
   const result: PublicDataResult = {
-    playgrounds: { fetched: 0, new: 0, duplicates: 0, errors: 0 },
     parks: { fetched: 0, new: 0, duplicates: 0, errors: 0 },
     libraries: { fetched: 0, new: 0, duplicates: 0, errors: 0 },
     museums: { fetched: 0, new: 0, duplicates: 0, errors: 0 },
@@ -95,9 +93,6 @@ export async function runPublicData(): Promise<PublicDataResult> {
   const startedAt = Date.now()
 
   try {
-    // Playgrounds are already collected by children-facility collector (A003/A004/A013)
-    console.log('[public-data] Skipping playgrounds (covered by children-facility collector)')
-
     console.log('[public-data] Fetching parks...')
     await fetchParks(result.parks)
 
@@ -111,24 +106,22 @@ export async function runPublicData(): Promise<PublicDataResult> {
     result.totalErrors++
   }
 
-  // Calculate totals
+  // Calculate totals (preserve any fatal errors already counted)
+  const fatalErrors = result.totalErrors
   result.totalFetched =
-    result.playgrounds.fetched +
     result.parks.fetched +
     result.libraries.fetched +
     result.museums.fetched
   result.totalNew =
-    result.playgrounds.new +
     result.parks.new +
     result.libraries.new +
     result.museums.new
   result.totalDuplicates =
-    result.playgrounds.duplicates +
     result.parks.duplicates +
     result.libraries.duplicates +
     result.museums.duplicates
   result.totalErrors =
-    result.playgrounds.errors +
+    fatalErrors +
     result.parks.errors +
     result.libraries.errors +
     result.museums.errors
@@ -261,6 +254,7 @@ async function fetchParks(stats: ParkStats): Promise<void> {
           })
 
           if (dup.isDuplicate && dup.existingId) {
+            await supabaseAdmin.rpc('increment_source_count', { p_place_id: dup.existingId })
             stats.duplicates++
             continue
           }
@@ -374,6 +368,7 @@ async function fetchLibraries(stats: LibraryStats): Promise<void> {
           })
 
           if (dup.isDuplicate && dup.existingId) {
+            await supabaseAdmin.rpc('increment_source_count', { p_place_id: dup.existingId })
             stats.duplicates++
             continue
           }
@@ -479,6 +474,7 @@ async function fetchMuseums(stats: MuseumStats): Promise<void> {
           })
 
           if (dup.isDuplicate && dup.existingId) {
+            await supabaseAdmin.rpc('increment_source_count', { p_place_id: dup.existingId })
             stats.duplicates++
             continue
           }

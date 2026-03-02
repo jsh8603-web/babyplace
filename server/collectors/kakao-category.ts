@@ -311,11 +311,8 @@ async function processTarget(
       })
 
       if (dup.isDuplicate && dup.existingId) {
-        // Bump mention_count to record that Kakao still knows about this place
-        await supabaseAdmin
-          .from('places')
-          .update({ updated_at: new Date().toISOString() })
-          .eq('id', dup.existingId)
+        // Bump source_count to record discovery by another collector run
+        await supabaseAdmin.rpc('increment_source_count', { p_place_id: dup.existingId })
         result.duplicates++
         continue
       }

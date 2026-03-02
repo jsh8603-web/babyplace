@@ -87,13 +87,21 @@ export async function runScoring(): Promise<ScoringResult> {
       { raw: number; final: number; completeness: number; recency: number }
     >()
 
+    // Pre-compute max log(mention_count) for normalization (all components → 0~1)
+    const maxMentionCount = places.reduce((max, p) => Math.max(max, p.mention_count ?? 0), 0)
+    const maxLogMention = Math.log(1 + maxMentionCount)
+
     for (const place of places) {
       try {
         const completeness = computeDataCompleteness(place)
         const recency = computeRecency(place.last_mentioned_at ?? place.created_at)
 
+        const normalizedMention = maxLogMention > 0
+          ? Math.log(1 + place.mention_count) / maxLogMention
+          : 0
+
         const raw =
-          0.35 * Math.log(1 + place.mention_count) +
+          0.35 * normalizedMention +
           0.25 * (Math.min(place.source_count, 4) / 4) + // source_diversity: capped at 4
           0.25 * recency +
           0.15 * completeness

@@ -15,7 +15,7 @@
  */
 
 import { supabaseAdmin } from '../lib/supabase-admin'
-import { dataLabLimiter, naverLimiter } from '../rate-limiter'
+import { dataLabLimiter } from '../rate-limiter'
 import { fetchNaverSearch, stripHtml } from '../collectors/naver-blog'
 
 /**
@@ -235,13 +235,13 @@ async function insertNewKeyword(keyword: string, growth: number): Promise<boolea
   try {
     const { error } = await supabaseAdmin.from('keywords').insert({
       keyword: keyword.trim(),
+      provider: 'naver',
       status: 'NEW',
       source: 'datalab',
       efficiency_score: 0.5, // Initial score for trending keywords (higher than manual)
       cycle_count: 0,
       consecutive_zero_new: 0,
       created_at: new Date().toISOString(),
-      // Note: store growth info in description or separate field if needed
     })
 
     if (error) {
@@ -268,21 +268,6 @@ async function insertNewKeyword(keyword: string, growth: number): Promise<boolea
  */
 function formatDateISO(date: Date): string {
   return date.toISOString().split('T')[0]
-}
-
-/**
- * Get remaining daily DataLab API calls (for monitoring).
- */
-export async function getDataLabDailyRemaining(): Promise<number> {
-  return dataLabLimiter.getRemainingDaily()
-}
-
-/**
- * Get current daily DataLab API call count (for monitoring).
- */
-export async function getDataLabDailyCount(): Promise<number> {
-  const remaining = await getDataLabDailyRemaining()
-  return 1_000 - remaining
 }
 
 // ─── Discovery Queries — broad blog search for novel keywords ───────────────

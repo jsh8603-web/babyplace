@@ -311,6 +311,7 @@ async function processItem(
   })
 
   if (dup.isDuplicate && dup.existingId) {
+    await supabaseAdmin.rpc('increment_source_count', { p_place_id: dup.existingId })
     result.duplicates++
     return
   }

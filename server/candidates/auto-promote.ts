@@ -28,8 +28,7 @@
  */
 
 import { supabaseAdmin } from '../lib/supabase-admin'
-import { kakaoLimiter } from '../rate-limiter'
-import { similarity } from '../matchers/similarity'
+import { searchKakaoPlace } from '../lib/kakao-search'
 import { isInServiceRegion } from '../enrichers/region'
 import { getDistrictCode } from '../enrichers/district'
 import { checkDuplicate } from '../matchers/duplicate'
@@ -52,13 +51,9 @@ interface KakaoVerifyResult {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const KAKAO_KEYWORD_URL = 'https://dapi.kakao.com/v2/local/search/keyword'
 const SIMILARITY_THRESHOLD = 0.8
 const MIN_INDEPENDENT_SOURCES = 2
 const CANDIDATE_TTL_DAYS = 30
-
-// Public data sources that allow easier promotion
-const PUBLIC_DATA_SOURCES = new Set(['data_go_kr', 'localdata', 'small-biz', 'children-facility', 'kopis', 'tour_api', 'seoul_gov'])
 
 // ─── Main export ──────────────────────────────────────────────────────────────
 
@@ -162,21 +157,11 @@ interface CandidateRow {
 }
 
 async function evaluateCandidate(candidate: CandidateRow): Promise<boolean> {
-  // --- Condition ①: Check source requirements (Phase 2: enhanced) ---
+  // --- Condition ①: Check source requirements (2+ independent blog sources) ---
   const independentSources = countIndependentSources(candidate.source_urls)
-  const hasPublicDataSource = detectPublicDataSource(candidate.source_urls)
 
-  // Phase 2 logic: accept if 1+ public source OR 2+ blog sources
-  const hasValidSources = hasPublicDataSource || independentSources >= MIN_INDEPENDENT_SOURCES
-
-  if (!hasValidSources) {
+  if (independentSources < MIN_INDEPENDENT_SOURCES) {
     return false
-  }
-
-  if (hasPublicDataSource) {
-    console.log(
-      `[auto-promote] Candidate "${candidate.name}" has public data source — easing promotion criteria`
-    )
   }
 
   // --- Condition ②: Kakao API match (similarity > 0.8) ---
@@ -259,63 +244,28 @@ async function verifyWithKakao(
   candidateName: string,
   candidateAddress: string | null
 ): Promise<KakaoVerifyResult> {
-  const query = candidateAddress
-    ? `${candidateName} ${candidateAddress.split(/\s+/).slice(0, 3).join(' ')}`
-    : candidateName
-
-  const params = new URLSearchParams({
-    query,
-    size: '5',
-  })
-
   try {
-    const response = await kakaoLimiter.throttle(() =>
-      fetch(`${KAKAO_KEYWORD_URL}?${params.toString()}`, {
-        headers: {
-          Authorization: `KakaoAK ${process.env.KAKAO_REST_KEY}`,
-        },
-      })
-    )
+    const match = await searchKakaoPlace(candidateName, candidateAddress, {
+      threshold: SIMILARITY_THRESHOLD,
+      addressWords: 3,
+    })
 
-    if (!response.ok) {
-      return { matched: false }
-    }
-
-    const data = await response.json()
-    const documents = data.documents ?? []
-
-    if (documents.length === 0) {
-      return { matched: false, similarityScore: 0 }
-    }
-
-    // Find best matching result
-    let bestDoc: (typeof documents)[0] | null = null
-    let bestScore = 0
-
-    for (const doc of documents) {
-      const score = similarity(candidateName, doc.place_name)
-      if (score > bestScore) {
-        bestScore = score
-        bestDoc = doc
-      }
-    }
-
-    if (bestScore >= SIMILARITY_THRESHOLD && bestDoc) {
+    if (match) {
       return {
         matched: true,
-        kakaoPlaceId: bestDoc.id,
-        kakaoName: bestDoc.place_name,
-        address: bestDoc.address_name,
-        roadAddress: bestDoc.road_address_name,
-        lat: parseFloat(bestDoc.y),
-        lng: parseFloat(bestDoc.x),
-        phone: bestDoc.phone,
-        categoryName: bestDoc.category_name,
-        similarityScore: bestScore,
+        kakaoPlaceId: match.id,
+        kakaoName: match.name,
+        address: match.address,
+        roadAddress: match.roadAddress,
+        lat: match.lat,
+        lng: match.lng,
+        phone: match.phone,
+        categoryName: match.categoryName,
+        similarityScore: match.similarity,
       }
     }
 
-    return { matched: false, similarityScore: bestScore }
+    return { matched: false, similarityScore: 0 }
   } catch (err) {
     console.error('[auto-promote] Kakao verify error:', err)
     return { matched: false }
@@ -380,40 +330,3 @@ function guessFromName(name: string): PlaceCategory {
   return '놀이' // default fallback
 }
 
-/**
- * Detects if a candidate has source URLs from known public data sources.
- * Checks actual source URLs for public data domains instead of relying on
- * heuristic patterns from place names (which can lead to false positives).
- *
- * Public data sources recognized:
- *   - data.go.kr (공공데이터포털)
- *   - apis.data.go.kr (data.go.kr API)
- *   - kopis.or.kr (KOPIS 공연정보시스템)
- *   - tour.go.kr (관광공사)
- *   - openapi.seoul.go.kr (서울 열린데이터)
- */
-function detectPublicDataSource(sourceUrls: string[]): boolean {
-  if (!sourceUrls || sourceUrls.length === 0) {
-    return false
-  }
-
-  const publicDomains = [
-    'data.go.kr',
-    'apis.data.go.kr',
-    'kopis.or.kr',
-    'tour.go.kr',
-    'openapi.seoul.go.kr',
-  ]
-
-  return sourceUrls.some((url) =>
-    publicDomains.some((domain) => {
-      try {
-        const parsed = new URL(url)
-        return parsed.hostname?.includes(domain) ?? false
-      } catch {
-        // Fallback for malformed URLs
-        return url.includes(domain)
-      }
-    })
-  )
-}

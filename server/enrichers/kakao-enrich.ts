@@ -14,10 +14,8 @@
  */
 
 import { supabaseAdmin } from '../lib/supabase-admin'
-import { kakaoLimiter } from '../rate-limiter'
-import { similarity } from '../matchers/similarity'
+import { searchKakaoPlace } from '../lib/kakao-search'
 
-const KAKAO_KEYWORD_URL = 'https://dapi.kakao.com/v2/local/search/keyword'
 const ENRICH_BATCH = 1000
 const MATCH_THRESHOLD = 0.75
 
@@ -113,67 +111,42 @@ interface PlaceRow {
 }
 
 async function enrichPlace(place: PlaceRow): Promise<boolean> {
-  const query = place.address
-    ? `${place.name} ${place.address.split(/\s+/).slice(0, 3).join(' ')}`
-    : place.name
+  const match = await searchKakaoPlace(place.name, place.address, {
+    threshold: MATCH_THRESHOLD,
+    addressWords: 3,
+  })
 
-  const params = new URLSearchParams({ query, size: '5' })
-
-  const response = await kakaoLimiter.throttle(() =>
-    fetch(`${KAKAO_KEYWORD_URL}?${params.toString()}`, {
-      headers: { Authorization: `KakaoAK ${process.env.KAKAO_REST_KEY}` },
-    })
-  )
-
-  if (!response.ok) return false
-
-  const data = await response.json()
-  const documents = data.documents ?? []
-  if (documents.length === 0) return false
-
-  // Find best match
-  let bestDoc: (typeof documents)[0] | null = null
-  let bestScore = 0
-
-  for (const doc of documents) {
-    const score = similarity(place.name, doc.place_name)
-    if (score > bestScore) {
-      bestScore = score
-      bestDoc = doc
-    }
-  }
-
-  if (bestScore < MATCH_THRESHOLD || !bestDoc) return false
+  if (!match) return false
 
   // Check if this kakao_place_id is already used by another place
   const { data: existing } = await supabaseAdmin
     .from('places')
     .select('id')
-    .eq('kakao_place_id', bestDoc.id)
+    .eq('kakao_place_id', match.id)
     .limit(1)
 
   if (existing && existing.length > 0) {
     // Already assigned to another place — mark current place as checked to skip next time
     await supabaseAdmin
       .from('places')
-      .update({ kakao_place_id: `dup_${bestDoc.id}` })
+      .update({ kakao_place_id: `dup_${match.id}` })
       .eq('id', place.id)
     return false
   }
 
   // Build update object with only missing fields
   const updates: Record<string, string | null> = {
-    kakao_place_id: bestDoc.id,
+    kakao_place_id: match.id,
   }
 
-  if (!place.phone && bestDoc.phone) {
-    updates.phone = bestDoc.phone
+  if (!place.phone && match.phone) {
+    updates.phone = match.phone
   }
-  if (!place.road_address && bestDoc.road_address_name) {
-    updates.road_address = bestDoc.road_address_name
+  if (!place.road_address && match.roadAddress) {
+    updates.road_address = match.roadAddress
   }
-  if (!place.sub_category && bestDoc.category_name) {
-    updates.sub_category = bestDoc.category_name.split('>').pop()?.trim() ?? null
+  if (!place.sub_category && match.categoryName) {
+    updates.sub_category = match.categoryName.split('>').pop()?.trim() ?? null
   }
 
   const { error } = await supabaseAdmin
