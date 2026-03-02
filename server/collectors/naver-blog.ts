@@ -706,113 +706,71 @@ async function processKeyword(
   const url = `${NAVER_BLOG_URL}?query=${query}&display=${DISPLAY_COUNT}&sort=sim`
 
   const items = await fetchNaverSearch<NaverBlogItem>(url)
-  if (!items) return result
+  if (!items || items.length === 0) return result
 
   result.apiResults = items.length
 
-  // Accumulate items where regex extraction fails → LLM fallback batch
-  const llmFallbackItems: BlogItemForLLM[] = []
+  // Collect all blog items for LLM batch extraction
+  // (regex patterns are too weak for natural blog text — LLM is far more effective)
+  const blogItems: BlogItemForLLM[] = items.map((item) => ({
+    title: stripHtml(item.title),
+    snippet: stripHtml(item.description).slice(0, 300),
+    link: item.link,
+    postdate: parseNaverPostDate(item.postdate),
+  }))
 
-  for (const item of items) {
-    const text = stripHtml(item.title + ' ' + item.description)
+  // Step 1: LLM batch extraction
+  const llmResults = await extractPlaceNamesWithLLM(blogItems)
+  result.llmExtracted = llmResults.filter((r) => r.name).length
 
-    // Step 1: Try regex extraction
-    const extractedNames = extractPlaceNamesFromText(keyword, text)
+  // Step 2: Match or validate each extracted place
+  for (const extracted of llmResults) {
+    if (!extracted.name) continue
 
-    if (extractedNames.length > 0) {
-      for (const name of extractedNames) {
-        const match = await findMatchingPlace(name, null, 0.8)
+    const sourceItem = blogItems[extracted.n - 1]
+    if (!sourceItem) continue
 
-        if (match) {
-          const { error } = await supabaseAdmin.from('blog_mentions').insert({
-            place_id: match.placeId,
-            source_type: 'naver_blog',
-            title: stripHtml(item.title),
-            url: item.link,
-            post_date: parseNaverPostDate(item.postdate),
-            snippet: stripHtml(item.description).slice(0, 500),
-          })
-
-          if (!error) {
-            result.newMentions++
-            await updateMentionCount(match.placeId, 1)
-          } else if (error.code === '23505') {
-            result.duplicates++
-          }
-        } else {
-          const addressInText = extractAddressFromText(text)
-          if (addressInText && isValidServiceAddress(addressInText)) {
-            await upsertCandidate(name, addressInText, item.link)
-            result.newCandidates++
-          }
-        }
-      }
-    } else {
-      // Regex found nothing → queue for LLM batch
-      llmFallbackItems.push({
-        title: stripHtml(item.title),
-        snippet: stripHtml(item.description).slice(0, 300),
-        link: item.link,
-        postdate: parseNaverPostDate(item.postdate),
+    // Try to match to existing DB place first
+    const existingMatch = await findMatchingPlace(extracted.name, null, 0.8)
+    if (existingMatch) {
+      const { error } = await supabaseAdmin.from('blog_mentions').insert({
+        place_id: existingMatch.placeId,
+        source_type: 'naver_blog',
+        title: sourceItem.title,
+        url: sourceItem.link,
+        post_date: sourceItem.postdate,
+        snippet: sourceItem.snippet.slice(0, 500),
       })
+      if (!error) {
+        result.newMentions++
+        await updateMentionCount(existingMatch.placeId, 1)
+      } else if (error.code === '23505') {
+        result.duplicates++
+      }
+      continue
+    }
+
+    // No DB match → validate with Kakao Place API
+    const kakaoResult = await validateWithKakao(extracted.name, extracted.addr)
+    if (kakaoResult) {
+      result.kakaoValidated++
+      await upsertCandidate(
+        kakaoResult.name,
+        kakaoResult.address,
+        sourceItem.link,
+        kakaoResult.lat,
+        kakaoResult.lng,
+        kakaoResult.kakaoPlaceId,
+        kakaoResult.similarity
+      )
+      result.newCandidates++
     }
   }
 
-  // Step 2: LLM fallback for items where regex extracted nothing
-  if (llmFallbackItems.length > 0) {
-    const llmResults = await extractPlaceNamesWithLLM(llmFallbackItems)
-    result.llmExtracted = llmResults.filter((r) => r.name).length
-
-    // Step 3: Validate LLM-extracted places with Kakao Place API
-    for (const extracted of llmResults) {
-      if (!extracted.name) continue
-
-      // Check if already in DB first
-      const existingMatch = await findMatchingPlace(extracted.name, null, 0.8)
-      if (existingMatch) {
-        // Find the source blog item
-        const sourceItem = llmFallbackItems[extracted.n - 1]
-        if (sourceItem) {
-          const { error } = await supabaseAdmin.from('blog_mentions').insert({
-            place_id: existingMatch.placeId,
-            source_type: 'naver_blog',
-            title: sourceItem.title,
-            url: sourceItem.link,
-            post_date: sourceItem.postdate,
-            snippet: sourceItem.snippet.slice(0, 500),
-          })
-          if (!error) {
-            result.newMentions++
-            await updateMentionCount(existingMatch.placeId, 1)
-          } else if (error.code === '23505') {
-            result.duplicates++
-          }
-        }
-        continue
-      }
-
-      const kakaoResult = await validateWithKakao(extracted.name, extracted.addr)
-      if (kakaoResult) {
-        result.kakaoValidated++
-        const sourceItem = llmFallbackItems[extracted.n - 1]
-        await upsertCandidate(
-          kakaoResult.name,
-          kakaoResult.address,
-          sourceItem?.link ?? '',
-          kakaoResult.lat,
-          kakaoResult.lng,
-          kakaoResult.kakaoPlaceId,
-          kakaoResult.similarity
-        )
-        result.newCandidates++
-      }
-    }
-
-    if (result.llmExtracted > 0) {
-      console.log(
-        `[pipeline-b] LLM extracted ${result.llmExtracted} places from ${llmFallbackItems.length} blog posts, Kakao validated ${result.kakaoValidated}`
-      )
-    }
+  if (result.llmExtracted > 0) {
+    console.log(
+      `[pipeline-b] LLM extracted ${result.llmExtracted} places from ${blogItems.length} blog posts, Kakao validated ${result.kakaoValidated}`
+    )
   }
 
   // Log keyword cycle
