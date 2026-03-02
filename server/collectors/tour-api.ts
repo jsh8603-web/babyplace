@@ -151,6 +151,14 @@ export async function runTourAPICollector(): Promise<TourAPICollectorResult> {
     return result
   }
 
+  // Run only twice a week (Mon/Thu) — data changes slowly, saves 23min + API calls
+  const dayOfWeek = new Date().getUTCDay() // 0=Sun, 1=Mon, ..., 4=Thu
+  const isCollectionDay = dayOfWeek === 1 || dayOfWeek === 4 // Mon, Thu
+  if (!isCollectionDay && process.argv[2] !== 'manual') {
+    console.log(`[tour-api] Skipping — runs Mon/Thu only (today: ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dayOfWeek]})`)
+    return result
+  }
+
   try {
     for (const ct of CONTENT_TYPES) {
       for (const areaCode of AREA_CODES) {

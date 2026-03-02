@@ -20,7 +20,6 @@
  *   KAKAO_REST_KEY
  *   NAVER_CLIENT_ID
  *   NAVER_CLIENT_SECRET
- *   KOPIS_API_KEY (for KOPIS events)
  *   TOUR_API_KEY (for Tour API events)
  *   SEOUL_API_KEY (optional, for Seoul cultural events)
  */
@@ -34,7 +33,6 @@ import { runDensityControl } from './enrichers/density'
 import { runKakaoEnrichment } from './enrichers/kakao-enrich'
 import { runAutoPromotion } from './candidates/auto-promote'
 import { runAutoDeactivate } from './candidates/auto-deactivate'
-import { runKOPISCollector } from './collectors/kopis'
 import { runTourAPICollector } from './collectors/tour-api'
 import { runChildrenFacility } from './collectors/children-facility'
 import { runSeoulEventsCollector } from './collectors/seoul-events'
@@ -147,12 +145,7 @@ async function runPublicDataJob(): Promise<void> {
 }
 
 async function runEventsJob(): Promise<void> {
-  console.log('[run] === Events collectors (KOPIS, Tour API, Seoul) ===')
-
-  // KOPIS 공연 정보
-  console.log('[run] Running KOPIS collector...')
-  const kopisResult = await runKOPISCollector()
-  console.log('[run] KOPIS result:', JSON.stringify(kopisResult, null, 2))
+  console.log('[run] === Events collectors (Tour API, Seoul) ===')
 
   // Tour API 관광정보
   console.log('[run] Running Tour API collector...')

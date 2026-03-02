@@ -145,6 +145,22 @@ async function enrichPlace(place: PlaceRow): Promise<boolean> {
 
   if (bestScore < MATCH_THRESHOLD || !bestDoc) return false
 
+  // Check if this kakao_place_id is already used by another place
+  const { data: existing } = await supabaseAdmin
+    .from('places')
+    .select('id')
+    .eq('kakao_place_id', bestDoc.id)
+    .limit(1)
+
+  if (existing && existing.length > 0) {
+    // Already assigned to another place — mark current place as checked to skip next time
+    await supabaseAdmin
+      .from('places')
+      .update({ kakao_place_id: `dup_${bestDoc.id}` })
+      .eq('id', place.id)
+    return false
+  }
+
   // Build update object with only missing fields
   const updates: Record<string, string | null> = {
     kakao_place_id: bestDoc.id,
