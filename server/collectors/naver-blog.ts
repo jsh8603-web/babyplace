@@ -61,6 +61,16 @@ interface DaumSearchResponse {
   documents: DaumBlogItem[]
 }
 
+// ─── Dynamic blacklist cache ─────────────────────────────────────────────────
+
+let dynamicBlacklistTerms: string[] = []
+
+export async function initializeDynamicBlacklist(): Promise<void> {
+  const { loadActiveBlacklistTerms } = await import('../utils/blog-noise-filter')
+  dynamicBlacklistTerms = await loadActiveBlacklistTerms()
+  console.log(`[pipeline-b] Loaded ${dynamicBlacklistTerms.length} dynamic blacklist terms`)
+}
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const NAVER_BLOG_URL = 'https://openapi.naver.com/v1/search/blog.json'
@@ -106,6 +116,9 @@ export async function runPipelineB(): Promise<PipelineBResult> {
   }
 
   const startedAt = Date.now()
+
+  // Load dynamic blacklist terms from DB
+  await initializeDynamicBlacklist()
 
   // --- Method 1: reverse search ---
   await runReverseSearch(result.reverseSearch)
@@ -197,7 +210,7 @@ async function runReverseSearch(
 /**
  * Searches Naver Blog + Daum Blog for a given place name + district.
  * Computes relevance_score per post (place name match in title/snippet).
- * Only inserts posts with relevance >= 0.3.
+ * Only inserts posts with relevance >= 0.4.
  * Returns number of new mentions inserted.
  */
 async function reverseSearchPlace(
@@ -242,7 +255,7 @@ async function searchNaverBlog(
     const title = stripHtml(item.title)
     const snippet = stripHtml(item.description).slice(0, 500)
     const relevance = computePostRelevance(placeName, addr, isCommon, title, snippet)
-    if (relevance < 0.3) continue
+    if (relevance < 0.4) continue
 
     const { error } = await supabaseAdmin.from('blog_mentions').insert({
       place_id: placeId,
@@ -275,7 +288,7 @@ async function searchDaumBlog(
     const title = stripHtml(item.title)
     const snippet = stripHtml(item.contents).slice(0, 500)
     const relevance = computePostRelevance(placeName, addr, isCommon, title, snippet)
-    if (relevance < 0.3) continue
+    if (relevance < 0.4) continue
 
     const postDate = item.datetime ? item.datetime.slice(0, 10) : null // "2024-01-15"
 
@@ -381,6 +394,18 @@ function isCommonWordName(name: string): boolean {
   return false
 }
 
+// ─── Layer 2b: Generic place suffix detector ────────────────────────────────
+
+const GENERIC_PLACE_SUFFIXES = [
+  '어린이공원', '근린공원', '소공원', '체육공원',
+  '도시공원', '수변공원', '중앙공원',
+]
+
+function hasGenericPlaceSuffix(name: string): boolean {
+  const n = name.replace(/\s+/g, '')
+  return GENERIC_PLACE_SUFFIXES.some((s) => n.endsWith(s))
+}
+
 // ─── Layer 3: Search query builder ────────────────────────────────────────────
 
 function buildSearchTerm(
@@ -417,10 +442,16 @@ const COMPETING_LOCATIONS = new Set([
   '춘천', '원주', '강릉', '속초', '동해',
 ])
 
-const PRODUCT_REVIEW_TERMS = [
+const IRRELEVANT_CONTENT_TERMS = [
+  // Product reviews
   '구매후기', '제품리뷰', '상품평', '배송후기', '가격비교', '할인코드',
   '쿠팡', '네이버쇼핑', '11번가', '지마켓', '옥션',
   '사용후기', '언박싱', '개봉기',
+  // Real estate (30% of noise)
+  '분양정보', '매매가', '시세차익', '전세가', '재건축', '모델하우스',
+  '평당가', '분양가', '청약', '입주자모집', '오피스텔분양', '빌라매매',
+  // Spam
+  '출장마사지', '출장안마', '홈타이',
 ]
 
 function hasCompetingLocation(text: string, ownCity: string): boolean {
@@ -431,8 +462,23 @@ function hasCompetingLocation(text: string, ownCity: string): boolean {
   return false
 }
 
-function hasProductReviewSignals(text: string): boolean {
-  return PRODUCT_REVIEW_TERMS.some((t) => text.includes(t))
+function hasIrrelevantContentSignals(text: string): boolean {
+  if (IRRELEVANT_CONTENT_TERMS.some((t) => text.includes(t))) return true
+  if (dynamicBlacklistTerms.some((t) => text.includes(t))) return true
+  return false
+}
+
+// ─── Layer 4b: Landmark reference detector ──────────────────────────────────
+
+const LANDMARK_MARKERS = ['근처', '옆에', '앞에', '뒤에', '인근', '부근', '바로 옆', '맞은편']
+
+function isLandmarkReference(placeName: string, text: string): boolean {
+  const nameL = placeName.toLowerCase().replace(/\s+/g, '')
+  for (const marker of LANDMARK_MARKERS) {
+    if (text.includes(nameL + ' ' + marker) || text.includes(nameL + marker)) return true
+    if (text.includes(marker + ' ' + nameL) || text.includes(marker + nameL)) return true
+  }
+  return false
 }
 
 /**
@@ -483,6 +529,12 @@ function computePostRelevance(
     score += 0.10
   }
 
+  // Visit intent bonus (actual visit vs mere location reference)
+  const VISIT_INTENT_TERMS = ['다녀왔', '방문했', '갔다왔', '놀러갔', '산책했', '나들이', '데리고 갔', '다녀온']
+  if (VISIT_INTENT_TERMS.some((t) => text.includes(t))) {
+    score += 0.10
+  }
+
   // --- Negative signals ---
 
   // Mentions a different city/province
@@ -490,9 +542,27 @@ function computePostRelevance(
     score -= 0.50
   }
 
-  // Product review patterns
-  if (hasProductReviewSignals(text)) {
+  // Irrelevant content patterns (product reviews, real estate, spam)
+  if (hasIrrelevantContentSignals(text)) {
     score -= 0.20
+  }
+
+  // Landmark reference pattern (place used as location marker, not visit target)
+  const isLandmarkRef = isLandmarkReference(placeName, text)
+  if (isLandmarkRef) {
+    score -= 0.20
+  }
+
+  // Generic suffix places (어린이공원, 근린공원, etc.)
+  const hasGenericSuffix = hasGenericPlaceSuffix(placeName)
+  const hasDongMatch = addr.dong ? text.includes(addr.dong) : false
+  const hasRoadMatch = addr.road ? text.includes(addr.road) : false
+
+  if (hasGenericSuffix) {
+    // Generic suffix + no address verification = likely noise
+    if (!hasDongMatch && !hasRoadMatch) score -= 0.15
+    // Landmark reference is extra damaging for generic-suffix places
+    if (isLandmarkRef) score -= 0.20
   }
 
   // Common-word name without address verification
@@ -502,8 +572,6 @@ function computePostRelevance(
     score = Math.min(score, 0.20)
   } else if (isCommon) {
     // Have address data but post doesn't mention dong or road
-    const hasDongMatch = addr.dong ? text.includes(addr.dong) : false
-    const hasRoadMatch = addr.road ? text.includes(addr.road) : false
     if (!hasDongMatch && !hasRoadMatch) {
       score -= 0.25
     }

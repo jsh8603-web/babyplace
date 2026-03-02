@@ -38,6 +38,7 @@ import { runChildrenFacility } from './collectors/children-facility'
 import { runSeoulEventsCollector } from './collectors/seoul-events'
 import { runEventDeduplication } from './matchers/event-dedup'
 import { runKeywordRotation } from './keywords/keyword-rotation'
+import { runBlogNoiseFilter } from './utils/blog-noise-filter'
 import { runDataLabTrendDetection } from './keywords/datalab'
 import { runSeasonalTransition } from './keywords/seasonal-calendar'
 import { initializeAllLimiters, flushAllLimiters } from './rate-limiter'
@@ -180,6 +181,11 @@ async function runScoringJob(): Promise<void> {
   console.log('[run] Running keyword rotation...')
   const keywordResult = await runKeywordRotation()
   console.log('[run] Keyword rotation result:', JSON.stringify(keywordResult, null, 2))
+
+  // Blog noise filter: LLM-based borderline mention review + blacklist term accumulation
+  console.log('[run] Running blog noise filter...')
+  const noiseResult = await runBlogNoiseFilter()
+  console.log('[run] Blog noise filter:', JSON.stringify(noiseResult, null, 2))
 
   // Density control: enforce Top-N per district after scoring
   console.log('[run] Running density control...')

@@ -1464,3 +1464,9 @@ Response: JSON
 1. ~~식당이 안보인다~~ → 해결: Kakao 키워드 25개 NEW→ACTIVE 전환 + Naver 식당 키워드 5개 추가 + Pipeline A 재실행 완료. 활성 식당/카페 153건 (568건 중 auto-deactivate 정상). FD6 카테고리 코드는 일반 식당 대량 유입 우려로 추가하지 않음.
 2. ~~하단 목록의 크기를 줄였다 늘였다 하는게 조작감이 불편하다.~~ → 해결: vaul/Radix 제거, 네이티브 드래그 BottomSheet 구현 (0e21a11)
 3. ~~cc트리거에 배포가 필요한 경우 배포를 할 수 있는 내용을 추가.~~ → 해결: cc가 push까지 수행, Vercel이 main push 시 자동 배포 (commit-push.md Round 3)
+4. ~~식당/카페 키워드 시맨틱 갭~~ → 해결: 00024 마이그레이션 30개 추가 (요리/이벤트/시설/식사/포맷), 템플릿 확장 (78f51d1). DB 총 72개.
+5. ~~워크플로우 결과 확인~~ → 확인 완료: run 22546510240 cancelled (90분 타임아웃). Pipeline A/B 정상, Public Data/Small Biz API 에러, Children Facility에서 타임아웃.
+6. ~~키워드 생성 시스템 검증~~ → 워크플로우 타임아웃으로 미도달. 코드 구현은 완료, 다음 정상 실행 시 자동 동작.
+7. ~~Tour API 재시도~~ → HTTP 500, 키 승인 대기 상태. 코드 구현 완료, 키 활성화 시 자동 동작.
+8. ~~아이폰 PWA 테스트~~ → Vercel 재배포 후 테스트 가능.
+9. ~~임시 파일 정리~~ → `server/run-seoul-only.ts` 이미 삭제됨.

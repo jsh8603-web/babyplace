@@ -69,7 +69,21 @@ export interface BlogMention {
   url: string
   post_date: string | null
   snippet: string | null
+  llm_reviewed: boolean
   collected_at: string
+}
+
+export interface BlogBlacklistTerm {
+  id: number
+  term: string
+  status: 'candidate' | 'active' | 'rejected'
+  occurrence_count: number
+  distinct_place_count: number
+  sample_titles: string[]
+  source: string
+  first_seen_at: string
+  last_seen_at: string
+  activated_at: string | null
 }
 
 export interface Profile {
