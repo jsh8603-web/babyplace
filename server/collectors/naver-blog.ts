@@ -21,9 +21,11 @@
  *   based on the current month.
  */
 
+import Anthropic from '@anthropic-ai/sdk'
 import { supabaseAdmin } from '../lib/supabase-admin'
-import { naverLimiter, kakaoSearchLimiter } from '../rate-limiter'
+import { naverLimiter, kakaoSearchLimiter, kakaoLimiter } from '../rate-limiter'
 import { findMatchingPlace } from '../matchers/duplicate'
+import { similarity } from '../matchers/similarity'
 import { isValidServiceAddress } from '../enrichers/region'
 
 // ─── Naver API types ──────────────────────────────────────────────────────────
@@ -88,6 +90,27 @@ const DISPLAY_COUNT = 30
 /** Max keywords to cycle per run (budget: each keyword = 2 API calls). */
 const MAX_KEYWORDS_PER_RUN = 150
 
+// ─── LLM extraction constants ────────────────────────────────────────────────
+
+const LLM_BATCH_SIZE = 30
+const LLM_CONCURRENCY = 2
+const LLM_DELAY_MS = 5000
+const KAKAO_KEYWORD_URL = 'https://dapi.kakao.com/v2/local/search/keyword'
+const KAKAO_SIMILARITY_THRESHOLD = 0.7
+
+interface LLMExtractedPlace {
+  n: number
+  name: string | null
+  addr: string | null
+}
+
+interface BlogItemForLLM {
+  title: string
+  snippet: string
+  link: string
+  postdate: string | null
+}
+
 // ─── Main export ──────────────────────────────────────────────────────────────
 
 export interface PipelineBResult {
@@ -100,6 +123,8 @@ export interface PipelineBResult {
     keywordsProcessed: number
     newMentions: number
     newCandidates: number
+    llmExtracted: number
+    kakaoValidated: number
     errors: number
   }
 }
@@ -111,6 +136,8 @@ export async function runPipelineB(): Promise<PipelineBResult> {
       keywordsProcessed: 0,
       newMentions: 0,
       newCandidates: 0,
+      llmExtracted: 0,
+      kakaoValidated: 0,
       errors: 0,
     },
   }
@@ -640,6 +667,8 @@ async function runKeywordSearch(
       const result = await processKeyword(kw.id, kw.keyword)
       stats.newMentions += result.newMentions
       stats.newCandidates += result.newCandidates
+      stats.llmExtracted += result.llmExtracted
+      stats.kakaoValidated += result.kakaoValidated
       stats.keywordsProcessed++
 
       // Update keyword efficiency metrics
@@ -655,6 +684,8 @@ interface KeywordProcessResult {
   apiResults: number
   newMentions: number
   newCandidates: number
+  llmExtracted: number
+  kakaoValidated: number
   duplicates: number
 }
 
@@ -666,6 +697,8 @@ async function processKeyword(
     apiResults: 0,
     newMentions: 0,
     newCandidates: 0,
+    llmExtracted: 0,
+    kakaoValidated: 0,
     duplicates: 0,
   }
 
@@ -677,43 +710,108 @@ async function processKeyword(
 
   result.apiResults = items.length
 
+  // Accumulate items where regex extraction fails → LLM fallback batch
+  const llmFallbackItems: BlogItemForLLM[] = []
+
   for (const item of items) {
     const text = stripHtml(item.title + ' ' + item.description)
 
-    // Try to extract a place name from the blog content
+    // Step 1: Try regex extraction
     const extractedNames = extractPlaceNamesFromText(keyword, text)
 
-    for (const name of extractedNames) {
-      // Try to match to existing place
-      const match = await findMatchingPlace(name, null, 0.8)
+    if (extractedNames.length > 0) {
+      for (const name of extractedNames) {
+        const match = await findMatchingPlace(name, null, 0.8)
 
-      if (match) {
-        // Link this blog post to the matched place
-        const { error } = await supabaseAdmin.from('blog_mentions').insert({
-          place_id: match.placeId,
-          source_type: 'naver_blog',
-          title: stripHtml(item.title),
-          url: item.link,
-          post_date: parseNaverPostDate(item.postdate),
-          snippet: stripHtml(item.description).slice(0, 500),
-        })
+        if (match) {
+          const { error } = await supabaseAdmin.from('blog_mentions').insert({
+            place_id: match.placeId,
+            source_type: 'naver_blog',
+            title: stripHtml(item.title),
+            url: item.link,
+            post_date: parseNaverPostDate(item.postdate),
+            snippet: stripHtml(item.description).slice(0, 500),
+          })
 
-        if (!error) {
-          result.newMentions++
-          await updateMentionCount(match.placeId, 1)
-        } else if (error.code !== '23505') {
-          // Non-duplicate error
+          if (!error) {
+            result.newMentions++
+            await updateMentionCount(match.placeId, 1)
+          } else if (error.code === '23505') {
+            result.duplicates++
+          }
         } else {
-          result.duplicates++
-        }
-      } else {
-        // No existing match → create a candidate if address looks valid
-        const addressInText = extractAddressFromText(text)
-        if (addressInText && isValidServiceAddress(addressInText)) {
-          await upsertCandidate(name, addressInText, item.link)
-          result.newCandidates++
+          const addressInText = extractAddressFromText(text)
+          if (addressInText && isValidServiceAddress(addressInText)) {
+            await upsertCandidate(name, addressInText, item.link)
+            result.newCandidates++
+          }
         }
       }
+    } else {
+      // Regex found nothing → queue for LLM batch
+      llmFallbackItems.push({
+        title: stripHtml(item.title),
+        snippet: stripHtml(item.description).slice(0, 300),
+        link: item.link,
+        postdate: parseNaverPostDate(item.postdate),
+      })
+    }
+  }
+
+  // Step 2: LLM fallback for items where regex extracted nothing
+  if (llmFallbackItems.length > 0) {
+    const llmResults = await extractPlaceNamesWithLLM(llmFallbackItems)
+    result.llmExtracted = llmResults.filter((r) => r.name).length
+
+    // Step 3: Validate LLM-extracted places with Kakao Place API
+    for (const extracted of llmResults) {
+      if (!extracted.name) continue
+
+      // Check if already in DB first
+      const existingMatch = await findMatchingPlace(extracted.name, null, 0.8)
+      if (existingMatch) {
+        // Find the source blog item
+        const sourceItem = llmFallbackItems[extracted.n - 1]
+        if (sourceItem) {
+          const { error } = await supabaseAdmin.from('blog_mentions').insert({
+            place_id: existingMatch.placeId,
+            source_type: 'naver_blog',
+            title: sourceItem.title,
+            url: sourceItem.link,
+            post_date: sourceItem.postdate,
+            snippet: sourceItem.snippet.slice(0, 500),
+          })
+          if (!error) {
+            result.newMentions++
+            await updateMentionCount(existingMatch.placeId, 1)
+          } else if (error.code === '23505') {
+            result.duplicates++
+          }
+        }
+        continue
+      }
+
+      const kakaoResult = await validateWithKakao(extracted.name, extracted.addr)
+      if (kakaoResult) {
+        result.kakaoValidated++
+        const sourceItem = llmFallbackItems[extracted.n - 1]
+        await upsertCandidate(
+          kakaoResult.name,
+          kakaoResult.address,
+          sourceItem?.link ?? '',
+          kakaoResult.lat,
+          kakaoResult.lng,
+          kakaoResult.kakaoPlaceId,
+          kakaoResult.similarity
+        )
+        result.newCandidates++
+      }
+    }
+
+    if (result.llmExtracted > 0) {
+      console.log(
+        `[pipeline-b] LLM extracted ${result.llmExtracted} places from ${llmFallbackItems.length} blog posts, Kakao validated ${result.kakaoValidated}`
+      )
     }
   }
 
@@ -733,7 +831,11 @@ async function processKeyword(
 async function upsertCandidate(
   name: string,
   address: string,
-  sourceUrl: string
+  sourceUrl: string,
+  lat?: number,
+  lng?: number,
+  kakaoPlaceId?: string,
+  kakaoSimilarity?: number
 ): Promise<void> {
   // Check if candidate already exists
   const { data: existing } = await supabaseAdmin
@@ -746,13 +848,21 @@ async function upsertCandidate(
   if (existing) {
     const urls: string[] = existing.source_urls ?? []
     if (!urls.includes(sourceUrl)) {
+      const updateData: Record<string, unknown> = {
+        source_urls: [...urls, sourceUrl],
+        source_count: (existing.source_count ?? 1) + 1,
+        last_seen_at: new Date().toISOString(),
+      }
+      // Fill in Kakao data if not already present and now available
+      if (lat != null && lng != null) {
+        updateData.lat = lat
+        updateData.lng = lng
+      }
+      if (kakaoPlaceId) updateData.kakao_place_id = kakaoPlaceId
+      if (kakaoSimilarity != null) updateData.kakao_similarity = kakaoSimilarity
       await supabaseAdmin
         .from('place_candidates')
-        .update({
-          source_urls: [...urls, sourceUrl],
-          source_count: (existing.source_count ?? 1) + 1,
-          last_seen_at: new Date().toISOString(),
-        })
+        .update(updateData)
         .eq('id', existing.id)
     }
   } else {
@@ -761,6 +871,9 @@ async function upsertCandidate(
       address,
       source_urls: [sourceUrl],
       source_count: 1,
+      ...(lat != null && lng != null ? { lat, lng } : {}),
+      ...(kakaoPlaceId ? { kakao_place_id: kakaoPlaceId } : {}),
+      ...(kakaoSimilarity != null ? { kakao_similarity: kakaoSimilarity } : {}),
     })
   }
 }
@@ -832,6 +945,177 @@ async function updateKeywordMetrics(
       last_used_at: new Date().toISOString(),
     })
     .eq('id', kw.id)
+}
+
+// ─── LLM place name extraction ───────────────────────────────────────────────
+
+/**
+ * Extracts restaurant/cafe names from blog posts using Haiku LLM.
+ * Fallback for when regex extractPlaceNamesFromText() finds nothing.
+ * Pattern: blog-noise-filter.ts (concurrency 2, batch 30, 5s delay).
+ */
+async function extractPlaceNamesWithLLM(
+  items: BlogItemForLLM[]
+): Promise<LLMExtractedPlace[]> {
+  const apiKey = process.env.ANTHROPIC_API_KEY
+  if (!apiKey) {
+    console.warn('[pipeline-b] No ANTHROPIC_API_KEY, skipping LLM extraction')
+    return []
+  }
+
+  const client = new Anthropic({ apiKey, maxRetries: 5 })
+  const batches: BlogItemForLLM[][] = []
+  for (let i = 0; i < items.length; i += LLM_BATCH_SIZE) {
+    batches.push(items.slice(i, i + LLM_BATCH_SIZE))
+  }
+
+  const allResults: LLMExtractedPlace[] = []
+
+  for (let i = 0; i < batches.length; i += LLM_CONCURRENCY) {
+    if (i > 0) {
+      await new Promise((r) => setTimeout(r, LLM_DELAY_MS))
+    }
+
+    const chunk = batches.slice(i, i + LLM_CONCURRENCY)
+    const promises = chunk.map((batch, chunkIdx) => {
+      const globalOffset = (i + chunkIdx) * LLM_BATCH_SIZE
+      return extractBatch(client, batch, globalOffset)
+    })
+
+    const results = await Promise.allSettled(promises)
+    for (const result of results) {
+      if (result.status === 'fulfilled') {
+        allResults.push(...result.value)
+      } else {
+        console.error('[pipeline-b] LLM extraction batch failed:', result.reason)
+      }
+    }
+  }
+
+  return allResults
+}
+
+async function extractBatch(
+  client: Anthropic,
+  batch: BlogItemForLLM[],
+  globalOffset: number
+): Promise<LLMExtractedPlace[]> {
+  const items = batch.map((m, i) => ({
+    n: i + 1,
+    제목: m.title,
+    내용: m.snippet.slice(0, 200),
+  }))
+
+  const prompt = `당신은 블로그 포스트에서 아기/유아와 함께 갈 수 있는 식당·카페의 이름을 추출합니다.
+
+각 항목은 블로그 포스트의 제목+내용 요약입니다.
+실제 방문한 식당이나 카페의 고유 이름을 추출하세요.
+
+추출 규칙:
+- 상호명만 (체인명+지점명 포함, 예: "맥도날드 왕십리역점")
+- "맛집", "식당", "카페" 등 일반 명사는 제외
+- 방문 후기가 아닌 광고/리스트 글이면 skip
+- 주소 힌트가 있으면 함께 추출 (구/동/역 단위)
+
+JSON 응답: [{"n":1,"name":"코코몽키즈카페","addr":"성동구 왕십리"},{"n":2,"name":null}]
+n=번호, name=장소명(없으면 null), addr=주소힌트(없으면 null)
+
+${JSON.stringify(items, null, 0)}`
+
+  try {
+    const response = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 2048,
+      messages: [{ role: 'user', content: prompt }],
+    })
+
+    const text = response.content[0].type === 'text' ? response.content[0].text : ''
+    const match = text.match(/\[[\s\S]*\]/)
+    if (!match) return []
+
+    const parsed: LLMExtractedPlace[] = JSON.parse(match[0])
+
+    // Adjust indices to global offset
+    return parsed
+      .filter((p) => p.name)
+      .map((p) => ({
+        ...p,
+        n: globalOffset + p.n,
+      }))
+  } catch (err) {
+    console.error('[pipeline-b] LLM extraction batch error:', err)
+    return []
+  }
+}
+
+// ─── Kakao Place API validation ──────────────────────────────────────────────
+
+interface KakaoValidation {
+  kakaoPlaceId: string
+  name: string
+  address: string
+  lat: number
+  lng: number
+  similarity: number
+}
+
+/**
+ * Validates an LLM-extracted place name against Kakao Place API.
+ * Returns validated place data with coordinates, or null if no match.
+ */
+async function validateWithKakao(
+  name: string,
+  addressHint: string | null
+): Promise<KakaoValidation | null> {
+  const query = addressHint ? `${name} ${addressHint}` : name
+  const params = new URLSearchParams({ query, size: '5' })
+
+  try {
+    const response = await kakaoLimiter.throttle(() =>
+      fetch(`${KAKAO_KEYWORD_URL}?${params.toString()}`, {
+        headers: {
+          Authorization: `KakaoAK ${process.env.KAKAO_REST_KEY}`,
+        },
+      })
+    )
+
+    if (!response.ok) return null
+
+    const data = await response.json()
+    const documents = data.documents ?? []
+    if (documents.length === 0) return null
+
+    let bestDoc: (typeof documents)[0] | null = null
+    let bestScore = 0
+
+    for (const doc of documents) {
+      const score = similarity(name, doc.place_name)
+      if (score > bestScore) {
+        bestScore = score
+        bestDoc = doc
+      }
+    }
+
+    if (bestScore >= KAKAO_SIMILARITY_THRESHOLD && bestDoc) {
+      // Verify it's in Seoul/Gyeonggi/Incheon service area
+      const addr = bestDoc.address_name ?? ''
+      if (!isValidServiceAddress(addr)) return null
+
+      return {
+        kakaoPlaceId: bestDoc.id,
+        name: bestDoc.place_name,
+        address: bestDoc.road_address_name || bestDoc.address_name,
+        lat: parseFloat(bestDoc.y),
+        lng: parseFloat(bestDoc.x),
+        similarity: bestScore,
+      }
+    }
+
+    return null
+  } catch (err) {
+    console.error('[pipeline-b] Kakao validation error:', err)
+    return null
+  }
 }
 
 // ─── Naver API fetch ──────────────────────────────────────────────────────────

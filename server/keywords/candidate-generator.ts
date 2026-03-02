@@ -198,6 +198,21 @@ const KAKAO_SEASONAL_TEMPLATES: { keyword: string; group: string; isIndoor: bool
   { keyword: '실내트램폴린', group: '놀이', isIndoor: true, months: [12, 1, 2] },
 ]
 
+// ─── Location × pattern templates for restaurant/cafe keywords ──────────────
+
+const LOCATION_PATTERNS = [
+  '{loc} 아기랑 식당',
+  '{loc} 키즈존 카페',
+  '{loc} 유아 외식',
+  '{loc} 아기 밥 먹이기 좋은 곳',
+  '{loc} 아이랑 브런치',
+]
+
+const KEY_LOCATIONS = [
+  '왕십리역', '성수동', '건대입구역', '합정역', '홍대입구역',
+  '잠실역', '여의도역', '판교역', '수원역', '일산',
+]
+
 /** Baby/parenting related keywords for text mining. */
 const BABY_KEYWORDS = [
   '아기',
@@ -493,6 +508,7 @@ async function extractFromBlogMentions(
 /**
  * Generate keyword candidates from category templates.
  * Creates combinations like "아기 + category_type".
+ * Also generates location×pattern combos for 식당/카페 category.
  */
 function generateFromTemplates(): GeneratedKeywordCandidate[] {
   const candidates: GeneratedKeywordCandidate[] = []
@@ -508,7 +524,34 @@ function generateFromTemplates(): GeneratedKeywordCandidate[] {
     }
   }
 
-  console.log(`[candidate-generator] Generated ${candidates.length} naver template-based candidates`)
+  // Location × pattern combos for restaurant/cafe discovery
+  const locationCandidates = generateLocationKeywords()
+  candidates.push(...locationCandidates)
+
+  console.log(
+    `[candidate-generator] Generated ${candidates.length} naver template-based candidates (${locationCandidates.length} location-based)`
+  )
+  return candidates
+}
+
+/**
+ * Generate location × pattern keyword combos for restaurant/cafe category.
+ * 10 locations × 5 patterns = 50 candidates.
+ */
+function generateLocationKeywords(): GeneratedKeywordCandidate[] {
+  const candidates: GeneratedKeywordCandidate[] = []
+
+  for (const loc of KEY_LOCATIONS) {
+    for (const pattern of LOCATION_PATTERNS) {
+      candidates.push({
+        keyword: pattern.replace('{loc}', loc),
+        source: 'template',
+        estimatedRelevance: 0.80,
+        provider: 'naver',
+      })
+    }
+  }
+
   return candidates
 }
 
