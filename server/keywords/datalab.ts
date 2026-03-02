@@ -56,6 +56,8 @@ const PARENT_TREND_KEYWORDS = [
   '아기 옷',
   '아기 음악',
   '유모차',
+  '아기 외식',
+  '키즈 식당',
 ]
 
 
@@ -289,22 +291,46 @@ const DISCOVERY_QUERIES = [
   '아이랑 주말 서울',
   '육아맘 추천 장소',
   '아기 체험 추천',
+  '아기랑 식당 추천',
+  '키즈존 맛집 후기',
+  '유아 외식 브런치',
 ]
 
 const DISCOVERY_STOP_WORDS = new Set([
+  // 검색어 자체 구성 단어
   '추천', '후기', '방문', '리뷰', '블로그', '서울', '경기', '인천',
   '아기', '아이', '유아', '영유아', '어린이', '키즈', '육아',
   '엄마', '아빠', '맘', '베이비', '가족', '나들이', '주말',
+  // 조사/기능어/일반어
   '좋은', '최고', '진짜', '우리', '오늘', '사진', '장소',
   '갈만한곳', '데려', '함께', '같이', '대박', '완전',
+  '아기랑', '아이랑', '아이와', '아기와', '육아맘', '갈만한',
+  '있는', '없는', '했는', '하는', '되는', '같은', '이런', '저런',
+  '개월', '돌아', '지금', '정말', '너무', '엄청', '매우', '약간',
+  '가볼만한곳', '데이트', '코스', '먹방', '이벤트', '무료',
+  '여행', '일상', '그리고', '그래서', '그런데', '때문',
 ])
 
-const BABY_ANCHOR_WORDS = ['아기', '유아', '키즈', '어린이', '영유아', '베이비']
+// Korean verb/adjective/particle endings — tokens ending with these are not place nouns
+const JUNK_SUFFIX = /[는된한을를에서로와과의게며도만요다면으니지고이가]$/
+// Place-type suffixes — tokens ending with these are highly likely place/activity nouns
+const PLACE_SUFFIX = /(카페|파크|센터|랜드|관|원|실|장|점|터|숲|마을|공원|클래스|클럽|교실|놀이|캠핑|글램핑|수영|미용|볼링|스키|동물원|박물관|미술관|도서관|체험|수목원|식물원|식당|맛집|레스토랑|뷔페|브런치)$/
 
 interface NaverBlogItem {
   title: string
   description: string
   link: string
+}
+
+/**
+ * Returns true if a token looks like a place-type or activity noun.
+ * Only accepts tokens with known place/activity suffixes to minimize noise.
+ */
+function isPlaceLikeToken(token: string): boolean {
+  // Reject tokens ending in common Korean particles/endings
+  if (JUNK_SUFFIX.test(token)) return false
+  // Only accept tokens with place-type suffixes (strict positive filter)
+  return PLACE_SUFFIX.test(token)
 }
 
 /**
@@ -325,9 +351,11 @@ async function runDiscoveryQueries(): Promise<number> {
 
       for (const item of items) {
         const text = stripHtml(`${item.title} ${item.description}`)
-        const tokens = text.match(/[가-힣]{2,5}/g) ?? []
+        // Extract 3-5 char tokens only (2-char too noisy)
+        const tokens = text.match(/[가-힣]{3,5}/g) ?? []
         for (const token of tokens) {
           if (DISCOVERY_STOP_WORDS.has(token)) continue
+          if (!isPlaceLikeToken(token)) continue
           tokenFreq.set(token, (tokenFreq.get(token) ?? 0) + 1)
         }
       }
@@ -336,12 +364,11 @@ async function runDiscoveryQueries(): Promise<number> {
     }
   }
 
-  // Filter: freq >= 2 AND related to baby keywords
+  // Filter: freq >= 3 (stricter threshold to reduce noise)
   const candidates: string[] = []
   for (const [token, freq] of tokenFreq) {
-    if (freq < 2) continue
-    // Must co-occur with baby anchor context (token itself is the novel part)
-    if (BABY_ANCHOR_WORDS.includes(token)) continue
+    if (freq < 3) continue
+    if (DISCOVERY_STOP_WORDS.has(token)) continue
     candidates.push(token)
   }
 

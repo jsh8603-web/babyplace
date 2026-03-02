@@ -324,7 +324,7 @@ export async function reviveExhaustedKeywords(provider: string): Promise<number>
     .eq('status', 'EXHAUSTED')
     .eq('provider', provider)
     .is('seasonal_months', null)
-    .lt('updated_at', cutoff.toISOString())
+    .lt('last_used_at', cutoff.toISOString())
     .lt('cycle_count', 20) // 20+ cycles = permanently retired
     .limit(10)
     .select('id, keyword')
