@@ -92,10 +92,10 @@ async function main(): Promise<void> {
 
       case 'manual':
       default:
-        // Run all pipelines in order for manual testing
+        // Run all pipelines — Pipeline A+B in parallel (independent collectors)
         console.log('[run] Manual mode — running all pipelines')
-        await runPipelineAJob()
-        await runPipelineBJob()
+        console.log('[run] Running Pipeline A + B in parallel...')
+        await Promise.all([runPipelineAJob(), runPipelineBJob()])
         await runPublicDataJob()
         await runEventsJob()
         await runScoringJob()
