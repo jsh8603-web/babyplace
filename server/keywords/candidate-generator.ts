@@ -13,6 +13,7 @@
  */
 
 import { supabaseAdmin } from '../lib/supabase-admin'
+import { extractWithGemini } from '../lib/gemini'
 
 export type KeywordProvider = 'naver' | 'kakao'
 
@@ -585,14 +586,23 @@ function generateKakaoSeasonalTemplates(): GeneratedKeywordCandidate[] {
   }))
 }
 
+/** Korean josa (particles) to strip from tokens for cleaner keyword extraction. */
+const JOSA = /(에서의|에서|으로|에는|까지|부터|마다|라는|라고|은|는|이|가|을|를|와|과|의|도|만|로)$/
+
+function stripJosa(token: string): string {
+  const stripped = token.replace(JOSA, '')
+  return stripped.length >= 2 ? stripped : token
+}
+
 /**
  * Tokenize Korean + English text.
- * Simple split on spaces and punctuation.
+ * Simple split on spaces and punctuation, then strip Korean josa.
  */
 function tokenize(text: string): string[] {
   return text
     .split(/[\s\-\.,;:'"()\[\]]+/)
     .filter((token) => token.length > 0)
+    .map(stripJosa)
 }
 
 /**
@@ -614,5 +624,96 @@ function deduplicateCandidates(
   }
 
   return Array.from(map.values())
+}
+
+/**
+ * Generate semantically diverse keywords using Gemini Flash.
+ * Fetches all existing keywords from DB and asks LLM to produce 50 new ones
+ * covering different search intents (activity type, age group, location, season, etc.).
+ */
+export async function generateDiverseKeywordsWithLLM(): Promise<{
+  candidatesGenerated: number
+  candidatesInserted: number
+  errors: number
+}> {
+  const result = { candidatesGenerated: 0, candidatesInserted: 0, errors: 0 }
+
+  if (!process.env.GEMINI_API_KEY) {
+    console.warn('[candidate-generator] No GEMINI_API_KEY, skipping LLM keyword generation')
+    return result
+  }
+
+  try {
+    // Fetch all existing keywords to avoid duplicates
+    const { data: existing } = await supabaseAdmin
+      .from('keywords')
+      .select('keyword')
+      .eq('provider', 'naver')
+    const existingSet = new Set((existing ?? []).map((k: { keyword: string }) => k.keyword.toLowerCase()))
+    const existingList = (existing ?? []).map((k: { keyword: string }) => k.keyword).slice(0, 200)
+
+    const prompt = `당신은 "아기/유아와 함께 갈 수 있는 장소"를 찾는 네이버 블로그 검색 키워드 전문가입니다.
+
+기존 키워드 목록 (중복 금지):
+${JSON.stringify(existingList)}
+
+위 키워드와 중복되지 않는 새로운 검색 키워드 50개를 생성하세요.
+
+다양성 기준 (각 카테고리에서 골고루):
+1. 활동 유형: 식당, 카페, 놀이터, 체험, 공연, 수영, 캠핑, 산책 등
+2. 연령대: 신생아, 100일, 돌아기, 2세, 3세, 유치원생 등
+3. 상황: 비 오는 날, 주말, 평일, 생일파티, 돌잔치 등
+4. 계절: 봄나들이, 여름물놀이, 가을단풍, 겨울실내 등
+5. 지역 특화: 서울/경기 주요 지역명 + 장소 유형
+
+형태적 변형(조사만 다른 키워드)은 생성하지 마세요.
+실제 부모가 네이버에 검색할 자연스러운 표현을 사용하세요.
+
+JSON 배열로 응답: ["키워드1", "키워드2", ...]`
+
+    const text = await extractWithGemini(prompt)
+    const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
+    const match = cleaned.match(/\[[\s\S]*\]/)
+    if (!match) {
+      console.warn('[candidate-generator] LLM keyword generation: no JSON array in response')
+      return result
+    }
+
+    const keywords: string[] = JSON.parse(match[0])
+    result.candidatesGenerated = keywords.length
+
+    for (const kw of keywords) {
+      if (!kw || typeof kw !== 'string' || kw.length < 2) continue
+      if (existingSet.has(kw.toLowerCase())) continue
+
+      const { group, isIndoor } = inferKeywordGroup(kw)
+      const { error } = await supabaseAdmin.from('keywords').insert({
+        keyword: kw.trim(),
+        provider: 'naver',
+        keyword_group: group,
+        is_indoor: isIndoor,
+        status: 'NEW',
+        source: 'llm_generated',
+        efficiency_score: 0,
+        cycle_count: 0,
+        consecutive_zero_new: 0,
+        created_at: new Date().toISOString(),
+      })
+
+      if (error) {
+        if (error.code !== '23505') result.errors++
+      } else {
+        result.candidatesInserted++
+        existingSet.add(kw.toLowerCase())
+      }
+    }
+
+    console.log(`[candidate-generator] LLM generated ${result.candidatesGenerated}, inserted ${result.candidatesInserted} new keywords`)
+    return result
+  } catch (err) {
+    console.error('[candidate-generator] LLM keyword generation error:', err)
+    result.errors++
+    return result
+  }
 }
 

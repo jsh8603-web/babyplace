@@ -25,7 +25,8 @@ import { extractWithGemini } from '../lib/gemini'
 import { supabaseAdmin } from '../lib/supabase-admin'
 import { naverLimiter, kakaoSearchLimiter } from '../rate-limiter'
 import { findMatchingPlace } from '../matchers/duplicate'
-import { searchKakaoPlace } from '../lib/kakao-search'
+import { normalizePlaceName } from '../matchers/similarity'
+import { searchKakaoPlaceDetailed, type KakaoSearchResult } from '../lib/kakao-search'
 import { isValidServiceAddress } from '../enrichers/region'
 import { evaluateKeywordCycle } from '../keywords/rotation-engine'
 
@@ -97,14 +98,23 @@ const MAX_KEYWORDS_PER_RUN = 150
 const LLM_BATCH_SIZE = 30
 const KAKAO_SIMILARITY_THRESHOLD = 0.7
 
+/** Seoul / Gyeonggi / Incheon bounding box (swLng,swLat,neLng,neLat) */
+const SERVICE_RECT = '126.5,36.9,127.9,38.0'
+
 /** Gemini Flash Tier 1: 150 RPM — concurrency 4 + 2s delay stays well within. */
 const LLM_CONCURRENCY = 4
 const LLM_DELAY_MS = 2000
+
+/** Supplementary pagination: fetch more pages when existing URLs dominate results. */
+const TARGET_PER_KEYWORD = 30
+const MAX_PAGES = 5
+const MIN_YIELD = 0.2
 
 interface LLMExtractedPlace {
   n: number
   name: string | null
   addr: string | null
+  c?: number // confidence 0~1
 }
 
 interface BlogItemForLLM {
@@ -167,8 +177,8 @@ export async function runKeywordSearchBatch(): Promise<PipelineBResult['keywordS
   }
   const startedAt = Date.now()
 
-  // Phase 1: Collect blog data for all keywords
-  const keywordData = await collectAllKeywordBlogs(stats)
+  // Phase 1: Collect blog data for all keywords (with URL dedup)
+  const { collected: keywordData, sessionUrls } = await collectAllKeywordBlogs(stats)
   if (keywordData.length === 0) {
     console.log('[pipeline-b] No keywords with blog results to process')
     return stats
@@ -176,6 +186,14 @@ export async function runKeywordSearchBatch(): Promise<PipelineBResult['keywordS
 
   // Phase 2: Extract place names with Gemini Flash + validate with Kakao
   await extractAndProcessKeywords(keywordData, stats)
+
+  // Phase 3: Record analyzed URLs for future dedup
+  const newUrls = [...sessionUrls]
+  for (let i = 0; i < newUrls.length; i += 500) {
+    const batch = newUrls.slice(i, i + 500).map((url) => ({ url }))
+    await supabaseAdmin.from('llm_analyzed_urls').upsert(batch, { onConflict: 'url' })
+  }
+  console.log(`[pipeline-b] Recorded ${newUrls.length} analyzed URLs`)
 
   await supabaseAdmin.from('collection_logs').insert({
     collector: 'pipeline-b-keyword-search',
@@ -687,11 +705,13 @@ async function updateMentionCount(placeId: number, increment: number): Promise<v
 /**
  * Phase 1: Collect blog data for all active keywords.
  * No LLM calls — just Naver Blog API fetches.
+ * Uses supplementary pagination to skip already-analyzed URLs.
  */
 async function collectAllKeywordBlogs(
   stats: PipelineBResult['keywordSearch']
-): Promise<CollectedKeywordData[]> {
+): Promise<{ collected: CollectedKeywordData[]; sessionUrls: Set<string> }> {
   const currentMonth = new Date().getMonth() + 1
+  const sessionUrls = new Set<string>()
 
   const { data: keywords, error } = await supabaseAdmin
     .from('keywords')
@@ -706,7 +726,7 @@ async function collectAllKeywordBlogs(
   if (error || !keywords) {
     console.error('[pipeline-b] Failed to fetch keywords:', error)
     stats.errors++
-    return []
+    return { collected: [], sessionUrls }
   }
 
   const collected: CollectedKeywordData[] = []
@@ -718,28 +738,56 @@ async function collectAllKeywordBlogs(
     }
 
     try {
-      const query = encodeURIComponent(kw.keyword)
-      const url = `${NAVER_BLOG_URL}?query=${query}&display=${DISPLAY_COUNT}&sort=sim`
-      const items = await fetchNaverSearch<NaverBlogItem>(url)
+      const blogItems: BlogItemForLLM[] = []
+      let totalApiResults = 0
 
-      if (!items || items.length === 0) {
-        await evaluateKeywordCycle(kw.id, 0, 0, 0)
+      for (let page = 0; page < MAX_PAGES; page++) {
+        const start = page * DISPLAY_COUNT + 1
+        const query = encodeURIComponent(kw.keyword)
+        const url = `${NAVER_BLOG_URL}?query=${query}&display=${DISPLAY_COUNT}&start=${start}&sort=sim`
+        const items = await fetchNaverSearch<NaverBlogItem>(url)
+
+        if (!items || items.length === 0) break
+        totalApiResults += items.length
+
+        // Filter out already-analyzed URLs (DB batch check + session memory)
+        const pageUrls = items.map((i) => i.link).filter(Boolean)
+        const { data: dbExisting } = await supabaseAdmin
+          .from('llm_analyzed_urls')
+          .select('url')
+          .in('url', pageUrls)
+        const dbSet = new Set((dbExisting ?? []).map((r: { url: string }) => r.url))
+
+        let newInPage = 0
+        for (const item of items) {
+          if (!item.link || dbSet.has(item.link) || sessionUrls.has(item.link)) continue
+          sessionUrls.add(item.link)
+          blogItems.push({
+            title: stripHtml(item.title),
+            snippet: stripHtml(item.description).slice(0, 300),
+            link: item.link,
+            postdate: parseNaverPostDate(item.postdate),
+          })
+          newInPage++
+        }
+
+        // Yield check: stop if too few new URLs
+        const yieldRate = items.length > 0 ? newInPage / items.length : 0
+        if (yieldRate < MIN_YIELD) break
+        if (blogItems.length >= TARGET_PER_KEYWORD) break
+      }
+
+      if (blogItems.length === 0) {
+        await evaluateKeywordCycle(kw.id, totalApiResults, 0, 0)
         stats.keywordsProcessed++
         continue
       }
-
-      const blogItems: BlogItemForLLM[] = items.map((item) => ({
-        title: stripHtml(item.title),
-        snippet: stripHtml(item.description).slice(0, 300),
-        link: item.link,
-        postdate: parseNaverPostDate(item.postdate),
-      }))
 
       collected.push({
         keywordId: kw.id,
         keyword: kw.keyword,
         blogItems,
-        apiResults: items.length,
+        apiResults: totalApiResults,
       })
     } catch (err) {
       console.error(`[pipeline-b] Blog fetch error "${kw.keyword}":`, err)
@@ -747,8 +795,8 @@ async function collectAllKeywordBlogs(
     }
   }
 
-  console.log(`[pipeline-b] Collected blogs for ${collected.length} keywords (${collected.reduce((s, d) => s + d.blogItems.length, 0)} total items)`)
-  return collected
+  console.log(`[pipeline-b] Collected blogs for ${collected.length} keywords (${collected.reduce((s, d) => s + d.blogItems.length, 0)} new items, skipped ${sessionUrls.size} session URLs)`)
+  return { collected, sessionUrls }
 }
 
 /**
@@ -785,7 +833,14 @@ async function extractAndProcessKeywords(
     })
   }
 
-  // Process with concurrency control
+  // Phase 2a: LLM extraction + persist to intermediate table
+  const batchId = new Date().toISOString().replace(/[:.]/g, '-')
+  const allExtractions: Array<{
+    keywordId: number; keyword: string
+    blogUrl: string; blogTitle: string; blogSnippet: string; blogPostdate: string | null
+    extractedName: string; extractedAddr: string | null; llmConfidence: number | null
+  }> = []
+
   for (let i = 0; i < tasks.length; i += LLM_CONCURRENCY) {
     if (i > 0) {
       await new Promise((r) => setTimeout(r, LLM_DELAY_MS))
@@ -793,7 +848,7 @@ async function extractAndProcessKeywords(
 
     const batch = tasks.slice(i, i + LLM_CONCURRENCY)
     const results = await Promise.allSettled(
-      batch.map((task) => extractPlaceNamesWithLLM(task.chunk))
+      batch.map((task) => extractPlaceNamesWithLLM(task.chunk, task.data.keyword))
     )
 
     for (let j = 0; j < results.length; j++) {
@@ -801,65 +856,55 @@ async function extractAndProcessKeywords(
       const result = results[j]
       if (result.status !== 'fulfilled' || !result.value) continue
 
-      const kStat = kwStats.get(task.data.keywordId)!
-
       for (const place of result.value) {
         if (!place.name) continue
-
+        // Filter low-confidence extractions (generic nouns, vague names)
+        if (place.c !== undefined && place.c < 0.6) continue
         const blogIdx = task.chunkStart + place.n - 1
         const sourceItem = task.data.blogItems[blogIdx]
         if (!sourceItem) continue
 
-        kStat.llmExtracted++
-        stats.llmExtracted++
-
-        // Try to match to existing DB place
-        const existingMatch = await findMatchingPlace(place.name, null, 0.8)
-        if (existingMatch) {
-          const { error } = await supabaseAdmin.from('blog_mentions').insert({
-            place_id: existingMatch.placeId,
-            source_type: 'naver_blog',
-            title: sourceItem.title,
-            url: sourceItem.link,
-            post_date: sourceItem.postdate,
-            snippet: sourceItem.snippet.slice(0, 500),
-          })
-          if (!error) {
-            kStat.newMentions++
-            stats.newMentions++
-            await updateMentionCount(existingMatch.placeId, 1)
-          } else if (error.code === '23505') {
-            kStat.duplicates++
-          }
-          continue
-        }
-
-        // No DB match → validate with Kakao Place API
-        const kakaoResult = await validateWithKakao(place.name, place.addr)
-        if (kakaoResult) {
-          kStat.kakaoValidated++
-          stats.kakaoValidated++
-          await upsertCandidate(
-            kakaoResult.name,
-            kakaoResult.address,
-            sourceItem.link,
-            kakaoResult.lat,
-            kakaoResult.lng,
-            kakaoResult.kakaoPlaceId,
-            kakaoResult.similarity,
-            {
-              title: sourceItem.title,
-              snippet: sourceItem.snippet.slice(0, 500),
-              post_date: sourceItem.postdate,
-              source_type: 'naver_blog',
-              url: sourceItem.link,
-            }
-          )
-          kStat.newCandidates++
-          stats.newCandidates++
-        }
+        allExtractions.push({
+          keywordId: task.data.keywordId,
+          keyword: task.data.keyword,
+          blogUrl: sourceItem.link,
+          blogTitle: sourceItem.title,
+          blogSnippet: sourceItem.snippet.slice(0, 500),
+          blogPostdate: sourceItem.postdate,
+          extractedName: place.name,
+          extractedAddr: place.addr,
+          llmConfidence: place.c ?? null,
+        })
       }
     }
+  }
+
+  // Persist LLM extraction results to intermediate table
+  console.log(`[pipeline-b] Persisting ${allExtractions.length} LLM extractions (batch=${batchId})`)
+  for (let i = 0; i < allExtractions.length; i += 500) {
+    const rows = allExtractions.slice(i, i + 500).map((e) => ({
+      batch_id: batchId,
+      keyword_id: e.keywordId,
+      keyword: e.keyword,
+      blog_url: e.blogUrl,
+      blog_title: e.blogTitle,
+      blog_snippet: e.blogSnippet,
+      blog_postdate: e.blogPostdate,
+      extracted_name: e.extractedName,
+      extracted_addr: e.extractedAddr,
+      llm_confidence: e.llmConfidence,
+    }))
+    await supabaseAdmin.from('llm_extraction_results').insert(rows)
+  }
+
+  // Phase 2b: Process extractions (DB match + Kakao validation)
+  await processExtractions(allExtractions, kwStats, stats, batchId)
+  stats.llmExtracted = allExtractions.length
+
+  // Count per-keyword llmExtracted from allExtractions
+  for (const e of allExtractions) {
+    const kStat = kwStats.get(e.keywordId)
+    if (kStat) kStat.llmExtracted++
   }
 
   // Update keyword rotation stats
@@ -884,11 +929,229 @@ async function extractAndProcessKeywords(
   }
 }
 
+// ─── Phase 2b: Process LLM extractions (DB match + Kakao) ─────────────────
+
+interface ExtractionRecord {
+  keywordId: number
+  keyword: string
+  blogUrl: string
+  blogTitle: string
+  blogSnippet: string
+  blogPostdate: string | null
+  extractedName: string
+  extractedAddr: string | null
+  llmConfidence?: number | null
+}
+
+async function processExtractions(
+  extractions: ExtractionRecord[],
+  kwStats: Map<number, { newMentions: number; newCandidates: number; llmExtracted: number; kakaoValidated: number; duplicates: number }>,
+  stats: PipelineBResult['keywordSearch'],
+  batchId?: string
+): Promise<void> {
+  // Step 1: Group by normalized name for dedup
+  const nameGroups = new Map<string, ExtractionRecord[]>()
+  for (const e of extractions) {
+    const key = normalizePlaceName(e.extractedName)
+    const group = nameGroups.get(key) ?? []
+    group.push(e)
+    nameGroups.set(key, group)
+  }
+
+  console.log(`[pipeline-b] processExtractions: ${extractions.length} items → ${nameGroups.size} unique names`)
+
+  // Step 2: Process each unique name once
+  let kakaoQuotaExhausted = false
+  for (const [, group] of nameGroups) {
+    const first = group[0]
+
+    // DB match (once per unique name)
+    const existingMatch = await findMatchingPlace(first.extractedName, first.extractedAddr, 0.8)
+    if (existingMatch) {
+      // Apply blog_mentions for all items in the group
+      for (const e of group) {
+        const kStat = kwStats.get(e.keywordId)
+        if (!kStat) continue
+
+        const { error } = await supabaseAdmin.from('blog_mentions').insert({
+          place_id: existingMatch.placeId,
+          source_type: 'naver_blog',
+          title: e.blogTitle,
+          url: e.blogUrl,
+          post_date: e.blogPostdate,
+          snippet: e.blogSnippet,
+        })
+        if (!error) {
+          kStat.newMentions++
+          stats.newMentions++
+        } else if (error.code === '23505') {
+          kStat.duplicates++
+        }
+      }
+      // Increment mention count once for the whole group
+      await updateMentionCount(existingMatch.placeId, group.length)
+
+      // Track match result
+      if (batchId) {
+        await updateMatchResults(group, 'db_match', 1.0)
+      }
+      continue
+    }
+
+    // Kakao validation (once per unique name)
+    if (kakaoQuotaExhausted) continue
+    const kakaoResult = await validateWithKakao(first.extractedName, first.extractedAddr)
+    if (kakaoResult === null) {
+      // null = exception (likely quota exceeded) — stop Kakao calls
+      kakaoQuotaExhausted = true
+      console.warn(`[pipeline-b] Kakao validation error — skipping remaining ${nameGroups.size} names`)
+      continue
+    }
+    if (kakaoResult?.validation) {
+      // First item creates/updates the candidate; rest add source_urls
+      for (const e of group) {
+        const kStat = kwStats.get(e.keywordId)
+        if (!kStat) continue
+
+        kStat.kakaoValidated++
+        stats.kakaoValidated++
+        await upsertCandidate(
+          kakaoResult.validation.name,
+          kakaoResult.validation.address,
+          e.blogUrl,
+          kakaoResult.validation.lat,
+          kakaoResult.validation.lng,
+          kakaoResult.validation.kakaoPlaceId,
+          kakaoResult.validation.similarity,
+          {
+            title: e.blogTitle,
+            snippet: e.blogSnippet,
+            post_date: e.blogPostdate,
+            source_type: 'naver_blog',
+            url: e.blogUrl,
+          }
+        )
+        kStat.newCandidates++
+        stats.newCandidates++
+      }
+
+      if (batchId) {
+        await updateMatchResults(group, 'kakao_validated', kakaoResult.bestScore)
+      }
+    } else if (kakaoResult && batchId) {
+      // Kakao search returned results but no valid match — track failure reason
+      await updateMatchResults(group, kakaoResult.failureReason ?? 'kakao_error', kakaoResult.bestScore)
+    }
+  }
+}
+
+/** Batch-update match_result + kakao_best_score for a group of extractions. */
+async function updateMatchResults(
+  group: ExtractionRecord[],
+  matchResult: string,
+  bestScore: number
+): Promise<void> {
+  const urls = group.map((e) => e.blogUrl)
+  await supabaseAdmin
+    .from('llm_extraction_results')
+    .update({ match_result: matchResult, kakao_best_score: bestScore })
+    .in('blog_url', urls)
+}
+
+/**
+ * Replay Kakao/DB matching from a saved batch in llm_extraction_results.
+ * Skips LLM extraction and blog collection — just re-runs matching logic.
+ */
+export async function replayFromExtraction(
+  batchId: string
+): Promise<PipelineBResult['keywordSearch']> {
+  const stats: PipelineBResult['keywordSearch'] = {
+    keywordsProcessed: 0, newMentions: 0, newCandidates: 0,
+    llmExtracted: 0, kakaoValidated: 0, errors: 0,
+  }
+
+  // Paginate to avoid Supabase default 1000-row limit
+  const allRows: Record<string, unknown>[] = []
+  let offset = 0
+  const PAGE_SIZE = 1000
+  while (true) {
+    const { data: page, error: pageError } = await supabaseAdmin
+      .from('llm_extraction_results')
+      .select('*')
+      .eq('batch_id', batchId)
+      .order('id', { ascending: true })
+      .range(offset, offset + PAGE_SIZE - 1)
+
+    if (pageError) {
+      console.error(`[replay] Query error:`, pageError)
+      break
+    }
+    if (!page || page.length === 0) break
+    allRows.push(...page)
+    if (page.length < PAGE_SIZE) break
+    offset += PAGE_SIZE
+  }
+
+  if (allRows.length === 0) {
+    console.error(`[replay] No extraction results for batch ${batchId}`)
+    return stats
+  }
+  const rows = allRows
+
+  console.log(`[replay] Loaded ${rows.length} extraction results from batch ${batchId}`)
+
+  // Group by keyword for stats
+  const kwIds = new Set<number>()
+  const kwStats = new Map<
+    number,
+    { newMentions: number; newCandidates: number; llmExtracted: number; kakaoValidated: number; duplicates: number }
+  >()
+
+  const extractions: ExtractionRecord[] = rows.map((r: Record<string, unknown>) => {
+    const kid = r.keyword_id as number
+    kwIds.add(kid)
+    if (!kwStats.has(kid)) {
+      kwStats.set(kid, { newMentions: 0, newCandidates: 0, llmExtracted: 0, kakaoValidated: 0, duplicates: 0 })
+    }
+    return {
+      keywordId: kid,
+      keyword: r.keyword as string,
+      blogUrl: r.blog_url as string,
+      blogTitle: r.blog_title as string,
+      blogSnippet: r.blog_snippet as string,
+      blogPostdate: r.blog_postdate as string | null,
+      extractedName: r.extracted_name as string,
+      extractedAddr: r.extracted_addr as string | null,
+    }
+  })
+
+  stats.llmExtracted = extractions.length
+  await processExtractions(extractions, kwStats, stats, batchId)
+
+  stats.keywordsProcessed = kwIds.size
+  for (const [, kStat] of kwStats) {
+    if (kStat.llmExtracted > 0 || kStat.kakaoValidated > 0) {
+      console.log(
+        `[replay] kakao ${kStat.kakaoValidated}, mentions ${kStat.newMentions}, candidates ${kStat.newCandidates}`
+      )
+    }
+  }
+
+  console.log(
+    `[replay] Done: llmExtracted=${stats.llmExtracted}, dbMatch=${stats.newMentions}, kakaoValidated=${stats.kakaoValidated}, candidates=${stats.newCandidates}`
+  )
+  return stats
+}
+
+/** Counter for debug logging (first N requests per session). */
+let llmDebugCounter = 0
+
 /**
  * Call Gemini Flash to extract place names from a batch of blog items.
  */
 async function extractPlaceNamesWithLLM(
-  chunk: BlogItemForLLM[]
+  chunk: BlogItemForLLM[],
+  keyword?: string
 ): Promise<LLMExtractedPlace[]> {
   const items = chunk.map((m, j) => ({
     n: j + 1,
@@ -896,29 +1159,62 @@ async function extractPlaceNamesWithLLM(
     내용: m.snippet.slice(0, 200),
   }))
 
-  const prompt = `당신은 블로그 포스트에서 아기/유아와 함께 갈 수 있는 식당·카페의 이름을 추출합니다.
+  const keywordCtx = keyword ? `\n현재 검색 키워드: "${keyword}"` : ''
+
+  const prompt = `당신은 블로그 포스트에서 아기/유아와 함께 갈 수 있는 장소의 고유 상호명을 추출합니다.${keywordCtx}
 
 각 항목은 블로그 포스트의 제목+내용 요약입니다.
-실제 방문한 식당이나 카페의 고유 이름을 추출하세요.
 
 추출 규칙:
-- 상호명만 (체인명+지점명 포함, 예: "맥도날드 왕십리역점")
-- "맛집", "식당", "카페" 등 일반 명사는 제외
-- 방문 후기가 아닌 광고/리스트 글이면 skip
+- 고유 상호명만 추출 (체인명+지점명 포함, 예: "맥도날드 왕십리역점", "코코몽키즈카페 성수점")
+- 실제 방문 후기에서만 추출 (광고/리스트/추천모음 글은 skip)
 - 주소 힌트가 있으면 함께 추출 (구/동/역 단위)
+- c(확신도 0~1): 고유 상호명이 확실하면 0.9+, 불확실하면 0.5 이하
 
-JSON 응답: [{"n":1,"name":"코코몽키즈카페","addr":"성동구 왕십리"},{"n":2,"name":null}]
-n=번호, name=장소명(없으면 null), addr=주소힌트(없으면 null)
+제외 대상 (반드시 name=null):
+- 일반명사/카테고리: "키즈카페", "맛집", "놀이터", "동물원", "수영장", "도서관", "카페", "식당"
+- 지역+카테고리: "강남 키즈카페", "홍대 맛집", "판교 카페"
+- 시설 유형명: "실내놀이터", "문화센터", "무료체험관", "아기 수영장", "키즈풀"
+- 프로그램/제품/서비스명: "아기 수영 클래스", "범보 의자", "문센 수업"
+- 지역명 단독: "서울숲", "한강공원" (단, "서울숲놀이터"처럼 시설명이 붙으면 추출)
+
+JSON 응답: [{"n":1,"name":"코코몽키즈카페","addr":"성동구 왕십리","c":0.95},{"n":2,"name":null}]
+n=번호, name=장소명(없으면 null), addr=주소힌트(없으면 null), c=확신도(0~1)
 
 ${JSON.stringify(items, null, 0)}`
 
   try {
     const text = await extractWithGemini(prompt)
-    const match = text.match(/\[[\s\S]*\]/)
-    if (!match) return []
+
+    // Debug logging for first 3 requests
+    if (llmDebugCounter < 3) {
+      console.log(`[pipeline-b] Gemini raw response #${llmDebugCounter + 1}: ${text.slice(0, 300)}`)
+      llmDebugCounter++
+    }
+
+    // Strip markdown code block if present
+    const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
+
+    let match = cleaned.match(/\[[\s\S]*\]/)
+    if (!match) {
+      // Try to recover truncated JSON: find last complete object and close the array
+      const truncatedMatch = cleaned.match(/\[[\s\S]*\}/)
+      if (truncatedMatch) {
+        const recovered = truncatedMatch[0] + ']'
+        try {
+          const parsed = JSON.parse(recovered)
+          console.warn(`[pipeline-b] Recovered truncated JSON (${parsed.length} items)`)
+          return parsed
+        } catch {
+          // Recovery failed
+        }
+      }
+      console.warn(`[pipeline-b] JSON parse failed for chunk: no array found in response (${text.slice(0, 100)})`)
+      return []
+    }
     return JSON.parse(match[0])
   } catch (err) {
-    console.error('[pipeline-b] Gemini extraction error:', err)
+    console.warn(`[pipeline-b] JSON parse failed for chunk: ${err}`)
     return []
   }
 }
@@ -1000,39 +1296,96 @@ interface KakaoValidation {
   similarity: number
 }
 
+interface KakaoValidationResult {
+  validation: KakaoValidation | null
+  bestScore: number
+  failureReason: string | null
+}
+
 /**
  * Validates an LLM-extracted place name against Kakao Place API.
- * Returns validated place data with coordinates, or null if no match.
+ * If addressHint is provided but fails, retries with name-only.
+ * Always returns result info for tracking (validation=null on failure).
  */
 async function validateWithKakao(
   name: string,
   addressHint: string | null
-): Promise<KakaoValidation | null> {
+): Promise<KakaoValidationResult | null> {
+  const searchOpts = {
+    limiter: kakaoSearchLimiter,
+    threshold: KAKAO_SIMILARITY_THRESHOLD,
+    addressWords: 0 as number,
+    rect: SERVICE_RECT,
+  }
+
   try {
-    const match = await searchKakaoPlace(name, addressHint, {
-      limiter: kakaoSearchLimiter,
-      threshold: KAKAO_SIMILARITY_THRESHOLD,
-      addressWords: 0, // use raw addressHint without slicing
-    })
+    // 1st attempt: name + addressHint
+    const result1 = await searchKakaoPlaceDetailed(name, addressHint, searchOpts)
 
-    if (!match) return null
+    if (result1.match && isValidServiceAddress(result1.match.address)) {
+      return {
+        validation: toKakaoValidation(result1.match),
+        bestScore: result1.bestScore,
+        failureReason: null,
+      }
+    }
 
-    // Verify it's in Seoul/Gyeonggi/Incheon service area
-    if (!isValidServiceAddress(match.address)) return null
+    // Check if match exists but is out of service area
+    const result1OutOfArea = result1.match && !isValidServiceAddress(result1.match.address)
 
+    // 2nd attempt: retry without addressHint (addr may mislead search)
+    if (addressHint) {
+      const result2 = await searchKakaoPlaceDetailed(name, null, searchOpts)
+
+      if (result2.match && isValidServiceAddress(result2.match.address)) {
+        return {
+          validation: toKakaoValidation(result2.match),
+          bestScore: result2.bestScore,
+          failureReason: null,
+        }
+      }
+
+      // Use the better result for failure tracking
+      const best = result2.bestScore > result1.bestScore ? result2 : result1
+      const outOfArea = result1OutOfArea || (result2.match && !isValidServiceAddress(result2.match.address))
+      return {
+        validation: null,
+        bestScore: best.bestScore,
+        failureReason: classifyKakaoFailure(best, !!outOfArea),
+      }
+    }
+
+    // No addressHint, single attempt failed
     return {
-      kakaoPlaceId: match.id,
-      name: match.name,
-      address: match.roadAddress || match.address,
-      lat: match.lat,
-      lng: match.lng,
-      similarity: match.similarity,
+      validation: null,
+      bestScore: result1.bestScore,
+      failureReason: classifyKakaoFailure(result1, !!result1OutOfArea),
     }
   } catch (err) {
     console.error('[pipeline-b] Kakao validation error:', err)
     return null
   }
 }
+
+function toKakaoValidation(match: { id: string; name: string; address: string; roadAddress: string; lat: number; lng: number; similarity: number }): KakaoValidation {
+  return {
+    kakaoPlaceId: match.id,
+    name: match.name,
+    address: match.roadAddress || match.address,
+    lat: match.lat,
+    lng: match.lng,
+    similarity: match.similarity,
+  }
+}
+
+/** Classify why Kakao search failed. */
+function classifyKakaoFailure(result: KakaoSearchResult, outOfArea: boolean): string {
+  if (result.resultCount === 0) return 'kakao_no_results'
+  if (outOfArea) return 'kakao_out_of_area'
+  if (result.bestScore < KAKAO_SIMILARITY_THRESHOLD) return 'kakao_low_similarity'
+  return 'kakao_out_of_area'
+}
+
 
 // ─── Naver API fetch ──────────────────────────────────────────────────────────
 

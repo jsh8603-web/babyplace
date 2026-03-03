@@ -35,24 +35,31 @@ interface SearchOptions {
   threshold?: number
   /** If provided, check for exact Kakao place ID match first */
   kakaoPlaceId?: string | null
+  /** Bounding box: "swLng,swLat,neLng,neLat" (Kakao rect format) */
+  rect?: string
+}
+
+export interface KakaoSearchResult {
+  match: KakaoPlaceMatch | null
+  bestScore: number
+  resultCount: number
 }
 
 /**
- * Search Kakao Place API by name + address and return the best match
- * above the similarity threshold.
- *
- * Returns null if no match found or API error.
+ * Search Kakao Place API and return detailed results including
+ * best score and result count (for DROP tracking).
  */
-export async function searchKakaoPlace(
+export async function searchKakaoPlaceDetailed(
   name: string,
   address: string | null,
   options: SearchOptions = {}
-): Promise<KakaoPlaceMatch | null> {
+): Promise<KakaoSearchResult> {
   const {
     limiter = kakaoLimiter,
     addressWords = 3,
     threshold = 0.75,
     kakaoPlaceId = null,
+    rect,
   } = options
 
   const queryParts = [name]
@@ -66,8 +73,11 @@ export async function searchKakaoPlace(
 
   const params = new URLSearchParams({
     query: queryParts.join(' '),
-    size: '5',
+    size: '15',
   })
+  if (rect) {
+    params.set('rect', rect)
+  }
 
   const response = await limiter.throttle(() =>
     fetch(`${KAKAO_KEYWORD_URL}?${params.toString()}`, {
@@ -77,11 +87,11 @@ export async function searchKakaoPlace(
     })
   )
 
-  if (!response.ok) return null
+  if (!response.ok) return { match: null, bestScore: 0, resultCount: 0 }
 
   const data = await response.json()
   const documents = data.documents ?? []
-  if (documents.length === 0) return null
+  if (documents.length === 0) return { match: null, bestScore: 0, resultCount: 0 }
 
   // Check for exact Kakao place ID match first
   if (kakaoPlaceId) {
@@ -89,7 +99,7 @@ export async function searchKakaoPlace(
       (doc: Record<string, string>) => doc.id === kakaoPlaceId
     )
     if (idMatch) {
-      return docToMatch(idMatch, 1.0)
+      return { match: docToMatch(idMatch, 1.0), bestScore: 1.0, resultCount: documents.length }
     }
   }
 
@@ -106,10 +116,25 @@ export async function searchKakaoPlace(
   }
 
   if (bestScore >= threshold && bestDoc) {
-    return docToMatch(bestDoc, bestScore)
+    return { match: docToMatch(bestDoc, bestScore), bestScore, resultCount: documents.length }
   }
 
-  return null
+  return { match: null, bestScore, resultCount: documents.length }
+}
+
+/**
+ * Search Kakao Place API by name + address and return the best match
+ * above the similarity threshold.
+ *
+ * Returns null if no match found or API error.
+ */
+export async function searchKakaoPlace(
+  name: string,
+  address: string | null,
+  options: SearchOptions = {}
+): Promise<KakaoPlaceMatch | null> {
+  const result = await searchKakaoPlaceDetailed(name, address, options)
+  return result.match
 }
 
 function docToMatch(

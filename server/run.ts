@@ -27,7 +27,7 @@
  */
 
 import { runPipelineA } from './collectors/kakao-category'
-import { runPipelineB, runReverseSearchOnly, runKeywordSearchBatch } from './collectors/naver-blog'
+import { runPipelineB, runReverseSearchOnly, runKeywordSearchBatch, replayFromExtraction } from './collectors/naver-blog'
 import { runPublicData } from './collectors/public-data'
 import { runLocalData } from './collectors/localdata'
 import { runScoring } from './scoring'
@@ -41,6 +41,7 @@ import { runSeoulEventsCollector } from './collectors/seoul-events'
 import { runEventDeduplication } from './matchers/event-dedup'
 import { runKeywordRotation } from './keywords/keyword-rotation'
 import { runBlogNoiseFilter } from './utils/blog-noise-filter'
+import { runFullBlogAudit } from './utils/blog-full-audit'
 import { runDataLabTrendDetection } from './keywords/datalab'
 import { initializeAllLimiters, flushAllLimiters } from './rate-limiter'
 
@@ -52,6 +53,7 @@ const EVENTS_SCHEDULE = '0 19 * * *'
 const SCORING_SCHEDULE = '0 20 * * *'
 const MONTHLY_SCHEDULE = '0 21 1 * *' // 1st of month, 06:00 KST (21:00 UTC)
 const KEYWORD_BATCH_SCHEDULE = '0 17 * * 1,4' // Mon/Thu — Pipeline B Method 2 (Batches API)
+const WEEKLY_AUDIT_SCHEDULE = '0 22 * * 0' // Sunday 07:00 KST — Full blog audit
 
 async function main(): Promise<void> {
   const schedule = process.argv[2] ?? 'manual'
@@ -90,6 +92,18 @@ async function main(): Promise<void> {
         await runKeywordBatchJob()
         break
 
+      case WEEKLY_AUDIT_SCHEDULE:
+        await runWeeklyAuditJob()
+        break
+
+      case 'manual-audit':
+        await runWeeklyAuditJob()
+        break
+
+      case 'manual-audit-resume':
+        await runWeeklyAuditJob(true)
+        break
+
       case 'manual':
         // Run all daily pipelines
         console.log('[run] Manual mode — running all daily pipelines (use "manual-monthly" to include DataLab)')
@@ -113,6 +127,11 @@ async function main(): Promise<void> {
         // Run keyword search with Batches API (for testing)
         console.log('[run] Manual-batch mode — running keyword search batch')
         await runKeywordBatchJob()
+        break
+
+      case 'manual-batch-replay':
+        // Replay Kakao/DB matching from saved LLM extraction results
+        await runReplayJob()
         break
 
       default:
@@ -229,6 +248,37 @@ async function runKeywordBatchJob(): Promise<void> {
   console.log('[run] === Pipeline B Method 2: Keyword search (Gemini Flash) ===')
   const result = await runKeywordSearchBatch()
   console.log('[run] Keyword batch result:', JSON.stringify(result, null, 2))
+}
+
+async function runWeeklyAuditJob(resume = false): Promise<void> {
+  console.log(`[run] === Weekly blog audit${resume ? ' (resume)' : ''} ===`)
+  const result = await runFullBlogAudit(resume)
+  console.log('[run] Blog audit result:', JSON.stringify(result, null, 2))
+}
+
+async function runReplayJob(): Promise<void> {
+  const batchId = process.argv[3]
+  if (!batchId) {
+    // Find the latest batch
+    const { supabaseAdmin } = await import('./lib/supabase-admin')
+    const { data } = await supabaseAdmin
+      .from('llm_extraction_results')
+      .select('batch_id')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (!data) {
+      console.error('[run] No extraction batches found. Run manual-batch first.')
+      return
+    }
+    console.log(`[run] === Replay mode — latest batch: ${data.batch_id} ===`)
+    const result = await replayFromExtraction(data.batch_id)
+    console.log('[run] Replay result:', JSON.stringify(result, null, 2))
+  } else {
+    console.log(`[run] === Replay mode — batch: ${batchId} ===`)
+    const result = await replayFromExtraction(batchId)
+    console.log('[run] Replay result:', JSON.stringify(result, null, 2))
+  }
 }
 
 async function runMonthlyJob(): Promise<void> {

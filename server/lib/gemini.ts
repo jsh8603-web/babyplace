@@ -37,10 +37,15 @@ export async function classifyWithGemini(prompt: string): Promise<string> {
  * Higher output budget for structured JSON responses.
  */
 export async function extractWithGemini(prompt: string): Promise<string> {
-  return callGemini(EXTRACT_MODEL, prompt, 4096)
+  return callGemini(EXTRACT_MODEL, prompt, 8192, 'application/json')
 }
 
-async function callGemini(model: string, prompt: string, maxOutputTokens: number): Promise<string> {
+async function callGemini(
+  model: string,
+  prompt: string,
+  maxOutputTokens: number,
+  responseMimeType?: string
+): Promise<string> {
   const ai = getClient()
   const maxRetries = 3
 
@@ -52,6 +57,7 @@ async function callGemini(model: string, prompt: string, maxOutputTokens: number
         config: {
           maxOutputTokens,
           temperature: 0,
+          ...(responseMimeType ? { responseMimeType } : {}),
         },
       })
 

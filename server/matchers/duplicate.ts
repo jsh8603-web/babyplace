@@ -96,12 +96,19 @@ export async function findMatchingPlace(
   threshold = 0.8
 ): Promise<{ placeId: number; score: number } | null> {
   // Pull a limited set of places with similar-starting names to avoid full scans.
-  // ilike on the first 4 chars is a coarse filter; Dice coefficient does the fine match.
+  // ilike on the first 3 chars is a coarse filter; Dice coefficient does the fine match.
+  const normalized = candidateName.replace(/\s+/g, '').replace(/[^\p{L}\p{N}]/gu, '')
+  const prefix = normalized.slice(0, Math.min(3, normalized.length))
+  // Short names (3 chars or less): search by full name to avoid excessive results
+  const searchPattern = normalized.length <= 3
+    ? `%${normalized}%`
+    : `%${prefix}%`
+
   const { data: candidates } = await supabaseAdmin
     .from('places')
     .select('id, name, address')
     .eq('is_active', true)
-    .ilike('name', `%${candidateName.slice(0, 4)}%`)
+    .ilike('name', searchPattern)
     .limit(50)
 
   if (!candidates || candidates.length === 0) return null

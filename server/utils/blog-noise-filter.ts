@@ -21,6 +21,9 @@ interface BorderlineMention {
   title: string | null
   snippet: string | null
   relevance_score: number
+  place_name: string
+  place_category: string
+  place_address: string | null
 }
 
 interface LLMClassification {
@@ -57,7 +60,7 @@ const MIN_DISTINCT_PLACES = 3
 const RETROACTIVE_BATCH_LIMIT = 1000
 
 /** Score to assign to irrelevant mentions */
-const DOWNGRADE_SCORE = 0.15
+export const DOWNGRADE_SCORE = 0.15
 
 // ─── Main ────────────────────────────────────────────────────────────────────
 
@@ -145,10 +148,9 @@ export async function runBlogNoiseFilter(): Promise<BlogNoiseFilterResult> {
 async function sampleBorderlineMentions(): Promise<BorderlineMention[]> {
   const { data, error } = await supabaseAdmin
     .from('blog_mentions')
-    .select('id, place_id, title, snippet, relevance_score')
+    .select('id, place_id, title, snippet, relevance_score, places!inner(name, category, address)')
     .eq('llm_reviewed', false)
-    .gte('relevance_score', 0.40)
-    .lte('relevance_score', 0.65)
+    .gte('relevance_score', 0.3)
     .order('relevance_score', { ascending: true })
     .order('collected_at', { ascending: false })
     .limit(SAMPLE_LIMIT)
@@ -158,7 +160,20 @@ async function sampleBorderlineMentions(): Promise<BorderlineMention[]> {
     return []
   }
 
-  return (data ?? []) as BorderlineMention[]
+  // Flatten the places join
+  return (data ?? []).map((row: Record<string, unknown>) => {
+    const places = row.places as { name: string; category: string; address: string | null }
+    return {
+      id: row.id as number,
+      place_id: row.place_id as number,
+      title: row.title as string | null,
+      snippet: row.snippet as string | null,
+      relevance_score: row.relevance_score as number,
+      place_name: places.name,
+      place_category: places.category,
+      place_address: places.address,
+    }
+  })
 }
 
 // ─── Step 2: LLM classification ─────────────────────────────────────────────
@@ -213,17 +228,20 @@ async function classifyBatch(
 ): Promise<LLMClassification[]> {
   const items = batch.map((m, i) => ({
     n: i + 1,
+    장소명: m.place_name,
+    카테고리: m.place_category,
+    주소: m.place_address ?? '',
     제목: m.title ?? '(제목없음)',
     내용: (m.snippet ?? '').slice(0, 200),
   }))
 
   const prompt = `당신은 아기/유아(0~5세)와 함께 갈 수 있는 장소에 대한 블로그 언급의 관련성을 판정합니다.
 
-각 항목은 특정 장소에 대한 블로그 포스트의 제목+내용 요약입니다.
+각 항목은 특정 장소(장소명, 카테고리, 주소 포함)에 대한 블로그 포스트의 제목+내용 요약입니다.
 해당 장소를 실제 방문하거나 소개하는 글이면 "관련", 아니면 "무관"으로 판정하세요.
 
-관련: 장소 방문 후기, 시설 소개, 아이와 함께 갈 만한 곳 추천
-무관: 부동산(분양/매매/전세), 상품 리뷰, 다른 지역 소개, 광고/스팸, 성인 전용, 학원, 일반 맛집(키즈존 아닌)
+관련: 해당 장소 방문 후기, 시설 소개, 아이와 함께 추천
+무관: 부동산(분양/매매/전세), 상품리뷰/광고, 타 지역, 스팸, 성인전용, 학원, 일반맛집(키즈존X), 장소를 위치참조로만 사용
 
 JSON으로 응답: [{"n":1,"r":1,"t":null},{"n":2,"r":0,"t":"분양"}]
 n=번호, r=관련(1)/무관(0), t=무관일 때 핵심 노이즈 키워드(1~2단어, 관련이면 null)
@@ -250,7 +268,7 @@ ${JSON.stringify(items, null, 0)}`
 
 // ─── Step 3: Downgrade irrelevant mentions ──────────────────────────────────
 
-async function downgradeIrrelevantMentions(mentionIds: number[]): Promise<number> {
+export async function downgradeIrrelevantMentions(mentionIds: number[]): Promise<number> {
   const { error, count } = await supabaseAdmin
     .from('blog_mentions')
     .update({ relevance_score: DOWNGRADE_SCORE })
@@ -265,7 +283,7 @@ async function downgradeIrrelevantMentions(mentionIds: number[]): Promise<number
 
 // ─── Step 4: Mark as reviewed ───────────────────────────────────────────────
 
-async function markAsReviewed(mentionIds: number[]): Promise<void> {
+export async function markAsReviewed(mentionIds: number[]): Promise<void> {
   const { error } = await supabaseAdmin
     .from('blog_mentions')
     .update({ llm_reviewed: true })
@@ -278,7 +296,7 @@ async function markAsReviewed(mentionIds: number[]): Promise<void> {
 
 // ─── Step 5: Upsert extracted terms ─────────────────────────────────────────
 
-async function upsertExtractedTerms(
+export async function upsertExtractedTerms(
   terms: Array<{ term: string; placeId: number; title: string | null }>
 ): Promise<void> {
   await Promise.all(
@@ -297,7 +315,7 @@ async function upsertExtractedTerms(
 
 // ─── Step 6: Promote qualified terms ────────────────────────────────────────
 
-async function promoteQualifiedTerms(): Promise<string[]> {
+export async function promoteQualifiedTerms(): Promise<string[]> {
   const { data, error } = await supabaseAdmin
     .from('blog_blacklist_terms')
     .select('id, term')
@@ -326,7 +344,7 @@ async function promoteQualifiedTerms(): Promise<string[]> {
 
 // ─── Step 7: Retroactive cleanup ────────────────────────────────────────────
 
-async function retroactiveCleanup(
+export async function retroactiveCleanup(
   newActiveTerms: string[]
 ): Promise<{ mentionsDowngraded: number; affectedPlaceIds: Set<number> }> {
   const affectedPlaceIds = new Set<number>()
@@ -367,7 +385,7 @@ async function retroactiveCleanup(
 
 // ─── Step 8: Recalculate mention counts ─────────────────────────────────────
 
-async function recalculateMentionCounts(placeIds: number[]): Promise<void> {
+export async function recalculateMentionCounts(placeIds: number[]): Promise<void> {
   await Promise.all(
     placeIds.map(async (placeId) => {
       const { count, error } = await supabaseAdmin

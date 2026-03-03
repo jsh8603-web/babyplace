@@ -14,6 +14,8 @@ on:
     - cron: '0 21 1 * *'
     # Pipeline B Method 2: keyword search via Gemini Flash, Mon/Thu (02:00 KST = 17:00 UTC)
     - cron: '0 17 * * 1,4'
+    # Weekly: Full blog audit (Sunday 07:00 KST = 22:00 UTC Saturday)
+    - cron: '0 22 * * 0'
   workflow_dispatch:
     inputs:
       schedule:

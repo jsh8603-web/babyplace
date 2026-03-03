@@ -11,7 +11,8 @@
 
 import { runSeasonalTransition } from './seasonal-calendar'
 import { checkKeywordHealthAndGenerate, getActiveKeywords, reviveExhaustedKeywords } from './rotation-engine'
-import { generateNewKeywordCandidates } from './candidate-generator'
+import { generateNewKeywordCandidates, generateDiverseKeywordsWithLLM } from './candidate-generator'
+import { supabaseAdmin } from '../lib/supabase-admin'
 
 interface ProviderHealth {
   totalKeywords: number
@@ -105,6 +106,22 @@ export async function runKeywordRotation(): Promise<KeywordRotationResult> {
       console.log('[keyword-rotation] Phase 3: Skipped (keyword health OK for both providers)')
     }
 
+    // --- Phase 3b: LLM-based diverse keyword generation ---
+    const shouldRunLLM = await shouldTriggerLLMKeywords()
+    if (shouldRunLLM) {
+      console.log('[keyword-rotation] Phase 3b: LLM diverse keyword generation')
+      if (!result.newKeywordGeneration) result.newKeywordGeneration = {}
+      const llmResult = await generateDiverseKeywordsWithLLM()
+      // Merge LLM results into naver generation stats
+      if (result.newKeywordGeneration.naver) {
+        result.newKeywordGeneration.naver.candidatesGenerated += llmResult.candidatesGenerated
+        result.newKeywordGeneration.naver.candidatesInserted += llmResult.candidatesInserted
+        result.newKeywordGeneration.naver.errors += llmResult.errors
+      } else {
+        result.newKeywordGeneration.naver = llmResult
+      }
+    }
+
     // --- Phase 4: Count active keywords ---
     const activeKeywords = await getActiveKeywords()
     result.activeKeywords = activeKeywords.length
@@ -120,4 +137,50 @@ export async function runKeywordRotation(): Promise<KeywordRotationResult> {
     result.errors++
     return result
   }
+}
+
+/**
+ * Determine if LLM keyword generation should run.
+ * Triggers:
+ *   1. First deployment: 0 keywords with source='llm_generated'
+ *   2. Monthly: 1st day of month
+ *   3. Safety net: Mon/Thu + ACTIVE+NEW < 30
+ */
+async function shouldTriggerLLMKeywords(): Promise<boolean> {
+  if (!process.env.GEMINI_API_KEY) return false
+
+  // Trigger 1: First time — no LLM-generated keywords exist
+  const { count: llmCount } = await supabaseAdmin
+    .from('keywords')
+    .select('id', { count: 'exact', head: true })
+    .eq('source', 'llm_generated')
+  if (llmCount === 0) {
+    console.log('[keyword-rotation] LLM trigger: first deployment (0 llm_generated keywords)')
+    return true
+  }
+
+  const now = new Date()
+  const day = now.getDate()
+  const dow = now.getDay() // 0=Sun, 1=Mon, ..., 4=Thu
+
+  // Trigger 2: Monthly on the 1st
+  if (day === 1) {
+    console.log('[keyword-rotation] LLM trigger: monthly (1st of month)')
+    return true
+  }
+
+  // Trigger 3: Mon/Thu safety net when active pool is low
+  if (dow === 1 || dow === 4) {
+    const { count: activeCount } = await supabaseAdmin
+      .from('keywords')
+      .select('id', { count: 'exact', head: true })
+      .eq('provider', 'naver')
+      .in('status', ['ACTIVE', 'NEW'])
+    if ((activeCount ?? 0) < 30) {
+      console.log(`[keyword-rotation] LLM trigger: safety net (active+new=${activeCount} < 30)`)
+      return true
+    }
+  }
+
+  return false
 }
