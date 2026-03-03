@@ -53,20 +53,43 @@ export async function runScoring(): Promise<ScoringResult> {
   const startedAt = Date.now()
 
   try {
-    // Fetch all active places with required fields
-    const { data: places, error: fetchError } = await supabaseAdmin
-      .from('places')
-      .select(
-        'id, name, mention_count, source_count, last_mentioned_at, created_at, address, phone, tags, description'
-      )
-      .eq('is_active', true)
-      .order('mention_count', { ascending: false })
+    // Fetch all active places with required fields (paginated — Supabase default limit is 1000)
+    const places: {
+      id: number; name: string; mention_count: number; source_count: number;
+      last_mentioned_at: string | null; created_at: string;
+      address: string | null; phone: string | null; tags: string[] | null; description: string | null;
+    }[] = []
 
-    if (fetchError || !places) {
-      console.error('[scoring] Failed to fetch places:', fetchError)
+    const PAGE_SIZE = 1000
+    let offset = 0
+    while (true) {
+      const { data: page, error: fetchError } = await supabaseAdmin
+        .from('places')
+        .select(
+          'id, name, mention_count, source_count, last_mentioned_at, created_at, address, phone, tags, description'
+        )
+        .eq('is_active', true)
+        .order('id', { ascending: true })
+        .range(offset, offset + PAGE_SIZE - 1)
+
+      if (fetchError) {
+        console.error('[scoring] Failed to fetch places at offset', offset, ':', fetchError)
+        result.errors++
+        break
+      }
+      if (!page || page.length === 0) break
+      places.push(...page)
+      if (page.length < PAGE_SIZE) break
+      offset += PAGE_SIZE
+    }
+
+    if (places.length === 0) {
+      console.error('[scoring] No places fetched')
       result.errors++
       return result
     }
+
+    console.log(`[scoring] Fetched ${places.length} active places`)
 
     if (places.length === 0) {
       console.log('[scoring] No active places to score')
@@ -78,7 +101,7 @@ export async function runScoring(): Promise<ScoringResult> {
       .map((p) => p.mention_count)
       .sort((a, b) => a - b)
     const cIndex = Math.floor(places.length * BAYESIAN_CONSTANT_PERCENTILE)
-    const bayesianConstant = sortedMentions[cIndex] ?? 1
+    const bayesianConstant = Math.max(sortedMentions[cIndex] ?? 1, 1)
 
     // Calculate raw scores for min/max normalization
     const rawScores: number[] = []
@@ -102,10 +125,11 @@ export async function runScoring(): Promise<ScoringResult> {
 
         const raw =
           0.35 * normalizedMention +
-          0.25 * (Math.min(place.source_count, 4) / 4) + // source_diversity: capped at 4
+          0.25 * (Math.min(place.source_count ?? 1, 4) / 4) + // source_diversity: capped at 4
           0.25 * recency +
           0.15 * completeness
 
+        if (isNaN(raw)) continue // skip places with invalid data
         rawScores.push(raw)
         scoreMap.set(place.id, { raw, final: 0, completeness, recency })
       } catch (err) {
@@ -116,8 +140,9 @@ export async function runScoring(): Promise<ScoringResult> {
 
     // Normalize raw scores to [0, 1]
     if (rawScores.length > 0) {
-      const minRaw = Math.min(...rawScores)
-      const maxRaw = Math.max(...rawScores)
+      let minRaw = Infinity
+      let maxRaw = -Infinity
+      for (const s of rawScores) { if (s < minRaw) minRaw = s; if (s > maxRaw) maxRaw = s }
       const range = Math.max(maxRaw - minRaw, 0.001) // avoid division by zero
 
       for (const place of places) {
