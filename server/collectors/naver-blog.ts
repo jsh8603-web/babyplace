@@ -27,7 +27,7 @@ import { naverLimiter, kakaoSearchLimiter } from '../rate-limiter'
 import { findMatchingPlace } from '../matchers/duplicate'
 import { normalizePlaceName } from '../matchers/similarity'
 import { searchKakaoPlaceDetailed, type KakaoSearchResult } from '../lib/kakao-search'
-import { isValidServiceAddress } from '../enrichers/region'
+import { isValidServiceAddress, isInServiceArea } from '../enrichers/region'
 import { evaluateKeywordCycle } from '../keywords/rotation-engine'
 
 // ─── Naver API types ──────────────────────────────────────────────────────────
@@ -1303,6 +1303,11 @@ interface KakaoValidationResult {
   failureReason: string | null
 }
 
+/** Check coords first (precise), fallback to address text (approximate) */
+function isMatchInServiceArea(match: { lat: number; lng: number; address: string }): boolean {
+  return isInServiceArea(match.lat, match.lng) || isValidServiceAddress(match.address)
+}
+
 /**
  * Validates an LLM-extracted place name against Kakao Place API.
  * If addressHint is provided but fails, retries with name-only.
@@ -1323,7 +1328,7 @@ async function validateWithKakao(
     // 1st attempt: name + addressHint
     const result1 = await searchKakaoPlaceDetailed(name, addressHint, searchOpts)
 
-    if (result1.match && isValidServiceAddress(result1.match.address)) {
+    if (result1.match && isMatchInServiceArea(result1.match)) {
       return {
         validation: toKakaoValidation(result1.match),
         bestScore: result1.bestScore,
@@ -1332,13 +1337,13 @@ async function validateWithKakao(
     }
 
     // Check if match exists but is out of service area
-    const result1OutOfArea = result1.match && !isValidServiceAddress(result1.match.address)
+    const result1OutOfArea = result1.match && !isMatchInServiceArea(result1.match)
 
     // 2nd attempt: retry without addressHint (addr may mislead search)
     if (addressHint) {
       const result2 = await searchKakaoPlaceDetailed(name, null, searchOpts)
 
-      if (result2.match && isValidServiceAddress(result2.match.address)) {
+      if (result2.match && isMatchInServiceArea(result2.match)) {
         return {
           validation: toKakaoValidation(result2.match),
           bestScore: result2.bestScore,
@@ -1348,7 +1353,7 @@ async function validateWithKakao(
 
       // Use the better result for failure tracking
       const best = result2.bestScore > result1.bestScore ? result2 : result1
-      const outOfArea = result1OutOfArea || (result2.match && !isValidServiceAddress(result2.match.address))
+      const outOfArea = result1OutOfArea || (result2.match && !isMatchInServiceArea(result2.match))
       return {
         validation: null,
         bestScore: best.bestScore,

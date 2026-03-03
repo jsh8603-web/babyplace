@@ -95,17 +95,21 @@ export async function runPublicData(): Promise<PublicDataResult> {
 
   const startedAt = Date.now()
 
+  // Prefetch existing source_ids to skip known items without DB query
+  const existingSourceIds = await prefetchPublicDataSourceIds()
+  console.log(`[public-data] Pre-fetched ${existingSourceIds.size} existing source_ids`)
+
   try {
     console.log('[public-data] Fetching parks...')
-    await fetchParks(result.parks)
+    await fetchParks(result.parks, existingSourceIds)
     await delay(60000) // 60s cooldown between APIs to avoid WAF IP block
 
     console.log('[public-data] Fetching libraries...')
-    await fetchLibraries(result.libraries)
+    await fetchLibraries(result.libraries, existingSourceIds)
     await delay(3000)
 
     console.log('[public-data] Fetching museums...')
-    await fetchMuseums(result.museums)
+    await fetchMuseums(result.museums, existingSourceIds)
   } catch (err) {
     console.error('[public-data] Fatal error:', err)
     result.totalErrors++
@@ -141,6 +145,28 @@ export async function runPublicData(): Promise<PublicDataResult> {
   })
 
   return result
+}
+
+// ─── Prefetch helpers ────────────────────────────────────────────────────────
+
+async function prefetchPublicDataSourceIds(): Promise<Set<string>> {
+  const ids = new Set<string>()
+  let offset = 0
+  const batchSize = 1000
+  while (true) {
+    const { data, error } = await supabaseAdmin
+      .from('places')
+      .select('source_id')
+      .eq('source', 'public-data-go.kr')
+      .range(offset, offset + batchSize - 1)
+    if (error || !data || data.length === 0) break
+    for (const row of data) {
+      if (row.source_id) ids.add(row.source_id)
+    }
+    if (data.length < batchSize) break
+    offset += batchSize
+  }
+  return ids
 }
 
 // ─── HTTP helpers for data.go.kr anti-bot challenge ─────────────────────────
@@ -352,7 +378,7 @@ interface ParkStats {
   errors: number
 }
 
-async function fetchParks(stats: ParkStats): Promise<void> {
+async function fetchParks(stats: ParkStats, existingSourceIds: Set<string>): Promise<void> {
   const serviceKey = process.env.DATA_GO_KR_API_KEY
   if (!serviceKey) {
     console.warn('[public-data] DATA_GO_KR_API_KEY not set, skipping parks')
@@ -393,6 +419,13 @@ async function fetchParks(stats: ParkStats): Promise<void> {
           if (!isInServiceRegion(lat, lng, address)) continue
 
           const sourceId = item.MANAGE_NO || `park_${name}`.replace(/\s+/g, '_')
+
+          // Fast in-memory duplicate check
+          if (existingSourceIds.has(sourceId)) {
+            stats.duplicates++
+            continue
+          }
+
           const dup = await checkDuplicate({
             kakaoPlaceId: `park_${sourceId}`,
             name,
@@ -477,7 +510,7 @@ interface LibraryStats {
   errors: number
 }
 
-async function fetchLibraries(stats: LibraryStats): Promise<void> {
+async function fetchLibraries(stats: LibraryStats, existingSourceIds: Set<string>): Promise<void> {
   const serviceKey = process.env.DATA_GO_KR_API_KEY
   if (!serviceKey) {
     console.warn('[public-data] DATA_GO_KR_API_KEY not set, skipping libraries')
@@ -517,6 +550,12 @@ async function fetchLibraries(stats: LibraryStats): Promise<void> {
           if (!isInServiceRegion(lat, lng, address)) continue
 
           const sourceId = `library_${name}`.replace(/\s+/g, '_')
+
+          if (existingSourceIds.has(sourceId)) {
+            stats.duplicates++
+            continue
+          }
+
           const dup = await checkDuplicate({
             kakaoPlaceId: sourceId,
             name,
@@ -597,7 +636,7 @@ interface MuseumStats {
   errors: number
 }
 
-async function fetchMuseums(stats: MuseumStats): Promise<void> {
+async function fetchMuseums(stats: MuseumStats, existingSourceIds: Set<string>): Promise<void> {
   const serviceKey = process.env.DATA_GO_KR_API_KEY
   if (!serviceKey) {
     console.warn('[public-data] DATA_GO_KR_API_KEY not set, skipping museums')
@@ -632,6 +671,12 @@ async function fetchMuseums(stats: MuseumStats): Promise<void> {
           if (!isInServiceRegion(lat, lng, address)) continue
 
           const sourceId = `museum_${name}`.replace(/\s+/g, '_')
+
+          if (existingSourceIds.has(sourceId)) {
+            stats.duplicates++
+            continue
+          }
+
           const dup = await checkDuplicate({
             kakaoPlaceId: sourceId,
             name,

@@ -188,15 +188,12 @@ export async function runLocalData(): Promise<LocalDataResult> {
 
   const startedAt = Date.now()
 
-  for (const target of SEARCH_TARGETS) {
-    try {
-      console.log(`[small-biz] Processing: ${target.label}`)
-      await processTarget(apiKey, target, result)
-    } catch (err) {
-      console.error(`[small-biz] Error processing "${target.label}":`, err)
-      result.errors++
-    }
-  }
+  // Prefetch existing source_ids to skip known items without DB query
+  const existingSourceIds = await prefetchSourceIds()
+  console.log(`[small-biz] Pre-fetched ${existingSourceIds.size} existing source_ids`)
+
+  // Fetch each rect once, distribute items to all targets (saves 2/3 of API calls)
+  await processAllTargets(apiKey, result, existingSourceIds)
 
   await supabaseAdmin.from('collection_logs').insert({
     collector: 'small-biz',
@@ -210,34 +207,62 @@ export async function runLocalData(): Promise<LocalDataResult> {
   return result
 }
 
-// ─── Per-target processing ──────────────────────────────────────────────────
+// ─── Prefetch helpers ───────────────────────────────────────────────────────
 
-async function processTarget(
+async function prefetchSourceIds(): Promise<Set<string>> {
+  const ids = new Set<string>()
+  let offset = 0
+  const batchSize = 1000
+  while (true) {
+    const { data, error } = await supabaseAdmin
+      .from('places')
+      .select('source_id')
+      .eq('source', 'small-biz')
+      .range(offset, offset + batchSize - 1)
+    if (error || !data || data.length === 0) break
+    for (const row of data) {
+      if (row.source_id) ids.add(row.source_id)
+    }
+    if (data.length < batchSize) break
+    offset += batchSize
+  }
+  return ids
+}
+
+// ─── Rect-first processing (each rect fetched once, distributed to all targets) ──
+
+async function processAllTargets(
   apiKey: string,
-  target: SearchTarget,
-  result: LocalDataResult
+  result: LocalDataResult,
+  existingSourceIds: Set<string>
 ): Promise<void> {
-  // Use rect-based search to stay within Seoul/Gyeonggi and limit result sets
   for (const rect of SERVICE_AREA_RECTS) {
     let page = 1
 
     while (page <= MAX_PAGES) {
-      const items = await fetchRectPage(apiKey, target, rect, page)
-      if (!items || items.length === 0) break
+      const allItems = await fetchRectPageRaw(apiKey, rect, page)
+      if (!allItems || allItems.length === 0) break
 
-      result.totalFetched += items.length
+      // Distribute items to matching targets
+      for (const target of SEARCH_TARGETS) {
+        const targetItems = allItems.filter((item) => {
+          const field = target.divId as keyof SdscItem
+          return item[field] === target.key
+        })
 
-      for (const item of items) {
-        try {
-          await processItem(item, target, result)
-        } catch (err) {
-          console.error('[small-biz] Item error:', err, item.bizesId)
-          result.errors++
+        result.totalFetched += targetItems.length
+
+        for (const item of targetItems) {
+          try {
+            await processItem(item, target, result, existingSourceIds)
+          } catch (err) {
+            console.error('[small-biz] Item error:', err, item.bizesId)
+            result.errors++
+          }
         }
       }
 
-      // If we got fewer than PAGE_SIZE, this was the last page
-      if (items.length < PAGE_SIZE) break
+      if (allItems.length < PAGE_SIZE) break
       page++
     }
   }
@@ -246,13 +271,14 @@ async function processTarget(
 async function processItem(
   item: SdscItem,
   target: SearchTarget,
-  result: LocalDataResult
+  result: LocalDataResult,
+  existingSourceIds: Set<string>
 ): Promise<void> {
   const lat = item.lat
   const lng = item.lon
   const address = item.rdnmAdr || item.lnoAdr || ''
 
-  if (!lat || !lng) {
+  if (lat == null || lng == null) {
     result.skippedOutOfArea++
     return
   }
@@ -265,6 +291,12 @@ async function processItem(
 
   if (!isInServiceRegion(lat, lng, address)) {
     result.skippedOutOfArea++
+    return
+  }
+
+  // Fast in-memory duplicate check using pre-fetched source_ids
+  if (existingSourceIds.has(item.bizesId)) {
+    result.duplicates++
     return
   }
 
@@ -320,14 +352,12 @@ async function processItem(
 
 // ─── API fetch ──────────────────────────────────────────────────────────────
 
-async function fetchRectPage(
+/** Fetch all items in a rect (no target filtering — caller distributes to targets) */
+async function fetchRectPageRaw(
   apiKey: string,
-  target: SearchTarget,
   rect: { minx: number; miny: number; maxx: number; maxy: number },
   page: number
 ): Promise<SdscItem[] | null> {
-  // Build URL with raw serviceKey; omit 'type' and industry code params
-  // (storeListInRectangle doesn't accept them — filter in-memory instead)
   const params = new URLSearchParams({
     type: 'json',
     minx: String(rect.minx),
@@ -345,21 +375,18 @@ async function fetchRectPage(
 
     if (!response.ok) {
       const body = await response.text().catch(() => '')
-      console.error(
-        `[small-biz] HTTP ${response.status} for ${target.label} page ${page}:`, body.slice(0, 300)
-      )
+      console.error(`[small-biz] HTTP ${response.status} page ${page}:`, body.slice(0, 300))
       return null
     }
 
-    // API may return XML by default; try JSON parse, fall back to XML extraction
     const text = await response.text()
     let json: SdscResponse
 
     try {
       json = JSON.parse(text) as SdscResponse
     } catch {
-      // Response is XML — extract items manually
-      console.error('[small-biz] Non-JSON response, trying XML parse')
+      // Response is not valid JSON (type=json param may have failed)
+      console.error('[small-biz] Non-JSON response, skipping page')
       return null
     }
 
@@ -368,12 +395,7 @@ async function fetchRectPage(
       return null
     }
 
-    // Filter by industry code in-memory (API doesn't support it as query param)
-    const items = json.body?.items ?? []
-    return items.filter(item => {
-      const field = target.divId as keyof SdscItem
-      return item[field] === target.key
-    })
+    return json.body?.items ?? []
   } catch (err) {
     console.error('[small-biz] Fetch error:', err)
     return null

@@ -177,12 +177,31 @@ export async function runChildrenFacility(): Promise<ChildrenFacilityResult> {
   const existingSourceIds = await prefetchExistingSourceIds()
   console.log(`[children-facility] Pre-fetched ${existingSourceIds.size} existing source_ids`)
 
-  for (const target of FACILITY_TARGETS) {
-    try {
+  // Process all targets in parallel (each uses different instlPlaceCd — independent API calls)
+  const targetResults = await Promise.allSettled(
+    FACILITY_TARGETS.map(async (target) => {
       console.log(`[children-facility] Fetching: ${target.label}`)
-      await processTarget(apiKey, target, result, existingSourceIds)
-    } catch (err) {
-      console.error(`[children-facility] Error for ${target.label}:`, err)
+      const partial: ChildrenFacilityResult = {
+        totalFetched: 0, newPlaces: 0, duplicates: 0,
+        skippedOutOfArea: 0, skippedClosed: 0, errors: 0,
+      }
+      await processTarget(apiKey, target, partial, existingSourceIds)
+      return { label: target.label, partial }
+    })
+  )
+
+  // Merge results
+  for (const settled of targetResults) {
+    if (settled.status === 'fulfilled') {
+      const { partial } = settled.value
+      result.totalFetched += partial.totalFetched
+      result.newPlaces += partial.newPlaces
+      result.duplicates += partial.duplicates
+      result.skippedOutOfArea += partial.skippedOutOfArea
+      result.skippedClosed += partial.skippedClosed
+      result.errors += partial.errors
+    } else {
+      console.error(`[children-facility] Target failed:`, settled.reason)
       result.errors++
     }
   }

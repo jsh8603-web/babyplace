@@ -15,7 +15,7 @@
 
 import { extractWithGemini } from '../lib/gemini'
 import { supabaseAdmin } from '../lib/supabase-admin'
-import { naverLimiter, kakaoSearchLimiter } from '../rate-limiter'
+import { kakaoSearchLimiter } from '../rate-limiter'
 import { fetchNaverSearch, stripHtml } from './naver-blog'
 import { searchKakaoPlaceDetailed } from '../lib/kakao-search'
 import { similarity, normalizePlaceName } from '../matchers/similarity'

@@ -20,7 +20,7 @@
 import { supabaseAdmin } from '../lib/supabase-admin'
 import { tourLimiter } from '../rate-limiter'
 import { checkDuplicate } from '../matchers/duplicate'
-import { isInServiceRegion } from '../enrichers/region'
+import { isInServiceRegion, isValidServiceAddress } from '../enrichers/region'
 import { getDistrictCode } from '../enrichers/district'
 import { PlaceCategory } from '../../src/types/index'
 import { checkPlaceGate } from '../matchers/place-gate'
@@ -409,7 +409,11 @@ async function processAsEvent(
   const address = [item.addr1, item.addr2].filter(Boolean).join(' ')
 
   // Region validation: same check as processAsPlace
-  if (lat && lng && !isInServiceRegion(lat, lng, address)) return
+  if (lat && lng) {
+    if (!isInServiceRegion(lat, lng, address)) return
+  } else if (address && !isValidServiceAddress(address)) {
+    return
+  }
 
   // Fetch intro for event dates
   const intro = await fetchIntro(item.contentid, item.contenttypeid)

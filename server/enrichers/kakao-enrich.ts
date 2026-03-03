@@ -74,11 +74,15 @@ export async function runKakaoEnrichment(): Promise<KakaoEnrichResult> {
 
   console.log(`[kakao-enrich] Evaluating ${places.length} places for enrichment`)
 
+  // Prefetch existing kakao_place_ids to avoid N+1 queries in enrichPlace()
+  const usedKakaoIds = await prefetchUsedKakaoPlaceIds()
+  console.log(`[kakao-enrich] Pre-fetched ${usedKakaoIds.size} existing kakao_place_ids`)
+
   for (const place of places) {
     result.evaluated++
 
     try {
-      const updated = await enrichPlace(place)
+      const updated = await enrichPlace(place, usedKakaoIds)
       if (updated) {
         result.enriched++
       } else {
@@ -102,6 +106,28 @@ export async function runKakaoEnrichment(): Promise<KakaoEnrichResult> {
   return result
 }
 
+// ─── Prefetch helpers ─────────────────────────────────────────────────────
+
+async function prefetchUsedKakaoPlaceIds(): Promise<Set<string>> {
+  const ids = new Set<string>()
+  let offset = 0
+  const batchSize = 1000
+  while (true) {
+    const { data, error } = await supabaseAdmin
+      .from('places')
+      .select('kakao_place_id')
+      .not('kakao_place_id', 'is', null)
+      .range(offset, offset + batchSize - 1)
+    if (error || !data || data.length === 0) break
+    for (const row of data) {
+      if (row.kakao_place_id) ids.add(row.kakao_place_id)
+    }
+    if (data.length < batchSize) break
+    offset += batchSize
+  }
+  return ids
+}
+
 // ─── Per-place enrichment ──────────────────────────────────────────────────
 
 interface PlaceRow {
@@ -114,7 +140,7 @@ interface PlaceRow {
   sub_category: string | null
 }
 
-async function enrichPlace(place: PlaceRow): Promise<boolean> {
+async function enrichPlace(place: PlaceRow, usedKakaoIds: Set<string>): Promise<boolean> {
   const match = await searchKakaoPlace(place.name, place.address, {
     threshold: MATCH_THRESHOLD,
     addressWords: 3,
@@ -122,14 +148,8 @@ async function enrichPlace(place: PlaceRow): Promise<boolean> {
 
   if (!match) return false
 
-  // Check if this kakao_place_id is already used by another place
-  const { data: existing } = await supabaseAdmin
-    .from('places')
-    .select('id')
-    .eq('kakao_place_id', match.id)
-    .limit(1)
-
-  if (existing && existing.length > 0) {
+  // Check if this kakao_place_id is already used by another place (in-memory check)
+  if (usedKakaoIds.has(match.id)) {
     // Already assigned to another place — mark current place as checked to skip next time
     await supabaseAdmin
       .from('places')
@@ -163,6 +183,8 @@ async function enrichPlace(place: PlaceRow): Promise<boolean> {
     return false
   }
 
+  // Track newly assigned ID to prevent same-batch duplicates
+  usedKakaoIds.add(match.id)
   return true
 }
 

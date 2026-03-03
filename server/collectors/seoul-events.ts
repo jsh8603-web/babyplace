@@ -180,7 +180,7 @@ export async function runSeoulEventsCollector(): Promise<SeoulEventsCollectorRes
 
     for (const event of eventsToProcess) {
       try {
-        await processSeoulEvent(event, result)
+        await processSeoulEvent(event, result, knownSourceIds)
       } catch (err) {
         console.error('[seoul-events] Error processing event:', err, event.TITLE)
         result.errors++
@@ -274,21 +274,15 @@ async function fetchSeoulEventsPage(start: number, end: number): Promise<SeoulEv
  */
 async function processSeoulEvent(
   event: SeoulEventItem,
-  result: SeoulEventsCollectorResult
+  result: SeoulEventsCollectorResult,
+  knownSourceIds: Set<string>
 ): Promise<void> {
   // Use culture portal URL as unique ID (contains cultcode), fallback to TITLE+DATE
   const sourceId = extractCultCode(event.HMPG_ADDR) || `${event.TITLE}_${event.DATE}`
   if (!sourceId) return
 
-  // Check for duplicate
-  const { data: existing } = await supabaseAdmin
-    .from('events')
-    .select('id')
-    .eq('source', 'seoul_events')
-    .eq('source_id', sourceId)
-    .maybeSingle()
-
-  if (existing) {
+  // Check for duplicate using prefetched Set (avoids N+1 DB query)
+  if (knownSourceIds.has(sourceId)) {
     result.duplicates++
     return
   }
