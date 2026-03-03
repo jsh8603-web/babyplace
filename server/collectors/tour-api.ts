@@ -23,6 +23,7 @@ import { checkDuplicate } from '../matchers/duplicate'
 import { isInServiceRegion } from '../enrichers/region'
 import { getDistrictCode } from '../enrichers/district'
 import { PlaceCategory } from '../../src/types/index'
+import { checkPlaceGate } from '../matchers/place-gate'
 
 // ─── API types ──────────────────────────────────────────────────────────────
 
@@ -323,6 +324,13 @@ async function processAsPlace(
     }
     return
   }
+
+  // Place Gate: central quality filter
+  const gate = await checkPlaceGate({
+    name: item.title,
+    source: 'tour_api',
+  })
+  if (!gate.allowed) return
 
   const districtCode = await getDistrictCode(lat, lng, address)
   const category = mapToCategory(item.contenttypeid, item.cat1, item.title, item.cat3)

@@ -110,6 +110,22 @@ export async function runBlogNoiseFilter(): Promise<BlogNoiseFilterResult> {
     }
   }
 
+  // Increment irrelevant_mention_count for affected places
+  const irrelevantPlaceIds = new Set<number>()
+  for (const c of classifications) {
+    const idx = c.n - 1
+    if (idx >= 0 && idx < samples.length && c.r === 0) {
+      irrelevantPlaceIds.add(samples[idx].place_id)
+    }
+  }
+  if (irrelevantPlaceIds.size > 0) {
+    await Promise.all(
+      [...irrelevantPlaceIds].map((placeId) =>
+        supabaseAdmin.rpc('increment_irrelevant_count', { p_place_id: placeId })
+      )
+    )
+  }
+
   // 3+4+5 run in parallel: downgrade, mark reviewed, upsert terms
   const [downgraded] = await Promise.all([
     irrelevantIds.length > 0

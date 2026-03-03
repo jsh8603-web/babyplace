@@ -26,6 +26,7 @@ import { checkDuplicate } from '../matchers/duplicate'
 import { isInServiceRegion } from '../enrichers/region'
 import { getDistrictCode } from '../enrichers/district'
 import { PlaceCategory } from '../../src/types/index'
+import { checkPlaceGate } from '../matchers/place-gate'
 
 // ─── Standard Data API response format ───────────────────────────────────────
 
@@ -406,6 +407,9 @@ async function fetchParks(stats: ParkStats): Promise<void> {
             continue
           }
 
+          const gate = await checkPlaceGate({ name, source: 'public-data-go.kr' })
+          if (!gate.allowed) continue
+
           const districtCode = await getDistrictCode(lat, lng, address)
 
           const { error } = await supabaseAdmin.from('places').insert({
@@ -527,6 +531,9 @@ async function fetchLibraries(stats: LibraryStats): Promise<void> {
             continue
           }
 
+          const gate = await checkPlaceGate({ name, source: 'public-data-go.kr' })
+          if (!gate.allowed) continue
+
           const districtCode = await getDistrictCode(lat, lng, address)
 
           const { error } = await supabaseAdmin.from('places').insert({
@@ -638,6 +645,9 @@ async function fetchMuseums(stats: MuseumStats): Promise<void> {
             stats.duplicates++
             continue
           }
+
+          const gate = await checkPlaceGate({ name, source: 'public-data-go.kr' })
+          if (!gate.allowed) continue
 
           const districtCode = await getDistrictCode(lat, lng, address)
           const facilityType = item.FCLTY_SE_NM || item.fcltySeNm || ''

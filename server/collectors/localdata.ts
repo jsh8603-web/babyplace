@@ -22,6 +22,7 @@ import { checkDuplicate } from '../matchers/duplicate'
 import { isInServiceRegion } from '../enrichers/region'
 import { getDistrictCode } from '../enrichers/district'
 import { PlaceCategory } from '../../src/types/index'
+import { checkPlaceGate } from '../matchers/place-gate'
 
 // ─── API response types ─────────────────────────────────────────────────────
 
@@ -280,6 +281,13 @@ async function processItem(
     result.duplicates++
     return
   }
+
+  const gate = await checkPlaceGate({
+    name: item.bizesNm,
+    subCategory: item.indsSclsNm || item.indsMclsNm,
+    source: 'small-biz',
+  })
+  if (!gate.allowed) return
 
   const districtCode = await getDistrictCode(lat, lng, address)
 

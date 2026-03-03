@@ -33,6 +33,7 @@ import { isInServiceRegion } from '../enrichers/region'
 import { getDistrictCode } from '../enrichers/district'
 import { checkDuplicate } from '../matchers/duplicate'
 import { PlaceCategory } from '../../src/types/index'
+import { checkPlaceGate } from '../matchers/place-gate'
 
 // ─── Kakao verification types ─────────────────────────────────────────────────
 
@@ -214,6 +215,22 @@ async function evaluateCandidate(candidate: CandidateRow): Promise<boolean> {
   )
 
   const category = inferCategory(kakaoResult.categoryName, candidate.name)
+  if (!category) {
+    // Cannot determine baby-relevant category → reject
+    return false
+  }
+
+  // Place Gate: central quality filter
+  const gate = await checkPlaceGate({
+    name: kakaoResult.kakaoName!,
+    categoryName: kakaoResult.categoryName,
+    source: 'auto_promoted',
+  })
+  if (!gate.allowed) {
+    console.log(`[auto-promote] Gate blocked: "${kakaoResult.kakaoName}" — ${gate.reason}`)
+    // Delete the candidate since it's permanently irrelevant
+    return true
+  }
 
   const { error } = await supabaseAdmin.from('places').insert({
     name: kakaoResult.kakaoName!,
@@ -350,7 +367,7 @@ function countIndependentSources(sourceUrls: string[]): number {
 function inferCategory(
   kakaoCategory: string | undefined,
   candidateName: string
-): PlaceCategory {
+): PlaceCategory | null {
   if (!kakaoCategory) return guessFromName(candidateName)
 
   const cat = kakaoCategory.toLowerCase()
@@ -365,7 +382,7 @@ function inferCategory(
   return guessFromName(candidateName)
 }
 
-function guessFromName(name: string): PlaceCategory {
+function guessFromName(name: string): PlaceCategory | null {
   if (/키즈카페|볼풀|실내놀이/.test(name)) return '놀이'
   if (/공원|놀이터/.test(name)) return '공원/놀이터'
   if (/박물관|과학관|미술관|체험/.test(name)) return '전시/체험'
@@ -373,6 +390,6 @@ function guessFromName(name: string): PlaceCategory {
   if (/도서관/.test(name)) return '도서관'
   if (/수영|물놀이|키즈풀/.test(name)) return '수영/물놀이'
   if (/식당|카페|맛집|이유식/.test(name)) return '식당/카페'
-  return '놀이' // default fallback
+  return null // no confident guess → let Place Gate decide
 }
 

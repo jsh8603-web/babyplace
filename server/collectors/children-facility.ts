@@ -23,6 +23,7 @@ import { checkDuplicate } from '../matchers/duplicate'
 import { isInServiceRegion } from '../enrichers/region'
 import { getDistrictCode } from '../enrichers/district'
 import { PlaceCategory } from '../../src/types/index'
+import { checkPlaceGate } from '../matchers/place-gate'
 
 // ─── API types ──────────────────────────────────────────────────────────────
 
@@ -315,6 +316,14 @@ async function processItem(
     result.duplicates++
     return
   }
+
+  // Place Gate: central quality filter
+  const gate = await checkPlaceGate({
+    name: item.pfctNm,
+    subCategory: item.instlPlaceCdNm,
+    source: 'children-facility',
+  })
+  if (!gate.allowed) return
 
   const districtCode = await getDistrictCode(lat, lng, address)
   const isIndoor =

@@ -16,6 +16,7 @@ import { isInServiceRegion } from '../enrichers/region'
 import { getDistrictCode } from '../enrichers/district'
 import { PlaceCategory } from '../../src/types/index'
 import { evaluateKeywordCycle } from '../keywords/rotation-engine'
+import { checkPlaceGate } from '../matchers/place-gate'
 
 // ─── Kakao API types ─────────────────────────────────────────────────────────
 
@@ -322,6 +323,15 @@ async function processTarget(
       const mapped = mapKakaoCategory(doc, target.babyCategory)
       const subCategory = normalizeSubCategory(doc.category_name)
 
+      // Place Gate: central quality filter
+      const gate = await checkPlaceGate({
+        name: doc.place_name,
+        categoryName: doc.category_name,
+        source: 'kakao',
+        subCategory,
+      })
+      if (!gate.allowed) continue
+
       const { error } = await supabaseAdmin.from('places').insert({
         name: doc.place_name,
         category: mapped.category,
@@ -418,7 +428,7 @@ function shouldSkipKakaoPlace(name: string, categoryName: string): boolean {
   if (skipNamePatterns.test(name)) return true
 
   // Non-baby franchise chains: comic cafes, board game cafes, escape rooms
-  const skipBrands = /^(벌툰|놀숲|레드버튼|홈즈앤루팡|히어로보드게임|나인블럭|스타벅스|이디야|투썸플레이스|할리스|메가커피|컴포즈|빽다방)\s/
+  const skipBrands = /^(벌툰|놀숲|레드버튼|홈즈앤루팡|히어로보드게임|나인블럭|스타벅스|이디야|투썸플레이스|할리스|메가커피|컴포즈|빽다방)(\s|$)/
   if (skipBrands.test(name)) return true
 
   // Kakao category_name patterns to skip

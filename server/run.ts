@@ -41,6 +41,7 @@ import { runSeoulEventsCollector } from './collectors/seoul-events'
 import { runEventDeduplication } from './matchers/event-dedup'
 import { runKeywordRotation } from './keywords/keyword-rotation'
 import { runBlogNoiseFilter } from './utils/blog-noise-filter'
+import { flagIrrelevantPlaces } from './matchers/place-gate'
 import { runFullBlogAudit } from './utils/blog-full-audit'
 import { runDataLabTrendDetection } from './keywords/datalab'
 import { initializeAllLimiters, flushAllLimiters } from './rate-limiter'
@@ -234,6 +235,11 @@ async function runScoringJob(): Promise<void> {
   console.log('[run] Running auto-promotion...')
   const promoteResult = await runAutoPromotion()
   console.log('[run] Auto-promotion result:', JSON.stringify(promoteResult, null, 2))
+
+  // Place Gate feedback loop: flag irrelevant places + learn patterns
+  console.log('[run] Running place gate feedback loop...')
+  const feedbackResult = await flagIrrelevantPlaces()
+  console.log('[run] Place gate feedback:', JSON.stringify(feedbackResult, null, 2))
 
   // Auto-deactivation: detect closed places
   console.log('[run] Running auto-deactivation...')
