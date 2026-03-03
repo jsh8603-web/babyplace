@@ -10,7 +10,7 @@
  * Cost: ~$0.05/month (4 batches/day, ~2,800 tokens/day)
  */
 
-import Anthropic from '@anthropic-ai/sdk'
+import { classifyWithGemini } from '../lib/gemini'
 import { supabaseAdmin } from '../lib/supabase-admin'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -44,10 +44,10 @@ export interface BlogNoiseFilterResult {
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const SAMPLE_LIMIT = 200
+const SAMPLE_LIMIT = 400
 const BATCH_SIZE = 50
-const CONCURRENCY = 2
-const DELAY_BETWEEN_CHUNKS_MS = 5000
+const CONCURRENCY = 4
+const DELAY_BETWEEN_CHUNKS_MS = 2000
 
 /** Promotion threshold: occurrence >= 5 AND distinct_places >= 3 */
 const MIN_OCCURRENCE = 5
@@ -166,20 +166,18 @@ async function sampleBorderlineMentions(): Promise<BorderlineMention[]> {
 async function classifyMentionsWithLLM(
   samples: BorderlineMention[]
 ): Promise<LLMClassification[]> {
-  const apiKey = process.env.ANTHROPIC_API_KEY
-  if (!apiKey) {
-    console.warn('[blog-noise-filter] No ANTHROPIC_API_KEY, skipping LLM classification')
+  if (!process.env.GEMINI_API_KEY) {
+    console.warn('[blog-noise-filter] No GEMINI_API_KEY, skipping LLM classification')
     return []
   }
 
-  const client = new Anthropic({ apiKey, maxRetries: 5 })
   const batches: BorderlineMention[][] = []
   for (let i = 0; i < samples.length; i += BATCH_SIZE) {
     batches.push(samples.slice(i, i + BATCH_SIZE))
   }
 
   console.log(
-    `[blog-noise-filter] LLM classification: ${samples.length} mentions in ${batches.length} batches (concurrency=${CONCURRENCY})`
+    `[blog-noise-filter] Gemini classification: ${samples.length} mentions in ${batches.length} batches (concurrency=${CONCURRENCY})`
   )
 
   const allClassifications: LLMClassification[] = []
@@ -192,7 +190,7 @@ async function classifyMentionsWithLLM(
     const chunk = batches.slice(i, i + CONCURRENCY)
     const promises = chunk.map((batch, chunkIdx) => {
       const globalOffset = (i + chunkIdx) * BATCH_SIZE
-      return classifyBatch(client, batch, globalOffset)
+      return classifyBatch(batch, globalOffset)
     })
 
     const results = await Promise.allSettled(promises)
@@ -210,7 +208,6 @@ async function classifyMentionsWithLLM(
 }
 
 async function classifyBatch(
-  client: Anthropic,
   batch: BorderlineMention[],
   globalOffset: number
 ): Promise<LLMClassification[]> {
@@ -234,13 +231,7 @@ n=번호, r=관련(1)/무관(0), t=무관일 때 핵심 노이즈 키워드(1~2�
 ${JSON.stringify(items, null, 0)}`
 
   try {
-    const response = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 2048,
-      messages: [{ role: 'user', content: prompt }],
-    })
-
-    const text = response.content[0].type === 'text' ? response.content[0].text : ''
+    const text = await classifyWithGemini(prompt)
     const match = text.match(/\[[\s\S]*\]/)
     if (!match) return []
 
@@ -252,7 +243,7 @@ ${JSON.stringify(items, null, 0)}`
       n: globalOffset + c.n,
     }))
   } catch (err) {
-    console.error('[blog-noise-filter] LLM batch error:', err)
+    console.error('[blog-noise-filter] Gemini batch error:', err)
     return []
   }
 }

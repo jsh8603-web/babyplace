@@ -21,7 +21,7 @@
  *   based on the current month.
  */
 
-import Anthropic from '@anthropic-ai/sdk'
+import { extractWithGemini } from '../lib/gemini'
 import { supabaseAdmin } from '../lib/supabase-admin'
 import { naverLimiter, kakaoSearchLimiter } from '../rate-limiter'
 import { findMatchingPlace } from '../matchers/duplicate'
@@ -93,10 +93,13 @@ const MAX_KEYWORDS_PER_RUN = 150
 
 // ─── LLM extraction constants ────────────────────────────────────────────────
 
+/** Items per Gemini Flash request. */
 const LLM_BATCH_SIZE = 30
-const LLM_CONCURRENCY = 2
-const LLM_DELAY_MS = 5000
 const KAKAO_SIMILARITY_THRESHOLD = 0.7
+
+/** Gemini Flash Tier 1: 150 RPM — concurrency 4 + 2s delay stays well within. */
+const LLM_CONCURRENCY = 4
+const LLM_DELAY_MS = 2000
 
 interface LLMExtractedPlace {
   n: number
@@ -111,7 +114,7 @@ interface BlogItemForLLM {
   postdate: string | null
 }
 
-// ─── Main export ──────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface PipelineBResult {
   reverseSearch: {
@@ -129,6 +132,65 @@ export interface PipelineBResult {
   }
 }
 
+interface CollectedKeywordData {
+  keywordId: number
+  keyword: string
+  blogItems: BlogItemForLLM[]
+  apiResults: number
+}
+
+// ─── Main exports ─────────────────────────────────────────────────────────────
+
+/**
+ * Method 1 only — daily schedule, no LLM cost.
+ * Reverse-searches existing places across Naver/Daum blogs.
+ */
+export async function runReverseSearchOnly(): Promise<PipelineBResult['reverseSearch']> {
+  await initializeDynamicBlacklist()
+  const stats: PipelineBResult['reverseSearch'] = { placesProcessed: 0, newMentions: 0, errors: 0 }
+  await runReverseSearch(stats)
+  return stats
+}
+
+/**
+ * Method 2 — weekly schedule (Mon/Thu), uses Gemini Flash (sync).
+ * Collects blogs for all keywords → extracts place names with LLM → validates with Kakao.
+ */
+export async function runKeywordSearchBatch(): Promise<PipelineBResult['keywordSearch']> {
+  const stats: PipelineBResult['keywordSearch'] = {
+    keywordsProcessed: 0,
+    newMentions: 0,
+    newCandidates: 0,
+    llmExtracted: 0,
+    kakaoValidated: 0,
+    errors: 0,
+  }
+  const startedAt = Date.now()
+
+  // Phase 1: Collect blog data for all keywords
+  const keywordData = await collectAllKeywordBlogs(stats)
+  if (keywordData.length === 0) {
+    console.log('[pipeline-b] No keywords with blog results to process')
+    return stats
+  }
+
+  // Phase 2: Extract place names with Gemini Flash + validate with Kakao
+  await extractAndProcessKeywords(keywordData, stats)
+
+  await supabaseAdmin.from('collection_logs').insert({
+    collector: 'pipeline-b-keyword-search',
+    results_count: stats.newMentions,
+    new_places: stats.newCandidates,
+    status: stats.errors > 0 ? 'partial' : 'success',
+    duration_ms: Date.now() - startedAt,
+  })
+
+  return stats
+}
+
+/**
+ * Both methods combined — used by manual mode.
+ */
 export async function runPipelineB(): Promise<PipelineBResult> {
   const result: PipelineBResult = {
     reverseSearch: { placesProcessed: 0, newMentions: 0, errors: 0 },
@@ -143,21 +205,17 @@ export async function runPipelineB(): Promise<PipelineBResult> {
   }
 
   const startedAt = Date.now()
-
-  // Load dynamic blacklist terms from DB
   await initializeDynamicBlacklist()
 
-  // --- Method 1: reverse search ---
+  // Method 1: reverse search (no LLM)
   await runReverseSearch(result.reverseSearch)
 
-  // --- Method 2: keyword search ---
-  await runKeywordSearch(result.keywordSearch)
+  // Method 2: keyword search (Gemini Flash)
+  const kwResult = await runKeywordSearchBatch()
+  result.keywordSearch = kwResult
 
-  // Log to collection_logs
-  const totalNew =
-    result.reverseSearch.newMentions + result.keywordSearch.newMentions
-  const totalErrors =
-    result.reverseSearch.errors + result.keywordSearch.errors
+  const totalNew = result.reverseSearch.newMentions + result.keywordSearch.newMentions
+  const totalErrors = result.reverseSearch.errors + result.keywordSearch.errors
 
   await supabaseAdmin.from('collection_logs').insert({
     collector: 'pipeline-b-naver-blog',
@@ -624,15 +682,17 @@ async function updateMentionCount(placeId: number, increment: number): Promise<v
   }
 }
 
-// ─── Method 2: Keyword search ─────────────────────────────────────────────────
+// ─── Method 2: Keyword search (Batches API) ─────────────────────────────────
 
-async function runKeywordSearch(
+/**
+ * Phase 1: Collect blog data for all active keywords.
+ * No LLM calls — just Naver Blog API fetches.
+ */
+async function collectAllKeywordBlogs(
   stats: PipelineBResult['keywordSearch']
-): Promise<void> {
-  const currentMonth = new Date().getMonth() + 1 // 1-12
+): Promise<CollectedKeywordData[]> {
+  const currentMonth = new Date().getMonth() + 1
 
-  // Select active/new keywords, skipping exhausted ones
-  // Also activate seasonal keywords whose season is now
   const { data: keywords, error } = await supabaseAdmin
     .from('keywords')
     .select(
@@ -646,141 +706,221 @@ async function runKeywordSearch(
   if (error || !keywords) {
     console.error('[pipeline-b] Failed to fetch keywords:', error)
     stats.errors++
-    return
+    return []
   }
 
+  const collected: CollectedKeywordData[] = []
+
   for (const kw of keywords) {
-    // Skip SEASONAL if not in season
     if (kw.status === 'SEASONAL') {
       const months: number[] = kw.seasonal_months ?? []
       if (!months.includes(currentMonth)) continue
     }
 
     try {
-      const result = await processKeyword(kw.id, kw.keyword)
-      stats.newMentions += result.newMentions
-      stats.newCandidates += result.newCandidates
-      stats.llmExtracted += result.llmExtracted
-      stats.kakaoValidated += result.kakaoValidated
-      stats.keywordsProcessed++
+      const query = encodeURIComponent(kw.keyword)
+      const url = `${NAVER_BLOG_URL}?query=${query}&display=${DISPLAY_COUNT}&sort=sim`
+      const items = await fetchNaverSearch<NaverBlogItem>(url)
 
-      // Update keyword efficiency via rotation engine (unified scoring)
-      await evaluateKeywordCycle(
-        kw.id,
-        result.apiResults,
-        result.newMentions + result.newCandidates,
-        result.duplicates
-      )
+      if (!items || items.length === 0) {
+        await evaluateKeywordCycle(kw.id, 0, 0, 0)
+        stats.keywordsProcessed++
+        continue
+      }
+
+      const blogItems: BlogItemForLLM[] = items.map((item) => ({
+        title: stripHtml(item.title),
+        snippet: stripHtml(item.description).slice(0, 300),
+        link: item.link,
+        postdate: parseNaverPostDate(item.postdate),
+      }))
+
+      collected.push({
+        keywordId: kw.id,
+        keyword: kw.keyword,
+        blogItems,
+        apiResults: items.length,
+      })
     } catch (err) {
-      console.error(`[pipeline-b] Keyword error "${kw.keyword}":`, err)
+      console.error(`[pipeline-b] Blog fetch error "${kw.keyword}":`, err)
       stats.errors++
     }
   }
+
+  console.log(`[pipeline-b] Collected blogs for ${collected.length} keywords (${collected.reduce((s, d) => s + d.blogItems.length, 0)} total items)`)
+  return collected
 }
 
-interface KeywordProcessResult {
-  apiResults: number
-  newMentions: number
-  newCandidates: number
-  llmExtracted: number
-  kakaoValidated: number
-  duplicates: number
-}
-
-async function processKeyword(
-  keywordId: number,
-  keyword: string
-): Promise<KeywordProcessResult> {
-  const result: KeywordProcessResult = {
-    apiResults: 0,
-    newMentions: 0,
-    newCandidates: 0,
-    llmExtracted: 0,
-    kakaoValidated: 0,
-    duplicates: 0,
+/**
+ * Phase 2: Extract place names with Gemini Flash (sync) and process results.
+ * Processes keywords in chunks with concurrency control (Tier 1: 150 RPM).
+ */
+async function extractAndProcessKeywords(
+  allData: CollectedKeywordData[],
+  stats: PipelineBResult['keywordSearch']
+): Promise<void> {
+  if (!process.env.GEMINI_API_KEY) {
+    console.warn('[pipeline-b] No GEMINI_API_KEY, skipping LLM extraction')
+    return
   }
 
-  const query = encodeURIComponent(keyword)
-  const url = `${NAVER_BLOG_URL}?query=${query}&display=${DISPLAY_COUNT}&sort=sim`
+  // Build all LLM requests as (keywordData, chunkIndex) pairs
+  const tasks: Array<{ data: CollectedKeywordData; chunkStart: number; chunk: BlogItemForLLM[] }> = []
+  for (const data of allData) {
+    for (let i = 0; i < data.blogItems.length; i += LLM_BATCH_SIZE) {
+      tasks.push({ data, chunkStart: i, chunk: data.blogItems.slice(i, i + LLM_BATCH_SIZE) })
+    }
+  }
 
-  const items = await fetchNaverSearch<NaverBlogItem>(url)
-  if (!items || items.length === 0) return result
+  console.log(`[pipeline-b] Gemini Flash extraction: ${tasks.length} requests for ${allData.length} keywords`)
 
-  result.apiResults = items.length
+  // Track per-keyword stats
+  const kwStats = new Map<
+    number,
+    { newMentions: number; newCandidates: number; llmExtracted: number; kakaoValidated: number; duplicates: number }
+  >()
+  for (const data of allData) {
+    kwStats.set(data.keywordId, {
+      newMentions: 0, newCandidates: 0, llmExtracted: 0, kakaoValidated: 0, duplicates: 0,
+    })
+  }
 
-  // Collect all blog items for LLM batch extraction
-  // (regex patterns are too weak for natural blog text — LLM is far more effective)
-  const blogItems: BlogItemForLLM[] = items.map((item) => ({
-    title: stripHtml(item.title),
-    snippet: stripHtml(item.description).slice(0, 300),
-    link: item.link,
-    postdate: parseNaverPostDate(item.postdate),
+  // Process with concurrency control
+  for (let i = 0; i < tasks.length; i += LLM_CONCURRENCY) {
+    if (i > 0) {
+      await new Promise((r) => setTimeout(r, LLM_DELAY_MS))
+    }
+
+    const batch = tasks.slice(i, i + LLM_CONCURRENCY)
+    const results = await Promise.allSettled(
+      batch.map((task) => extractPlaceNamesWithLLM(task.chunk))
+    )
+
+    for (let j = 0; j < results.length; j++) {
+      const task = batch[j]
+      const result = results[j]
+      if (result.status !== 'fulfilled' || !result.value) continue
+
+      const kStat = kwStats.get(task.data.keywordId)!
+
+      for (const place of result.value) {
+        if (!place.name) continue
+
+        const blogIdx = task.chunkStart + place.n - 1
+        const sourceItem = task.data.blogItems[blogIdx]
+        if (!sourceItem) continue
+
+        kStat.llmExtracted++
+        stats.llmExtracted++
+
+        // Try to match to existing DB place
+        const existingMatch = await findMatchingPlace(place.name, null, 0.8)
+        if (existingMatch) {
+          const { error } = await supabaseAdmin.from('blog_mentions').insert({
+            place_id: existingMatch.placeId,
+            source_type: 'naver_blog',
+            title: sourceItem.title,
+            url: sourceItem.link,
+            post_date: sourceItem.postdate,
+            snippet: sourceItem.snippet.slice(0, 500),
+          })
+          if (!error) {
+            kStat.newMentions++
+            stats.newMentions++
+            await updateMentionCount(existingMatch.placeId, 1)
+          } else if (error.code === '23505') {
+            kStat.duplicates++
+          }
+          continue
+        }
+
+        // No DB match → validate with Kakao Place API
+        const kakaoResult = await validateWithKakao(place.name, place.addr)
+        if (kakaoResult) {
+          kStat.kakaoValidated++
+          stats.kakaoValidated++
+          await upsertCandidate(
+            kakaoResult.name,
+            kakaoResult.address,
+            sourceItem.link,
+            kakaoResult.lat,
+            kakaoResult.lng,
+            kakaoResult.kakaoPlaceId,
+            kakaoResult.similarity,
+            {
+              title: sourceItem.title,
+              snippet: sourceItem.snippet.slice(0, 500),
+              post_date: sourceItem.postdate,
+              source_type: 'naver_blog',
+              url: sourceItem.link,
+            }
+          )
+          kStat.newCandidates++
+          stats.newCandidates++
+        }
+      }
+    }
+  }
+
+  // Update keyword rotation stats
+  for (const data of allData) {
+    const kStat = kwStats.get(data.keywordId)!
+    stats.keywordsProcessed++
+    try {
+      await evaluateKeywordCycle(
+        data.keywordId,
+        data.apiResults,
+        kStat.newMentions + kStat.newCandidates,
+        kStat.duplicates
+      )
+    } catch (err) {
+      console.error(`[pipeline-b] Keyword eval error "${data.keyword}":`, err)
+    }
+    if (kStat.llmExtracted > 0) {
+      console.log(
+        `[pipeline-b] Keyword "${data.keyword}": extracted ${kStat.llmExtracted}, kakao ${kStat.kakaoValidated}, mentions ${kStat.newMentions}, candidates ${kStat.newCandidates}`
+      )
+    }
+  }
+}
+
+/**
+ * Call Gemini Flash to extract place names from a batch of blog items.
+ */
+async function extractPlaceNamesWithLLM(
+  chunk: BlogItemForLLM[]
+): Promise<LLMExtractedPlace[]> {
+  const items = chunk.map((m, j) => ({
+    n: j + 1,
+    제목: m.title,
+    내용: m.snippet.slice(0, 200),
   }))
 
-  // Step 1: LLM batch extraction
-  const llmResults = await extractPlaceNamesWithLLM(blogItems)
-  result.llmExtracted = llmResults.filter((r) => r.name).length
+  const prompt = `당신은 블로그 포스트에서 아기/유아와 함께 갈 수 있는 식당·카페의 이름을 추출합니다.
 
-  // Step 2: Match or validate each extracted place
-  for (const extracted of llmResults) {
-    if (!extracted.name) continue
+각 항목은 블로그 포스트의 제목+내용 요약입니다.
+실제 방문한 식당이나 카페의 고유 이름을 추출하세요.
 
-    const sourceItem = blogItems[extracted.n - 1]
-    if (!sourceItem) continue
+추출 규칙:
+- 상호명만 (체인명+지점명 포함, 예: "맥도날드 왕십리역점")
+- "맛집", "식당", "카페" 등 일반 명사는 제외
+- 방문 후기가 아닌 광고/리스트 글이면 skip
+- 주소 힌트가 있으면 함께 추출 (구/동/역 단위)
 
-    // Try to match to existing DB place first
-    const existingMatch = await findMatchingPlace(extracted.name, null, 0.8)
-    if (existingMatch) {
-      const { error } = await supabaseAdmin.from('blog_mentions').insert({
-        place_id: existingMatch.placeId,
-        source_type: 'naver_blog',
-        title: sourceItem.title,
-        url: sourceItem.link,
-        post_date: sourceItem.postdate,
-        snippet: sourceItem.snippet.slice(0, 500),
-      })
-      if (!error) {
-        result.newMentions++
-        await updateMentionCount(existingMatch.placeId, 1)
-      } else if (error.code === '23505') {
-        result.duplicates++
-      }
-      continue
-    }
+JSON 응답: [{"n":1,"name":"코코몽키즈카페","addr":"성동구 왕십리"},{"n":2,"name":null}]
+n=번호, name=장소명(없으면 null), addr=주소힌트(없으면 null)
 
-    // No DB match → validate with Kakao Place API
-    const kakaoResult = await validateWithKakao(extracted.name, extracted.addr)
-    if (kakaoResult) {
-      result.kakaoValidated++
-      await upsertCandidate(
-        kakaoResult.name,
-        kakaoResult.address,
-        sourceItem.link,
-        kakaoResult.lat,
-        kakaoResult.lng,
-        kakaoResult.kakaoPlaceId,
-        kakaoResult.similarity,
-        {
-          title: sourceItem.title,
-          snippet: sourceItem.snippet.slice(0, 500),
-          post_date: sourceItem.postdate,
-          source_type: 'naver_blog',
-          url: sourceItem.link,
-        }
-      )
-      result.newCandidates++
-    }
+${JSON.stringify(items, null, 0)}`
+
+  try {
+    const text = await extractWithGemini(prompt)
+    const match = text.match(/\[[\s\S]*\]/)
+    if (!match) return []
+    return JSON.parse(match[0])
+  } catch (err) {
+    console.error('[pipeline-b] Gemini extraction error:', err)
+    return []
   }
-
-  if (result.llmExtracted > 0) {
-    console.log(
-      `[pipeline-b] LLM extracted ${result.llmExtracted} places from ${blogItems.length} blog posts, Kakao validated ${result.kakaoValidated}`
-    )
-  }
-
-  // keyword_logs insertion is handled by evaluateKeywordCycle() in the caller
-
-  return result
 }
 
 // ─── Candidate upsert ─────────────────────────────────────────────────────────
@@ -846,107 +986,6 @@ async function upsertCandidate(
       ...(kakaoPlaceId ? { kakao_place_id: kakaoPlaceId } : {}),
       ...(kakaoSimilarity != null ? { kakao_similarity: kakaoSimilarity } : {}),
     })
-  }
-}
-
-// ─── LLM place name extraction ───────────────────────────────────────────────
-
-/**
- * Extracts restaurant/cafe names from blog posts using Haiku LLM.
- * Fallback for when regex extractPlaceNamesFromText() finds nothing.
- * Pattern: blog-noise-filter.ts (concurrency 2, batch 30, 5s delay).
- */
-async function extractPlaceNamesWithLLM(
-  items: BlogItemForLLM[]
-): Promise<LLMExtractedPlace[]> {
-  const apiKey = process.env.ANTHROPIC_API_KEY
-  if (!apiKey) {
-    console.warn('[pipeline-b] No ANTHROPIC_API_KEY, skipping LLM extraction')
-    return []
-  }
-
-  const client = new Anthropic({ apiKey, maxRetries: 5 })
-  const batches: BlogItemForLLM[][] = []
-  for (let i = 0; i < items.length; i += LLM_BATCH_SIZE) {
-    batches.push(items.slice(i, i + LLM_BATCH_SIZE))
-  }
-
-  const allResults: LLMExtractedPlace[] = []
-
-  for (let i = 0; i < batches.length; i += LLM_CONCURRENCY) {
-    if (i > 0) {
-      await new Promise((r) => setTimeout(r, LLM_DELAY_MS))
-    }
-
-    const chunk = batches.slice(i, i + LLM_CONCURRENCY)
-    const promises = chunk.map((batch, chunkIdx) => {
-      const globalOffset = (i + chunkIdx) * LLM_BATCH_SIZE
-      return extractBatch(client, batch, globalOffset)
-    })
-
-    const results = await Promise.allSettled(promises)
-    for (const result of results) {
-      if (result.status === 'fulfilled') {
-        allResults.push(...result.value)
-      } else {
-        console.error('[pipeline-b] LLM extraction batch failed:', result.reason)
-      }
-    }
-  }
-
-  return allResults
-}
-
-async function extractBatch(
-  client: Anthropic,
-  batch: BlogItemForLLM[],
-  globalOffset: number
-): Promise<LLMExtractedPlace[]> {
-  const items = batch.map((m, i) => ({
-    n: i + 1,
-    제목: m.title,
-    내용: m.snippet.slice(0, 200),
-  }))
-
-  const prompt = `당신은 블로그 포스트에서 아기/유아와 함께 갈 수 있는 식당·카페의 이름을 추출합니다.
-
-각 항목은 블로그 포스트의 제목+내용 요약입니다.
-실제 방문한 식당이나 카페의 고유 이름을 추출하세요.
-
-추출 규칙:
-- 상호명만 (체인명+지점명 포함, 예: "맥도날드 왕십리역점")
-- "맛집", "식당", "카페" 등 일반 명사는 제외
-- 방문 후기가 아닌 광고/리스트 글이면 skip
-- 주소 힌트가 있으면 함께 추출 (구/동/역 단위)
-
-JSON 응답: [{"n":1,"name":"코코몽키즈카페","addr":"성동구 왕십리"},{"n":2,"name":null}]
-n=번호, name=장소명(없으면 null), addr=주소힌트(없으면 null)
-
-${JSON.stringify(items, null, 0)}`
-
-  try {
-    const response = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 2048,
-      messages: [{ role: 'user', content: prompt }],
-    })
-
-    const text = response.content[0].type === 'text' ? response.content[0].text : ''
-    const match = text.match(/\[[\s\S]*\]/)
-    if (!match) return []
-
-    const parsed: LLMExtractedPlace[] = JSON.parse(match[0])
-
-    // Adjust indices to global offset
-    return parsed
-      .filter((p) => p.name)
-      .map((p) => ({
-        ...p,
-        n: globalOffset + p.n,
-      }))
-  } catch (err) {
-    console.error('[pipeline-b] LLM extraction batch error:', err)
-    return []
   }
 }
 

@@ -4,28 +4,30 @@
  * Called by GitHub Actions via:
  *   npx tsx server/run.ts "${{ github.event.schedule || 'manual' }}"
  *
- * Schedule-to-pipeline mapping (plan.md 10-2, 18-11):
+ * Schedule-to-pipeline mapping:
  *
- *   Pipeline B: Naver blog reverse search + keyword rotation (every 6h)
- *   Pipeline A: Kakao category scan (02:00 KST)
- *   Public data collectors (03:00 KST)
- *   Events collectors: KOPIS, Tour, Seoul (04:00 KST)
- *   Scoring + keyword rotation + density + promotion + deactivation (05:00 KST)
- *   Naver DataLab trend detection + seasonal transition (06:00 KST, 1st of month)
- *   manual: Run all pipelines (for local testing)
+ *   Daily (every day):
+ *     0 17 * * *   Pipeline A: Kakao category scan (02:00 KST)
+ *     0 18 * * *   Public Data + Pipeline B Method 1: reverse search (03:00 KST)
+ *     0 19 * * *   Events: Tour API, Seoul, Gemini classifier (04:00 KST)
+ *     0 20 * * *   Scoring + Gemini noise filter + promotion + density (05:00 KST)
+ *     0 21 1 * *   Monthly: DataLab trends (06:00 KST, 1st of month)
+ *
+ *   Weekly (Mon/Thu):
+ *     0 17 * * 1,4  Pipeline B Method 2: keyword search (Batches API, 50% off)
+ *
+ * LLM cost optimization:
+ *   - Easy tasks (event classification, noise filter) → Gemini Flash-Lite (free)
+ *   - Hard tasks (place name extraction) → Anthropic Batches API (50% off)
  *
  * Environment variables required (set via GitHub Actions secrets):
- *   NEXT_PUBLIC_SUPABASE_URL
- *   SUPABASE_SERVICE_ROLE_KEY
- *   KAKAO_REST_KEY
- *   NAVER_CLIENT_ID
- *   NAVER_CLIENT_SECRET
- *   TOUR_API_KEY (for Tour API events)
- *   SEOUL_API_KEY (optional, for Seoul cultural events)
+ *   NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, KAKAO_REST_KEY,
+ *   NAVER_CLIENT_ID, NAVER_CLIENT_SECRET, TOUR_API_KEY, SEOUL_API_KEY,
+ *   GEMINI_API_KEY (Tier 1: Flash + Flash-Lite)
  */
 
 import { runPipelineA } from './collectors/kakao-category'
-import { runPipelineB } from './collectors/naver-blog'
+import { runPipelineB, runReverseSearchOnly, runKeywordSearchBatch } from './collectors/naver-blog'
 import { runPublicData } from './collectors/public-data'
 import { runLocalData } from './collectors/localdata'
 import { runScoring } from './scoring'
@@ -44,12 +46,12 @@ import { initializeAllLimiters, flushAllLimiters } from './rate-limiter'
 
 // ─── Schedule dispatch ────────────────────────────────────────────────────────
 
-const PIPELINE_B_SCHEDULE = '0 */6 * * *'
 const PIPELINE_A_SCHEDULE = '0 17 * * *'
 const PUBLIC_DATA_SCHEDULE = '0 18 * * *'
 const EVENTS_SCHEDULE = '0 19 * * *'
 const SCORING_SCHEDULE = '0 20 * * *'
 const MONTHLY_SCHEDULE = '0 21 1 * *' // 1st of month, 06:00 KST (21:00 UTC)
+const KEYWORD_BATCH_SCHEDULE = '0 17 * * 1,4' // Mon/Thu — Pipeline B Method 2 (Batches API)
 
 async function main(): Promise<void> {
   const schedule = process.argv[2] ?? 'manual'
@@ -64,16 +66,12 @@ async function main(): Promise<void> {
 
   try {
     switch (schedule) {
-      case PIPELINE_B_SCHEDULE:
-        await runPipelineBJob()
-        break
-
       case PIPELINE_A_SCHEDULE:
         await runPipelineAJob()
         break
 
       case PUBLIC_DATA_SCHEDULE:
-        await runPublicDataJob()
+        await runPublicDataAndReverseSearchJob()
         break
 
       case EVENTS_SCHEDULE:
@@ -88,12 +86,15 @@ async function main(): Promise<void> {
         await runMonthlyJob()
         break
 
+      case KEYWORD_BATCH_SCHEDULE:
+        await runKeywordBatchJob()
+        break
+
       case 'manual':
-        // Run all daily pipelines — Pipeline A+B in parallel (independent collectors)
+        // Run all daily pipelines
         console.log('[run] Manual mode — running all daily pipelines (use "manual-monthly" to include DataLab)')
-        console.log('[run] Running Pipeline A + B in parallel...')
-        await Promise.all([runPipelineAJob(), runPipelineBJob()])
-        await runPublicDataJob()
+        await runPipelineAJob()
+        await runPublicDataAndReverseSearchJob()
         await runEventsJob()
         await runScoringJob()
         break
@@ -101,11 +102,17 @@ async function main(): Promise<void> {
       case 'manual-monthly':
         // Run everything including monthly DataLab trend detection
         console.log('[run] Manual-monthly mode — running all pipelines including DataLab')
-        await Promise.all([runPipelineAJob(), runPipelineBJob()])
-        await runPublicDataJob()
+        await runPipelineAJob()
+        await runPublicDataAndReverseSearchJob()
         await runEventsJob()
         await runScoringJob()
         await runMonthlyJob()
+        break
+
+      case 'manual-batch':
+        // Run keyword search with Batches API (for testing)
+        console.log('[run] Manual-batch mode — running keyword search batch')
+        await runKeywordBatchJob()
         break
 
       default:
@@ -131,13 +138,14 @@ async function runPipelineAJob(): Promise<void> {
   console.log('[run] Pipeline A result:', JSON.stringify(result, null, 2))
 }
 
-async function runPipelineBJob(): Promise<void> {
-  console.log('[run] === Pipeline B: Naver blog reverse search ===')
-  const result = await runPipelineB()
-  console.log('[run] Pipeline B result:', JSON.stringify(result, null, 2))
-}
+async function runPublicDataAndReverseSearchJob(): Promise<void> {
+  console.log('[run] === Public data + Pipeline B Method 1 (reverse search) ===')
 
-async function runPublicDataJob(): Promise<void> {
+  // Pipeline B Method 1: reverse search (no LLM cost)
+  console.log('[run] Running reverse search...')
+  const reverseResult = await runReverseSearchOnly()
+  console.log('[run] Reverse search result:', JSON.stringify(reverseResult, null, 2))
+
   console.log('[run] === Public data collectors ===')
 
   // Public data collectors: playgrounds, parks, libraries, museums
@@ -215,6 +223,12 @@ async function runScoringJob(): Promise<void> {
     '[run] Auto-deactivation result:',
     JSON.stringify(deactivateResult, null, 2)
   )
+}
+
+async function runKeywordBatchJob(): Promise<void> {
+  console.log('[run] === Pipeline B Method 2: Keyword search (Gemini Flash) ===')
+  const result = await runKeywordSearchBatch()
+  console.log('[run] Keyword batch result:', JSON.stringify(result, null, 2))
 }
 
 async function runMonthlyJob(): Promise<void> {

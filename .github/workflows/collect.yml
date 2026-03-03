@@ -2,18 +2,18 @@ name: Data Collection
 
 on:
   schedule:
-    # Pipeline B: Naver blog reverse search + keyword rotation (every 6 hours)
-    - cron: '0 */6 * * *'
-    # Pipeline A: Kakao category scan / place discovery (02:00 KST = 17:00 UTC)
+    # Pipeline A: Kakao category scan (02:00 KST = 17:00 UTC)
     - cron: '0 17 * * *'
-    # Public data collectors: 놀이시설, 공원, 도서관, 박물관 (03:00 KST = 18:00 UTC)
+    # Public Data + Pipeline B Method 1: reverse search (03:00 KST = 18:00 UTC)
     - cron: '0 18 * * *'
-    # Events collectors: KOPIS, Tour API, Seoul cultural events (04:00 KST = 19:00 UTC)
+    # Events: Tour API, Seoul, Gemini classifier (04:00 KST = 19:00 UTC)
     - cron: '0 19 * * *'
-    # Scoring + auto-promotion + auto-deactivation (05:00 KST = 20:00 UTC)
+    # Scoring + Gemini noise filter + promotion + density (05:00 KST = 20:00 UTC)
     - cron: '0 20 * * *'
-    # Monthly: DataLab trends + seasonal keyword transition (06:00 KST 1st of month = 21:00 UTC)
+    # Monthly: DataLab trends (06:00 KST 1st of month = 21:00 UTC)
     - cron: '0 21 1 * *'
+    # Pipeline B Method 2: keyword search via Gemini Flash, Mon/Thu (02:00 KST = 17:00 UTC)
+    - cron: '0 17 * * 1,4'
   workflow_dispatch:
     inputs:
       schedule:
@@ -61,5 +61,5 @@ jobs:
           KOPIS_API_KEY: ${{ secrets.KOPIS_API_KEY }}
           TOUR_API_KEY: ${{ secrets.TOUR_API_KEY }}
           SEOUL_API_KEY: ${{ secrets.SEOUL_API_KEY }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           NODE_ENV: production

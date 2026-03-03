@@ -8,7 +8,7 @@
  *   Step 3: Claude Haiku batch classification (remaining events)
  */
 
-import Anthropic from '@anthropic-ai/sdk'
+import { classifyWithGemini } from '../lib/gemini'
 
 export interface EventForClassification {
   TITLE: string
@@ -109,23 +109,21 @@ export async function classifyEventsWithLLM(
 
   if (events.length === 0) return includedIndices
 
-  const apiKey = process.env.ANTHROPIC_API_KEY
-  if (!apiKey) {
-    console.warn('[event-classifier] No ANTHROPIC_API_KEY, using fallback regex')
+  if (!process.env.GEMINI_API_KEY) {
+    console.warn('[event-classifier] No GEMINI_API_KEY, using fallback regex')
     return classifyWithFallbackRegex(events)
   }
 
-  const client = new Anthropic({ apiKey, maxRetries: 5 })
   const BATCH_SIZE = 50
-  const CONCURRENCY = 2
-  const DELAY_BETWEEN_CHUNKS_MS = 5000
+  const CONCURRENCY = 4
+  const DELAY_BETWEEN_CHUNKS_MS = 2000
   const batches: EventForClassification[][] = []
 
   for (let i = 0; i < events.length; i += BATCH_SIZE) {
     batches.push(events.slice(i, i + BATCH_SIZE))
   }
 
-  console.log(`[event-classifier] LLM classification: ${events.length} events in ${batches.length} batches (concurrency=${CONCURRENCY})`)
+  console.log(`[event-classifier] Gemini classification: ${events.length} events in ${batches.length} batches (concurrency=${CONCURRENCY})`)
 
   // Process batches with concurrency limit + delay for rate limiting
   for (let i = 0; i < batches.length; i += CONCURRENCY) {
@@ -137,7 +135,7 @@ export async function classifyEventsWithLLM(
     const promises = chunk.map((batch, chunkIdx) => {
       const batchIdx = i + chunkIdx
       const globalOffset = batchIdx * BATCH_SIZE
-      return classifyBatch(client, batch, globalOffset)
+      return classifyBatch(batch, globalOffset)
     })
 
     const results = await Promise.allSettled(promises)
@@ -160,7 +158,6 @@ export async function classifyEventsWithLLM(
 }
 
 async function classifyBatch(
-  client: Anthropic,
   batch: EventForClassification[],
   globalOffset: number
 ): Promise<number[]> {
@@ -183,13 +180,7 @@ ${JSON.stringify(items, null, 0)}
 JSON 배열만 응답하세요 (예: [1, 3, 7]).`
 
   try {
-    const response = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1024,
-      messages: [{ role: 'user', content: prompt }],
-    })
-
-    const text = response.content[0].type === 'text' ? response.content[0].text : ''
+    const text = await classifyWithGemini(prompt)
     const match = text.match(/\[[\d\s,]*\]/)
     if (!match) return []
 
@@ -198,7 +189,7 @@ JSON 배열만 응답하세요 (예: [1, 3, 7]).`
       .filter((n) => n >= 1 && n <= batch.length)
       .map((n) => globalOffset + n - 1) // Convert to global index
   } catch (err) {
-    console.error('[event-classifier] LLM batch error:', err)
+    console.error('[event-classifier] Gemini batch error:', err)
     // Fallback: use regex for this batch
     return batch
       .map((e, i) =>
