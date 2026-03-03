@@ -386,25 +386,29 @@ export async function retroactiveCleanup(
 // ─── Step 8: Recalculate mention counts ─────────────────────────────────────
 
 export async function recalculateMentionCounts(placeIds: number[]): Promise<void> {
-  await Promise.all(
-    placeIds.map(async (placeId) => {
-      const { count, error } = await supabaseAdmin
-        .from('blog_mentions')
-        .select('id', { count: 'exact', head: true })
-        .eq('place_id', placeId)
-        .gt('relevance_score', DOWNGRADE_SCORE)
+  const BATCH = 50
+  for (let i = 0; i < placeIds.length; i += BATCH) {
+    const batch = placeIds.slice(i, i + BATCH)
+    await Promise.all(
+      batch.map(async (placeId) => {
+        const { count, error } = await supabaseAdmin
+          .from('blog_mentions')
+          .select('id', { count: 'exact', head: true })
+          .eq('place_id', placeId)
+          .gt('relevance_score', DOWNGRADE_SCORE)
 
-      if (error) {
-        console.error(`[blog-noise-filter] Count error for place ${placeId}:`, error)
-        return
-      }
+        if (error) {
+          console.error(`[blog-noise-filter] Count error for place ${placeId}:`, error)
+          return
+        }
 
-      await supabaseAdmin
-        .from('places')
-        .update({ mention_count: count ?? 0 })
-        .eq('id', placeId)
-    })
-  )
+        await supabaseAdmin
+          .from('places')
+          .update({ mention_count: count ?? 0 })
+          .eq('id', placeId)
+      })
+    )
+  }
 }
 
 // ─── Exported: Load active blacklist terms (for Pipeline B) ─────────────────
