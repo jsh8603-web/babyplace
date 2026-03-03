@@ -19,6 +19,8 @@
  *   - Log results to collection_logs
  */
 
+import * as http from 'node:http'
+import * as https from 'node:https'
 import { supabaseAdmin } from '../lib/supabase-admin'
 import { checkDuplicate } from '../matchers/duplicate'
 import { isInServiceRegion } from '../enrichers/region'
@@ -95,9 +97,11 @@ export async function runPublicData(): Promise<PublicDataResult> {
   try {
     console.log('[public-data] Fetching parks...')
     await fetchParks(result.parks)
+    await delay(60000) // 60s cooldown between APIs to avoid WAF IP block
 
     console.log('[public-data] Fetching libraries...')
     await fetchLibraries(result.libraries)
+    await delay(3000)
 
     console.log('[public-data] Fetching museums...')
     await fetchMuseums(result.museums)
@@ -138,6 +142,144 @@ export async function runPublicData(): Promise<PublicDataResult> {
   return result
 }
 
+// ─── HTTP helpers for data.go.kr anti-bot challenge ─────────────────────────
+
+function httpGet(
+  url: string,
+  opts?: { timeout?: number; headers?: Record<string, string> }
+): Promise<{ status: number; headers: http.IncomingHttpHeaders; body: string }> {
+  return new Promise((resolve, reject) => {
+    const parsed = new URL(url)
+    const isHttps = parsed.protocol === 'https:'
+    const transport = isHttps ? https : http
+    const reqOpts: http.RequestOptions = {
+      hostname: parsed.hostname,
+      port: parsed.port || (isHttps ? 443 : 80),
+      path: parsed.pathname + parsed.search,
+      timeout: opts?.timeout ?? 15000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        Accept: 'application/json, text/plain, */*',
+        ...opts?.headers,
+      },
+    }
+    const req = transport.get(reqOpts, (res) => {
+      let body = ''
+      res.on('data', (chunk: Buffer) => (body += chunk.toString()))
+      res.on('end', () => resolve({ status: res.statusCode || 0, headers: res.headers, body }))
+      res.on('error', reject)
+    })
+    req.on('error', reject)
+    req.on('timeout', () => { req.destroy(); reject(new Error('Request timeout')) })
+  })
+}
+
+/**
+ * Parse data.go.kr anti-bot JS challenge and extract redirect path.
+ * Pattern A: x={o:'...',t:'...',h:'...'} → t + h + o
+ * Pattern B: x={o:'...',c:N},z=M → o.substr(0,c) + o.substr(c+z)
+ */
+function parseJsChallenge(html: string): string | null {
+  const tMatch = html.match(/t:'([^']+)'/)
+  const hMatch = html.match(/h:'([^']+)'/)
+  const oMatch = html.match(/o:'([^']+)'/)
+
+  if (tMatch && hMatch && oMatch) {
+    return tMatch[1] + hMatch[1] + oMatch[1]
+  }
+
+  if (oMatch) {
+    const cMatch = html.match(/c:(\d+)/)
+    const zMatch = html.match(/z=(\d+)/)
+    if (cMatch && zMatch) {
+      const o = oMatch[1]
+      const c = parseInt(cMatch[1])
+      const z = parseInt(zMatch[1])
+      return o.substring(0, c) + o.substring(c + z)
+    }
+  }
+
+  return null
+}
+
+const delay = (ms: number) => new Promise(r => setTimeout(r, ms))
+
+/**
+ * Fetch with data.go.kr anti-bot JS challenge handling + retry.
+ *
+ * The WAF sometimes returns JS challenges, sometimes JSON directly.
+ * Challenge flow: original URL → HTML challenge → token URL (302) → original URL → JSON.
+ * Retries up to 3 times with 2s delay between attempts.
+ */
+async function fetchWithChallenge(url: string, label: string): Promise<string | null> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) await delay(2000 * attempt)
+
+    try {
+      const res = await httpGet(url, { timeout: 12000 })
+
+      // Direct JSON response — no challenge
+      if (res.body.trimStart().startsWith('{') || res.body.trimStart().startsWith('[')) {
+        return res.body
+      }
+
+      // HTML challenge — parse and follow redirect
+      if (res.body.includes('<script>') && res.body.includes('rsu')) {
+        const redirectPath = parseJsChallenge(res.body)
+        if (!redirectPath) {
+          console.error(`[public-data] ${label}: failed to parse JS challenge (attempt ${attempt + 1})`)
+          continue
+        }
+
+        const parsed = new URL(url)
+        let redirectUrl = `${parsed.protocol}//${parsed.host}${redirectPath}`
+
+        const rawCookies = res.headers['set-cookie']
+        const cookieHeader = rawCookies
+          ? (Array.isArray(rawCookies) ? rawCookies : [rawCookies]).map(c => c.split(';')[0]).join('; ')
+          : ''
+        const headers: Record<string, string> = cookieHeader ? { Cookie: cookieHeader } : {}
+
+        // Follow redirect chain (up to 3 hops)
+        let resolved = false
+        for (let hop = 0; hop < 3; hop++) {
+          const r = await httpGet(redirectUrl, { headers, timeout: 12000 })
+
+          if (r.status === 301 || r.status === 302) {
+            const location = r.headers['location']
+            if (!location) break
+            redirectUrl = location.startsWith('http')
+              ? location
+              : `${parsed.protocol}//${parsed.host}${location}`
+            continue
+          }
+
+          if (r.body.trimStart().startsWith('{') || r.body.trimStart().startsWith('[')) {
+            return r.body
+          }
+
+          // Non-JSON from redirect (404 etc) — break and retry from scratch
+          resolved = true
+          break
+        }
+
+        if (!resolved) {
+          console.error(`[public-data] ${label}: challenge redirect failed (attempt ${attempt + 1})`)
+        }
+        continue
+      }
+
+      // Unknown response — retry
+      console.error(`[public-data] ${label}: unexpected response (attempt ${attempt + 1}):`, res.body.slice(0, 200))
+    } catch (err) {
+      console.error(`[public-data] ${label}: fetch error (attempt ${attempt + 1}):`, (err as Error).message)
+    }
+  }
+
+  console.error(`[public-data] ${label}: all 3 attempts failed`)
+  return null
+}
+
 // ─── Shared fetch helper ─────────────────────────────────────────────────────
 
 async function fetchStandardPage(
@@ -154,15 +296,13 @@ async function fetchStandardPage(
   })
   const url = `${apiUrl}?serviceKey=${serviceKey}&${params.toString()}`
 
-  try {
-    const response = await fetch(url)
-    if (!response.ok) {
-      const body = await response.text().catch(() => '')
-      console.error(`[public-data] ${label} HTTP ${response.status}:`, body.slice(0, 300))
-      return null
-    }
+  // Delay between pages to avoid data.go.kr WAF rate limiting
+  if (page > 1) await delay(5000)
 
-    const text = await response.text()
+  try {
+    const text = await fetchWithChallenge(url, label)
+    if (!text) return null
+
     let data: StandardDataResponse
 
     try {
@@ -220,12 +360,19 @@ async function fetchParks(stats: ParkStats): Promise<void> {
   }
 
   let pageNo = 1
+  let consecutiveFails = 0
   const pageSize = 1000
 
   while (true) {
     try {
       const result = await fetchStandardPage(PARKS_API, serviceKey, pageNo, pageSize, 'Parks')
-      if (!result || result.items.length === 0) break
+      if (!result) {
+        if (++consecutiveFails >= 2) { console.warn('[public-data] Parks: 2 consecutive failures, stopping'); break }
+        pageNo++; continue
+      }
+      consecutiveFails = 0
+      if (result.items.length === 0) break
+      console.log(`[public-data] Parks page ${pageNo}: processing ${result.items.length} items`)
 
       for (const item of result.items) {
         try {
@@ -295,6 +442,7 @@ async function fetchParks(stats: ParkStats): Promise<void> {
         }
       }
 
+      console.log(`[public-data] Parks page ${pageNo} done: fetched=${stats.fetched} new=${stats.new} dup=${stats.duplicates}`)
       if (result.items.length < pageSize) break
       pageNo++
     } catch (err) {
@@ -334,12 +482,18 @@ async function fetchLibraries(stats: LibraryStats): Promise<void> {
   }
 
   let pageNo = 1
+  let consecutiveFails = 0
   const pageSize = 1000
 
   while (true) {
     try {
       const result = await fetchStandardPage(LIBRARIES_API, serviceKey, pageNo, pageSize, 'Libraries')
-      if (!result || result.items.length === 0) break
+      if (!result) {
+        if (++consecutiveFails >= 2) { console.warn('[public-data] Libraries: 2 consecutive failures, stopping'); break }
+        pageNo++; continue
+      }
+      consecutiveFails = 0
+      if (result.items.length === 0) break
 
       for (const item of result.items) {
         try {
@@ -445,12 +599,18 @@ async function fetchMuseums(stats: MuseumStats): Promise<void> {
   }
 
   let pageNo = 1
+  let consecutiveFails = 0
   const pageSize = 1000
 
   while (true) {
     try {
       const result = await fetchStandardPage(MUSEUMS_API, serviceKey, pageNo, pageSize, 'Museums')
-      if (!result || result.items.length === 0) break
+      if (!result) {
+        if (++consecutiveFails >= 2) { console.warn('[public-data] Museums: 2 consecutive failures, stopping'); break }
+        pageNo++; continue
+      }
+      consecutiveFails = 0
+      if (result.items.length === 0) break
 
       for (const item of result.items) {
         try {

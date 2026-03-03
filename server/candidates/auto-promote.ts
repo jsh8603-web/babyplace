@@ -142,6 +142,14 @@ export async function runAutoPromotion(): Promise<AutoPromoteResult> {
 
 // ─── Candidate evaluation ─────────────────────────────────────────────────────
 
+interface BlogMetadata {
+  title: string
+  snippet: string
+  post_date: string | null
+  source_type: string
+  url?: string
+}
+
 interface CandidateRow {
   id: number
   name: string
@@ -152,6 +160,7 @@ interface CandidateRow {
   kakao_similarity: number | null
   source_urls: string[]
   source_count: number
+  source_metadata: BlogMetadata[] | null
   first_seen_at: string
   last_seen_at: string
 }
@@ -232,8 +241,45 @@ async function evaluateCandidate(candidate: CandidateRow): Promise<boolean> {
     throw new Error(error.message)
   }
 
+  // Create blog_mentions from candidate's source_metadata
+  const metadata = candidate.source_metadata ?? []
+  if (metadata.length > 0) {
+    // Get the newly created place ID
+    const { data: newPlace } = await supabaseAdmin
+      .from('places')
+      .select('id')
+      .eq('kakao_place_id', kakaoResult.kakaoPlaceId!)
+      .single()
+
+    if (newPlace) {
+      let mentionCount = 0
+      for (let i = 0; i < metadata.length; i++) {
+        const meta = metadata[i]
+        const url = meta.url || candidate.source_urls?.[i] || ''
+
+        const { error: mentionErr } = await supabaseAdmin.from('blog_mentions').insert({
+          place_id: newPlace.id,
+          source_type: meta.source_type || 'naver_blog',
+          title: meta.title,
+          url,
+          post_date: meta.post_date,
+          snippet: meta.snippet,
+          relevance_score: 0.6,
+        })
+        if (!mentionErr) mentionCount++
+      }
+
+      if (mentionCount > 0) {
+        await supabaseAdmin
+          .from('places')
+          .update({ mention_count: mentionCount })
+          .eq('id', newPlace.id)
+      }
+    }
+  }
+
   console.log(
-    `[auto-promote] Promoted: "${kakaoResult.kakaoName}" (candidate ${candidate.id})`
+    `[auto-promote] Promoted: "${kakaoResult.kakaoName}" (candidate ${candidate.id}, ${metadata.length} blog mentions)`
   )
   return true
 }

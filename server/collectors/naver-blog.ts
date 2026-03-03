@@ -759,7 +759,14 @@ async function processKeyword(
         kakaoResult.lat,
         kakaoResult.lng,
         kakaoResult.kakaoPlaceId,
-        kakaoResult.similarity
+        kakaoResult.similarity,
+        {
+          title: sourceItem.title,
+          snippet: sourceItem.snippet.slice(0, 500),
+          post_date: sourceItem.postdate,
+          source_type: 'naver_blog',
+          url: sourceItem.link,
+        }
       )
       result.newCandidates++
     }
@@ -778,6 +785,14 @@ async function processKeyword(
 
 // ─── Candidate upsert ─────────────────────────────────────────────────────────
 
+interface BlogMetadata {
+  title: string
+  snippet: string
+  post_date: string | null
+  source_type: string
+  url: string
+}
+
 async function upsertCandidate(
   name: string,
   address: string,
@@ -785,12 +800,13 @@ async function upsertCandidate(
   lat?: number,
   lng?: number,
   kakaoPlaceId?: string,
-  kakaoSimilarity?: number
+  kakaoSimilarity?: number,
+  blogMeta?: BlogMetadata
 ): Promise<void> {
   // Check if candidate already exists
   const { data: existing } = await supabaseAdmin
     .from('place_candidates')
-    .select('id, source_urls, source_count')
+    .select('id, source_urls, source_count, source_metadata')
     .ilike('name', name)
     .limit(1)
     .maybeSingle()
@@ -798,9 +814,13 @@ async function upsertCandidate(
   if (existing) {
     const urls: string[] = existing.source_urls ?? []
     if (!urls.includes(sourceUrl)) {
+      const metadata: BlogMetadata[] = existing.source_metadata ?? []
+      if (blogMeta) metadata.push(blogMeta)
+
       const updateData: Record<string, unknown> = {
         source_urls: [...urls, sourceUrl],
         source_count: (existing.source_count ?? 1) + 1,
+        source_metadata: metadata,
         last_seen_at: new Date().toISOString(),
       }
       // Fill in Kakao data if not already present and now available
@@ -821,6 +841,7 @@ async function upsertCandidate(
       address,
       source_urls: [sourceUrl],
       source_count: 1,
+      source_metadata: blogMeta ? [blogMeta] : [],
       ...(lat != null && lng != null ? { lat, lng } : {}),
       ...(kakaoPlaceId ? { kakao_place_id: kakaoPlaceId } : {}),
       ...(kakaoSimilarity != null ? { kakao_similarity: kakaoSimilarity } : {}),

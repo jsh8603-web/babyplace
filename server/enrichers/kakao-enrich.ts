@@ -15,6 +15,7 @@
 
 import { supabaseAdmin } from '../lib/supabase-admin'
 import { searchKakaoPlace } from '../lib/kakao-search'
+import { kakaoLimiter } from '../rate-limiter'
 
 const ENRICH_BATCH = 1000
 const MATCH_THRESHOLD = 0.75
