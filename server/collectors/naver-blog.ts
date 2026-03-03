@@ -720,6 +720,7 @@ async function collectAllKeywordBlogs(
     )
     .eq('provider', 'naver')
     .in('status', ['NEW', 'ACTIVE', 'DECLINING', 'SEASONAL'])
+    .or('keyword_group.is.null,keyword_group.neq.문화행사')
     .order('efficiency_score', { ascending: false })
     .limit(MAX_KEYWORDS_PER_RUN)
 

@@ -26,6 +26,10 @@ const BLACKLIST_TITLE_PATTERN = /개인전/
 const WHITELIST_PATTERN =
   /어린이|유아|영유아|아기|키즈|가족|36개월|24개월|48개월|영아|유치원|어린이집/
 
+// Step 2b: Title-based whitelist — events that are clearly baby-relevant by title
+const WHITELIST_TITLE_PATTERN =
+  /캐릭터.*전시|테마파크|팝업.*키즈|키즈.*팝업|키즈파크|어린이.*전시|인형극|동화.*공연|어린이.*뮤지컬|어린이.*공연|키즈.*체험/
+
 // Fallback regex when LLM is unavailable
 const FALLBACK_BABY_PATTERN =
   /어린이|유아|키즈|가족|아기|동화|인형극|체험.*어린이|캐릭터|놀이/
@@ -94,8 +98,8 @@ export function isBlacklisted(useTarget: string, title: string = ''): boolean {
 /**
  * Step 2: Check if event is whitelisted (clearly baby-related).
  */
-export function isWhitelisted(useTarget: string): boolean {
-  return WHITELIST_PATTERN.test(useTarget || '')
+export function isWhitelisted(useTarget: string, title?: string): boolean {
+  return WHITELIST_PATTERN.test(useTarget || '') || (!!title && WHITELIST_TITLE_PATTERN.test(title))
 }
 
 /**
@@ -172,7 +176,7 @@ async function classifyBatch(
   const prompt = `당신은 영유아(0~5세) 자녀를 둔 부모를 위한 문화행사 추천 시스템입니다.
 아래 목록에서 아기/유아 동반 부모가 아이와 함께 갈 만한 행사 번호만 JSON 배열로 답하세요.
 
-포함 기준: 어린이 캐릭터 전시, 가족 공연, 어린이 체험, 유아 대상 프로그램, 자연/동물 체험, 가족 축제
+포함 기준: 어린이 캐릭터 전시, 캐릭터 팝업스토어, 키즈 테마파크, 어린이 체험전, 가족 공연, 어린이 뮤지컬/인형극, 유아 대상 프로그램, 자연/동물 체험, 가족 축제, 아기/유아 워크숍, 키즈 플리마켓
 제외 기준: 성인 미술 개인전, 클래식 콘서트, 성인 교육/강좌, 학술 세미나, 주류 행사, 성인 연극
 
 ${JSON.stringify(items, null, 0)}

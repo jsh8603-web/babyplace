@@ -153,7 +153,7 @@ export async function runSeoulEventsCollector(): Promise<SeoulEventsCollectorRes
     const whitelisted: SeoulEventItem[] = []
     const remaining: SeoulEventItem[] = []
     for (const event of afterBlacklist) {
-      if (isWhitelisted(event.USE_TRGT)) {
+      if (isWhitelisted(event.USE_TRGT, event.TITLE)) {
         whitelisted.push(event)
       } else {
         remaining.push(event)

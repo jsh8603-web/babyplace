@@ -14,11 +14,14 @@
  */
 
 import { supabaseAdmin } from '../lib/supabase-admin'
-import { searchKakaoPlace } from '../lib/kakao-search'
+import { searchKakaoPlace, searchKakaoPlaceDetailed } from '../lib/kakao-search'
 import { kakaoLimiter } from '../rate-limiter'
+import { isInServiceArea } from './region'
 
 const ENRICH_BATCH = 1000
 const MATCH_THRESHOLD = 0.75
+const EVENT_ENRICH_BATCH = 200
+const EVENT_MATCH_THRESHOLD = 0.5
 
 // ─── Main export ────────────────────────────────────────────────────────────
 
@@ -161,4 +164,112 @@ async function enrichPlace(place: PlaceRow): Promise<boolean> {
   }
 
   return true
+}
+
+// ─── Event Kakao enrichment ──────────────────────────────────────────────────
+
+export interface EventKakaoEnrichResult {
+  evaluated: number
+  enriched: number
+  noMatch: number
+  errors: number
+}
+
+/**
+ * Fill missing lat/lng for events using Kakao Place search.
+ * Same pattern as runKakaoEnrichment (places), but targets events table.
+ * venue_name is typically a building name → lower threshold (0.5).
+ */
+export async function runEventKakaoEnrichment(): Promise<EventKakaoEnrichResult> {
+  const result: EventKakaoEnrichResult = {
+    evaluated: 0,
+    enriched: 0,
+    noMatch: 0,
+    errors: 0,
+  }
+
+  const startedAt = Date.now()
+
+  const remaining = await kakaoLimiter.getRemainingDaily()
+  if (remaining < 100) {
+    console.log(`[kakao-enrich-events] Skipping — only ${remaining} Kakao calls remaining`)
+    return result
+  }
+
+  const batchSize = Math.min(EVENT_ENRICH_BATCH, remaining - 50)
+  const today = new Date().toISOString().split('T')[0]
+
+  // Events with NULL lat, non-null venue_name, not yet expired
+  const { data: events, error: fetchError } = await supabaseAdmin
+    .from('events')
+    .select('id, venue_name, venue_address')
+    .is('lat', null)
+    .not('venue_name', 'is', null)
+    .gte('end_date', today)
+    .order('id', { ascending: true })
+    .limit(batchSize)
+
+  if (fetchError || !events) {
+    console.error('[kakao-enrich-events] Fetch error:', fetchError)
+    result.errors++
+    return result
+  }
+
+  if (events.length === 0) {
+    console.log('[kakao-enrich-events] No events need coordinate enrichment')
+    return result
+  }
+
+  console.log(`[kakao-enrich-events] Evaluating ${events.length} events`)
+
+  for (const event of events) {
+    result.evaluated++
+    try {
+      const kakaoResult = await searchKakaoPlaceDetailed(
+        event.venue_name,
+        event.venue_address || null,
+        { threshold: EVENT_MATCH_THRESHOLD }
+      )
+
+      if (!kakaoResult.match) {
+        result.noMatch++
+        continue
+      }
+
+      if (!isInServiceArea(kakaoResult.match.lat, kakaoResult.match.lng)) {
+        result.noMatch++
+        continue
+      }
+
+      const { error } = await supabaseAdmin
+        .from('events')
+        .update({
+          lat: kakaoResult.match.lat,
+          lng: kakaoResult.match.lng,
+          venue_address: event.venue_address || kakaoResult.match.roadAddress || kakaoResult.match.address,
+        })
+        .eq('id', event.id)
+
+      if (error) {
+        console.error(`[kakao-enrich-events] Update error event ${event.id}:`, error.message)
+        result.errors++
+      } else {
+        result.enriched++
+      }
+    } catch (err) {
+      console.error(`[kakao-enrich-events] Error event ${event.id}:`, err)
+      result.errors++
+    }
+  }
+
+  await supabaseAdmin.from('collection_logs').insert({
+    collector: 'kakao-enrich-events',
+    results_count: result.evaluated,
+    new_events: result.enriched,
+    status: result.errors > 0 ? 'partial' : 'success',
+    duration_ms: Date.now() - startedAt,
+  })
+
+  console.log(`[kakao-enrich-events] Done: ${JSON.stringify(result)}`)
+  return result
 }

@@ -32,16 +32,18 @@ import { runPublicData } from './collectors/public-data'
 import { runLocalData } from './collectors/localdata'
 import { runScoring } from './scoring'
 import { runDensityControl } from './enrichers/density'
-import { runKakaoEnrichment } from './enrichers/kakao-enrich'
+import { runKakaoEnrichment, runEventKakaoEnrichment } from './enrichers/kakao-enrich'
 import { runAutoPromotion } from './candidates/auto-promote'
 import { runAutoDeactivate } from './candidates/auto-deactivate'
 import { runTourAPICollector } from './collectors/tour-api'
 import { runChildrenFacility } from './collectors/children-facility'
 import { runSeoulEventsCollector } from './collectors/seoul-events'
+import { runBlogEventDiscovery } from './collectors/blog-event-discovery'
 import { runEventDeduplication } from './matchers/event-dedup'
 import { runKeywordRotation } from './keywords/keyword-rotation'
 import { runBlogNoiseFilter } from './utils/blog-noise-filter'
 import { flagIrrelevantPlaces } from './matchers/place-gate'
+import { runEventCleanup } from './utils/event-cleanup'
 import { runFullBlogAudit } from './utils/blog-full-audit'
 import { runDataLabTrendDetection } from './keywords/datalab'
 import { initializeAllLimiters, flushAllLimiters } from './rate-limiter'
@@ -187,6 +189,11 @@ async function runPublicDataAndReverseSearchJob(): Promise<void> {
 async function runEventsJob(): Promise<void> {
   console.log('[run] === Events collectors (Tour API, Seoul) ===')
 
+  // Expired event cleanup (before collecting new events)
+  console.log('[run] Running event cleanup...')
+  const cleanupResult = await runEventCleanup()
+  console.log('[run] Event cleanup result:', JSON.stringify(cleanupResult, null, 2))
+
   // Tour API 관광정보
   console.log('[run] Running Tour API collector...')
   const tourResult = await runTourAPICollector()
@@ -196,6 +203,11 @@ async function runEventsJob(): Promise<void> {
   console.log('[run] Running Seoul events collector...')
   const seoulResult = await runSeoulEventsCollector()
   console.log('[run] Seoul events result:', JSON.stringify(seoulResult, null, 2))
+
+  // Blog event discovery
+  console.log('[run] Running blog event discovery...')
+  const blogEventResult = await runBlogEventDiscovery()
+  console.log('[run] Blog event discovery:', JSON.stringify(blogEventResult, null, 2))
 
   // Event deduplication
   console.log('[run] Running event deduplication...')
@@ -210,6 +222,11 @@ async function runScoringJob(): Promise<void> {
   console.log('[run] Running Kakao enrichment...')
   const enrichResult = await runKakaoEnrichment()
   console.log('[run] Kakao enrichment result:', JSON.stringify(enrichResult, null, 2))
+
+  // Kakao enrichment for events: fill missing lat/lng
+  console.log('[run] Running event Kakao enrichment...')
+  const eventEnrichResult = await runEventKakaoEnrichment()
+  console.log('[run] Event Kakao enrichment result:', JSON.stringify(eventEnrichResult, null, 2))
 
   // Popularity scoring: compute scores for all active places
   console.log('[run] Running popularity scoring...')

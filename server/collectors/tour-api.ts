@@ -408,6 +408,9 @@ async function processAsEvent(
   const lng = item.mapx || null
   const address = [item.addr1, item.addr2].filter(Boolean).join(' ')
 
+  // Region validation: same check as processAsPlace
+  if (lat && lng && !isInServiceRegion(lat, lng, address)) return
+
   // Fetch intro for event dates
   const intro = await fetchIntro(item.contentid, item.contenttypeid)
   const startDate = parseYYYYMMDD(intro?.eventstartdate) || new Date().toISOString().split('T')[0]
