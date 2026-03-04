@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import dynamic from 'next/dynamic'
-import { Filter, MapPin } from 'lucide-react'
+import { Filter, MapPin, Plus } from 'lucide-react'
 import type {
   Place,
   PlaceCategory,
@@ -351,6 +351,17 @@ export default function HomePage() {
           selected={filters.categories}
           onChange={(cats) => setFilters((f) => ({ ...f, categories: cats }))}
         />
+      </div>
+
+      {/* Submit FAB */}
+      <div className="absolute bottom-[248px] right-4 z-20">
+        <button
+          onClick={() => { window.location.href = '/submit' }}
+          className="w-11 h-11 rounded-full bg-coral-500 text-white shadow-lg flex items-center justify-center hover:bg-coral-600 transition active:scale-95"
+          aria-label="장소/이벤트 추천"
+        >
+          <Plus size={22} />
+        </button>
       </div>
 
       {/* Emergency FAB — bottom right above bottom sheet */}
