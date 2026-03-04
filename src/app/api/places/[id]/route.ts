@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase-server'
-import type { Place, BlogMention, PlaceDetailResponse } from '@/types'
+import type { Place, BlogMention, Event, PlaceDetailResponse } from '@/types'
 
 /**
  * GET /api/places/[id]
@@ -60,6 +60,44 @@ export async function GET(
     isFavorited = !!favData
   }
 
-  const response: PlaceDetailResponse = { place, topPosts, isFavorited }
+  // Fetch nearby running events within 2km radius
+  const today = new Date().toISOString().split('T')[0]
+  const { data: eventsData } = await supabase
+    .from('events')
+    .select('id, name, sub_category, category, venue_name, venue_address, start_date, end_date, lat, lng, poster_url, time_info, price_info, age_range, source, source_id, source_url, description, created_at, updated_at')
+    .gte('end_date', today)
+    .lte('start_date', today)
+    .not('lat', 'is', null)
+    .not('lng', 'is', null)
+
+  const nearbyEvents: Event[] = []
+  if (eventsData && place.lat && place.lng) {
+    const RADIUS_KM = 2
+    for (const ev of eventsData) {
+      if (ev.lat == null || ev.lng == null) continue
+      const dist = haversineKm(place.lat, place.lng, ev.lat, ev.lng)
+      if (dist <= RADIUS_KM) {
+        nearbyEvents.push(ev as Event)
+      }
+    }
+    // Sort by distance (closest first)
+    nearbyEvents.sort((a, b) => {
+      const da = haversineKm(place.lat, place.lng, a.lat!, a.lng!)
+      const db = haversineKm(place.lat, place.lng, b.lat!, b.lng!)
+      return da - db
+    })
+  }
+
+  const response: PlaceDetailResponse = { place, topPosts, nearbyEvents, isFavorited }
   return NextResponse.json(response)
+}
+
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371
+  const dLat = ((lat2 - lat1) * Math.PI) / 180
+  const dLng = ((lng2 - lng1) * Math.PI) / 180
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }

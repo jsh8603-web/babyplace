@@ -1,13 +1,14 @@
 'use client'
 
-import { Heart, Share2, Phone, Clock, MapPin, Navigation, ExternalLink, CalendarCheck, Globe, Info } from 'lucide-react'
-import type { Place, BlogMention } from '@/types'
+import { Heart, Share2, Phone, Clock, MapPin, Navigation, ExternalLink, CalendarCheck, Globe, Info, Calendar } from 'lucide-react'
+import type { Place, BlogMention, Event } from '@/types'
 import FacilityIcons from './FacilityIcons'
 import PopularityBar from './PopularityBar'
 
 interface PlaceDetailProps {
   place: Place
   topPosts: BlogMention[]
+  nearbyEvents?: Event[]
   isFavorited?: boolean
   distance?: number
   onFavoriteToggle?: () => void
@@ -45,9 +46,30 @@ function SourceBadge({ sourceType }: { sourceType: string }) {
   )
 }
 
+function formatEventDateRange(startDate: string, endDate: string | null): string {
+  const start = new Date(startDate)
+  const startStr = `${start.getMonth() + 1}.${start.getDate()}`
+  if (!endDate) return startStr
+  const end = new Date(endDate)
+  const endStr = `${end.getMonth() + 1}.${end.getDate()}`
+  if (startStr === endStr) return startStr
+  return `${startStr} ~ ${endStr}`
+}
+
+function getEventCategoryColor(category: string): string {
+  const colors: Record<string, string> = {
+    '전시': 'bg-purple-100 text-purple-700',
+    '공연': 'bg-pink-100 text-pink-700',
+    '체험': 'bg-blue-100 text-blue-700',
+    '축제': 'bg-coral-100 text-coral-700',
+  }
+  return colors[category] ?? 'bg-warm-100 text-warm-600'
+}
+
 export default function PlaceDetail({
   place,
   topPosts,
+  nearbyEvents,
   isFavorited = false,
   distance,
   onFavoriteToggle,
@@ -243,6 +265,52 @@ export default function PlaceDetail({
             </span>
           </div>
         </div>
+
+        {/* Nearby running events */}
+        {nearbyEvents && nearbyEvents.length > 0 && (
+          <div className="bg-white px-4 py-4">
+            <h2 className="text-[15px] font-semibold text-warm-700 mb-3">
+              진행중인 이벤트
+            </h2>
+            <div className="space-y-0">
+              {nearbyEvents.map((ev) => (
+                <a
+                  key={ev.id}
+                  href={`/event/${ev.id}`}
+                  className="
+                    flex items-start gap-3 py-3
+                    border-b border-warm-200 last:border-0
+                    hover:bg-warm-50 transition-colors -mx-4 px-4
+                  "
+                >
+                  <span className="text-xl shrink-0 mt-0.5">🎪</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[14px] font-medium text-warm-700 leading-snug line-clamp-2">
+                      {ev.name}
+                    </p>
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      {ev.sub_category && (
+                        <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded-full ${getEventCategoryColor(ev.sub_category)}`}>
+                          {ev.sub_category}
+                        </span>
+                      )}
+                      <span className="flex items-center gap-1 text-[12px] text-warm-500">
+                        <Calendar size={11} />
+                        {formatEventDateRange(ev.start_date, ev.end_date)}
+                      </span>
+                    </div>
+                    {ev.venue_name && (
+                      <p className="text-[12px] text-warm-400 mt-0.5 truncate">
+                        {ev.venue_name}
+                      </p>
+                    )}
+                  </div>
+                  <ExternalLink size={14} className="text-warm-300 shrink-0 mt-1" />
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Top 5 blog posts */}
         {topPosts && topPosts.length > 0 && (

@@ -263,7 +263,10 @@ async function extractBatch(posts: BlogPost[]): Promise<ExtractedEvent[]> {
     snippet: p.snippet,
   }))
 
+  const todayStr = new Date().toISOString().split('T')[0]
+
   const prompt = `블로그 포스팅에서 아기/어린이 대상 이벤트 정보를 추출하세요.
+오늘 날짜: ${todayStr}
 
 추출 대상: 캐릭터/테마 전시, 팝업스토어, 어린이 공연/뮤지컬/인형극, 유아/가족 축제/체험전, 키즈카페 특별 이벤트
 명시적 제외: 상설 시설(키즈카페 일반 영업, 놀이공원 상시 운영), 제품 리뷰, 육아 정보글, 성인 전시/공연
@@ -272,7 +275,7 @@ async function extractBatch(posts: BlogPost[]): Promise<ExtractedEvent[]> {
 - event: 이벤트 공식 명칭
 - venue: 장소명 (건물/전시장)
 - addr: 주소 힌트 (구/동 수준)
-- dates: 기간 (YYYY-MM-DD~YYYY-MM-DD 또는 빈 문자열)
+- dates: 기간 (YYYY-MM-DD~YYYY-MM-DD). 포스팅 본문에 기간 힌트가 있으면 최대한 추출하세요. 날짜를 전혀 알 수 없으면 빈 문자열.
 - c: 확신도 (0.0~1.0, 실제 기간제 이벤트 확실할수록 높음)
 
 이벤트가 없는 포스팅은 건너뛰세요. 같은 이벤트가 여러 포스팅에 있으면 1번만.
@@ -310,10 +313,18 @@ async function deduplicateAgainstDB(
   const fresh: ExtractedEvent[] = []
 
   for (const event of events) {
-    const normalized = normalizePlaceName(event.event)
+    const normalized = normalizeEventName(event.event)
 
     // Skip if we already have this event in our batch
-    if (seen.has(normalized)) {
+    let batchDup = false
+    for (const s of seen) {
+      const threshold = normalized.length <= 10 || s.length <= 10 ? 0.65 : EVENT_SIMILARITY_THRESHOLD
+      if (similarity(normalized, s) > threshold) {
+        batchDup = true
+        break
+      }
+    }
+    if (batchDup) {
       result.duplicatesSkipped++
       continue
     }
@@ -321,7 +332,8 @@ async function deduplicateAgainstDB(
     // Check similarity against DB events
     let isDuplicate = false
     for (const existing of existingNames) {
-      if (similarity(normalized, existing) > EVENT_SIMILARITY_THRESHOLD) {
+      const threshold = normalized.length <= 10 || existing.length <= 10 ? 0.65 : EVENT_SIMILARITY_THRESHOLD
+      if (similarity(normalized, existing) > threshold) {
         isDuplicate = true
         break
       }
@@ -337,6 +349,17 @@ async function deduplicateAgainstDB(
   }
 
   return fresh
+}
+
+/**
+ * Normalize event name for dedup: strip year prefixes, whitespace/hyphens
+ */
+function normalizeEventName(name: string): string {
+  return normalizePlaceName(
+    name
+      .replace(/^\d{4}\s*/, '') // Strip leading year (e.g. "2026 포켓몬런" → "포켓몬런")
+      .replace(/[\s\-]+/g, '') // Normalize whitespace/hyphens
+  )
 }
 
 // ─── Step 5+6: Validate venue + insert ──────────────────────────────────────
@@ -384,6 +407,13 @@ async function validateAndInsert(
 
   // Parse dates
   const { startDate, endDate } = parseDates(event.dates)
+
+  // A2: Skip past events (endDate already passed)
+  const today = new Date().toISOString().split('T')[0]
+  if (endDate < today) {
+    result.duplicatesSkipped++
+    return
+  }
 
   const eventData = {
     name: event.event,
@@ -494,7 +524,22 @@ export async function runExhibitionEventExtraction(): Promise<BlogEventDiscovery
 
     const knownSourceIds = await prefetchKnownSourceIds()
 
+    // C2: Prefetch existing event names once (avoid N+1)
+    const todayStr = new Date().toISOString().split('T')[0]
+    const { data: existingEventsData } = await supabaseAdmin
+      .from('events')
+      .select('name')
+      .gte('end_date', todayStr)
+    const existingEventNames = (existingEventsData || []).map((e) => normalizePlaceName(e.name))
+    console.log(`[exhibition-event] Pre-fetched ${existingEventNames.length} existing event names`)
+
     for (const place of places) {
+      // C1: Region validation (defensive — places table should already be in service area)
+      if (place.lat && place.lng && !isInServiceArea(place.lat, place.lng)) {
+        result.regionSkipped++
+        continue
+      }
+
       // Fetch blog_mentions for this place
       const { data: mentions } = await supabaseAdmin
         .from('blog_mentions')
@@ -538,17 +583,12 @@ ${JSON.stringify(items, null, 0)}`
             continue
           }
 
-          // Check existing events with similar name
+          // Check existing events with similar name (using prefetched data)
           const normalized = normalizePlaceName(ev.event)
-          const { data: existing } = await supabaseAdmin
-            .from('events')
-            .select('name')
-            .gte('end_date', new Date().toISOString().split('T')[0])
-            .limit(500)
 
           let isDup = false
-          for (const ex of existing || []) {
-            if (similarity(normalized, normalizePlaceName(ex.name)) > EVENT_SIMILARITY_THRESHOLD) {
+          for (const existingName of existingEventNames) {
+            if (similarity(normalized, existingName) > EVENT_SIMILARITY_THRESHOLD) {
               isDup = true
               break
             }

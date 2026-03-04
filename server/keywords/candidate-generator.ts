@@ -437,6 +437,7 @@ async function extractFromBlogMentions(
       .from('blog_mentions')
       .select('title, snippet')
       .gte('collected_at', sevenDaysAgo)
+      .gte('relevance_score', 0.3)
       .limit(1000) // Sample size for text mining
 
     if (error || !mentions) {

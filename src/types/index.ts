@@ -152,6 +152,7 @@ export interface PlacesResponse {
 export interface PlaceDetailResponse {
   place: Place
   topPosts: BlogMention[]
+  nearbyEvents: Event[]
   isFavorited: boolean
 }
 

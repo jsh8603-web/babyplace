@@ -154,6 +154,7 @@ export default function PlacePage({ params }: PlacePageProps) {
       <PlaceDetail
         place={data.place}
         topPosts={data.topPosts}
+        nearbyEvents={data.nearbyEvents}
         isFavorited={data.isFavorited}
         onBack={handleBack}
         onShare={handleShare}
