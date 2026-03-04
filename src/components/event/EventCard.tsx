@@ -107,14 +107,14 @@ export default function EventCard({ event, onClick, isSelected, distance }: Even
           </span>
 
           {/* Running badge */}
-          {isRunning(event.start_date, event.end_date) && (
+          {event.start_date && isRunning(event.start_date, event.end_date) && (
             <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">
               진행중
             </span>
           )}
 
           {/* Date badge */}
-          {event.date_confirmed !== false ? (
+          {event.start_date && event.date_confirmed !== false ? (
             <span className="flex items-center gap-1 text-[12px] font-medium text-warm-500 bg-warm-50 px-2 py-0.5 rounded-full">
               <Calendar size={12} />
               {formatDateRange(event.start_date, event.end_date)}

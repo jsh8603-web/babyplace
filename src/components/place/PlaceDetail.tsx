@@ -294,7 +294,7 @@ export default function PlaceDetail({
                           {ev.sub_category}
                         </span>
                       )}
-                      {ev.date_confirmed !== false ? (
+                      {ev.start_date && ev.date_confirmed !== false ? (
                         <span className="flex items-center gap-1 text-[12px] text-warm-500">
                           <Calendar size={11} />
                           {formatEventDateRange(ev.start_date, ev.end_date)}

@@ -47,7 +47,7 @@ export interface Event {
   venue_address: string | null
   lat: number | null
   lng: number | null
-  start_date: string
+  start_date: string | null
   end_date: string | null
   time_info: string | null
   price_info: string | null

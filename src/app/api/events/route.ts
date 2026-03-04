@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
   let nextCursor: string | null = null
   if (events.length > limit) {
     const lastItem = events[limit - 1]
-    nextCursor = encodeCursor({ type: 'recent', createdAt: lastItem.start_date, id: lastItem.id })
+    nextCursor = encodeCursor({ type: 'recent', createdAt: lastItem.start_date || '1970-01-01', id: lastItem.id })
     events = events.slice(0, limit)
   }
 

@@ -78,6 +78,7 @@ export default function SeasonalCuration({ onEventClick }: SeasonalCurationProps
 
   // Filter events by current season and upcoming (within next 3 months)
   const seasonalEvents = events.filter((event) => {
+    if (!event.start_date) return false
     const eventDate = new Date(event.start_date)
     const eventMonth = eventDate.getMonth() + 1
 

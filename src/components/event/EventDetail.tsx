@@ -142,12 +142,13 @@ export default function EventDetail({
           <div className="flex items-start gap-3">
             <Calendar size={18} className="text-warm-400 shrink-0 mt-0.5" />
             <div className="flex-1">
-              <p className="text-[15px] font-semibold text-warm-600">
-                {formatDateRange(event.start_date, event.end_date)}
-              </p>
-              {event.date_confirmed === false && (
-                <p className="text-[13px] text-amber-600 mt-0.5">
-                  일정이 확인되지 않았습니다. 직접 확인해보세요.
+              {event.start_date && event.date_confirmed !== false ? (
+                <p className="text-[15px] font-semibold text-warm-600">
+                  {formatDateRange(event.start_date, event.end_date)}
+                </p>
+              ) : (
+                <p className="text-[15px] font-medium text-amber-600">
+                  일정 미확인
                 </p>
               )}
               {event.time_info && (
