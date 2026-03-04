@@ -38,7 +38,7 @@ import { runAutoDeactivate } from './candidates/auto-deactivate'
 import { runTourAPICollector } from './collectors/tour-api'
 import { runChildrenFacility } from './collectors/children-facility'
 import { runSeoulEventsCollector } from './collectors/seoul-events'
-import { runBlogEventDiscovery } from './collectors/blog-event-discovery'
+import { runBlogEventDiscovery, runExhibitionEventExtraction } from './collectors/blog-event-discovery'
 import { runEventDeduplication } from './matchers/event-dedup'
 import { runKeywordRotation } from './keywords/keyword-rotation'
 import { runBlogNoiseFilter } from './utils/blog-noise-filter'
@@ -137,6 +137,15 @@ async function main(): Promise<void> {
         await runReplayJob()
         break
 
+      case 'manual-exhibition-events':
+        // Extract events from blog mentions of 전시/체험 places
+        console.log('[run] Manual mode — exhibition event extraction')
+        await initializeAllLimiters()
+        const exResult = await runExhibitionEventExtraction()
+        console.log('[run] Exhibition event extraction:', JSON.stringify(exResult, null, 2))
+        await flushAllLimiters()
+        break
+
       default:
         console.error(`[run] Unknown schedule: "${schedule}"`)
         break
@@ -204,7 +213,12 @@ async function runEventsJob(): Promise<void> {
   const seoulResult = await runSeoulEventsCollector()
   console.log('[run] Seoul events result:', JSON.stringify(seoulResult, null, 2))
 
-  // Blog event discovery
+  // Exhibition event extraction (priority: 전시/체험 places first)
+  console.log('[run] Running exhibition event extraction...')
+  const exhibitionResult = await runExhibitionEventExtraction()
+  console.log('[run] Exhibition event extraction:', JSON.stringify(exhibitionResult, null, 2))
+
+  // Blog event discovery (keyword-based)
   console.log('[run] Running blog event discovery...')
   const blogEventResult = await runBlogEventDiscovery()
   console.log('[run] Blog event discovery:', JSON.stringify(blogEventResult, null, 2))

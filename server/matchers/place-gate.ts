@@ -43,7 +43,10 @@ const BLOCKED_BRANDS = [
 
 /** Category patterns to block */
 const BLOCKED_CATEGORIES =
-  /만화카페|보드게임|방탈출|PC방|피시방|스터디카페|코인노래방|당구|볼링장|노래방|네일|피부관리|미용실|안경|성인|카지노|나이트|룸카페|룸살롱/
+  /만화카페|보드게임|방탈출|PC방|피시방|스터디카페|코인노래방|당구|볼링장|노래방|네일|피부관리|미용실|안경|성인|카지노|나이트|룸카페|룸살롱|주점|유흥|호프|라이브카페|직업소개|인력파견|배관|누수|전기자재|부품|직물|원단|반도체|해운|해상|시공업체|철거|조명기기|오피스텔|빌라,주택|아파트|전자담배|셀프세차|세차장|화장품|숙박예약|쇼핑시설관리|행정기관|지방행정|슈퍼마켓|가구판매|주방가구|정육점/
+
+/** Names containing these keywords bypass category blocking (explicit baby-relevance) */
+const BABY_NAME_WHITELIST = /키즈|어린이|유아|베이비|아기|아동|육아|이유식|맘마|baby|kids/i
 
 // ─── Dynamic DB patterns (5-min cache) ──────────────────────────────────────
 
@@ -114,9 +117,9 @@ export async function checkPlaceGate(input: PlaceGateInput): Promise<PlaceGateRe
     }
   }
 
-  // 3. Category blacklist
+  // 3. Category blacklist (skip if name has explicit baby keywords)
   const catStr = [categoryName, subCategory].filter(Boolean).join(' ')
-  if (catStr && BLOCKED_CATEGORIES.test(catStr)) {
+  if (catStr && BLOCKED_CATEGORIES.test(catStr) && !BABY_NAME_WHITELIST.test(name)) {
     return { allowed: false, reason: `category: ${catStr}` }
   }
 

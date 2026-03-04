@@ -50,7 +50,7 @@ export default function PlaceCard({ place, distance, onClick, isSelected, label 
         <div className="flex-1 min-w-0">
           {/* Name row */}
           <div className="flex items-center gap-2 mb-1">
-            <h3 className="text-[17px] font-semibold text-warm-700 leading-snug truncate">
+            <h3 className="text-[17px] font-semibold text-warm-700 leading-snug line-clamp-2">
               {place.name}
             </h3>
             {label && (

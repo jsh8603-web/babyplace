@@ -74,7 +74,7 @@ export default function EventCard({ event, onClick, isSelected, distance }: Even
     >
       {/* Poster image or placeholder */}
       {event.poster_url && !imgError ? (
-        <div className="w-full aspect-[4/3] overflow-hidden bg-warm-200">
+        <div className="w-full aspect-[4/3] sm:aspect-[2/1] max-h-[240px] overflow-hidden bg-warm-200">
           <img
             src={event.poster_url}
             alt={event.name}
@@ -84,7 +84,7 @@ export default function EventCard({ event, onClick, isSelected, distance }: Even
           />
         </div>
       ) : (
-        <div className="w-full aspect-[4/3] bg-gradient-to-br from-coral-100 to-coral-50 flex items-center justify-center">
+        <div className="w-full aspect-[4/3] sm:aspect-[2/1] max-h-[240px] bg-gradient-to-br from-coral-100 to-coral-50 flex items-center justify-center">
           <span className="text-4xl opacity-50">🎪</span>
         </div>
       )}

@@ -450,6 +450,162 @@ async function prefetchKnownSourceIds(): Promise<Set<string>> {
   return ids
 }
 
+// ─── Place-based event extraction (전시/체험 priority) ──────────────────────
+
+const EXHIBITION_BATCH_SIZE = 15
+const EXHIBITION_MAX_PLACES = 50
+
+export async function runExhibitionEventExtraction(): Promise<BlogEventDiscoveryResult> {
+  const result: BlogEventDiscoveryResult = {
+    keywordsProcessed: 0,
+    blogPostsFetched: 0,
+    eventsExtracted: 0,
+    duplicatesSkipped: 0,
+    venueValidated: 0,
+    regionSkipped: 0,
+    eventsInserted: 0,
+    errors: 0,
+  }
+
+  const startedAt = Date.now()
+
+  try {
+    if (!process.env.GEMINI_API_KEY) {
+      console.warn('[exhibition-event] Missing GEMINI_API_KEY, skipping')
+      return result
+    }
+
+    // Step 1: Fetch 전시/체험 places with blog mentions (prioritized by mention_count)
+    const { data: places, error } = await supabaseAdmin
+      .from('places')
+      .select('id, name, address, road_address, lat, lng, mention_count')
+      .eq('is_active', true)
+      .eq('category', '전시/체험')
+      .gt('mention_count', 3)
+      .order('mention_count', { ascending: false })
+      .limit(EXHIBITION_MAX_PLACES)
+
+    if (error || !places || places.length === 0) {
+      console.log('[exhibition-event] No exhibition places with mentions')
+      return result
+    }
+
+    console.log(`[exhibition-event] Processing ${places.length} exhibition places`)
+
+    const knownSourceIds = await prefetchKnownSourceIds()
+
+    for (const place of places) {
+      // Fetch blog_mentions for this place
+      const { data: mentions } = await supabaseAdmin
+        .from('blog_mentions')
+        .select('title, snippet, post_date')
+        .eq('place_id', place.id)
+        .order('relevance_score', { ascending: false })
+        .order('post_date', { ascending: false })
+        .limit(EXHIBITION_BATCH_SIZE)
+
+      if (!mentions || mentions.length === 0) continue
+      result.blogPostsFetched += mentions.length
+
+      // Extract events from these mentions via LLM
+      const items = mentions.map((m, i) => ({
+        n: i + 1,
+        title: m.title,
+        snippet: (m.snippet || '').slice(0, 300),
+      }))
+
+      const prompt = `"${place.name}" 장소의 블로그 포스팅에서 현재 진행 중인 기간제 이벤트/전시를 추출하세요.
+
+추출 대상: 특별전시, 팝업스토어, 테마파크, 체험전, 어린이 전시/공연
+명시적 제외: 장소 자체 소개(상설 운영), 맛집 리뷰, 제품 리뷰, 일반 방문 후기
+
+각 이벤트: {"event":"이벤트명","dates":"YYYY-MM-DD~YYYY-MM-DD 또는 빈 문자열","c":확신도}
+이벤트 없으면 빈 배열 []. JSON만 응답.
+
+${JSON.stringify(items, null, 0)}`
+
+      try {
+        const text = await extractWithGemini(prompt)
+        const parsed = JSON.parse(text) as { event: string; dates: string; c: number }[]
+        const valid = parsed.filter((e) => e.c >= 0.7 && e.event)
+
+        for (const ev of valid) {
+          result.eventsExtracted++
+
+          const sourceId = `exhibition_${normalizePlaceName(ev.event)}_${place.id}`
+          if (knownSourceIds.has(sourceId)) {
+            result.duplicatesSkipped++
+            continue
+          }
+
+          // Check existing events with similar name
+          const normalized = normalizePlaceName(ev.event)
+          const { data: existing } = await supabaseAdmin
+            .from('events')
+            .select('name')
+            .gte('end_date', new Date().toISOString().split('T')[0])
+            .limit(500)
+
+          let isDup = false
+          for (const ex of existing || []) {
+            if (similarity(normalized, normalizePlaceName(ex.name)) > EVENT_SIMILARITY_THRESHOLD) {
+              isDup = true
+              break
+            }
+          }
+          if (isDup) {
+            result.duplicatesSkipped++
+            continue
+          }
+
+          const { startDate, endDate } = parseDates(ev.dates)
+
+          const { error: insertErr } = await supabaseAdmin.from('events').insert({
+            name: ev.event,
+            category: '문화행사',
+            sub_category: classifyEventByTitle(ev.event),
+            venue_name: place.name,
+            venue_address: place.road_address || place.address,
+            lat: place.lat,
+            lng: place.lng,
+            start_date: startDate,
+            end_date: endDate,
+            source: 'exhibition_extraction',
+            source_id: sourceId,
+          })
+
+          if (insertErr) {
+            if (insertErr.code === '23505') result.duplicatesSkipped++
+            else { result.errors++; console.error('[exhibition-event] Insert error:', insertErr.message) }
+          } else {
+            result.eventsInserted++
+            knownSourceIds.add(sourceId)
+          }
+        }
+      } catch (err) {
+        console.error(`[exhibition-event] LLM error for ${place.name}:`, err)
+        result.errors++
+      }
+
+      // Rate limit: 2s between places
+      await new Promise((r) => setTimeout(r, LLM_DELAY_MS))
+    }
+
+    await supabaseAdmin.from('collection_logs').insert({
+      collector: 'exhibition-event-extraction',
+      results_count: result.blogPostsFetched,
+      new_events: result.eventsInserted,
+      status: result.errors > 0 ? 'partial' : 'success',
+      duration_ms: Date.now() - startedAt,
+    })
+  } catch (err) {
+    console.error('[exhibition-event] Fatal error:', err)
+    result.errors++
+  }
+
+  return result
+}
+
 // ─── Date parsing ───────────────────────────────────────────────────────────
 
 function parseDates(dates: string): { startDate: string; endDate: string } {

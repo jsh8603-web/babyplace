@@ -139,6 +139,13 @@ export async function runBlogNoiseFilter(): Promise<BlogNoiseFilterResult> {
   result.downgraded = downgraded
   result.termsExtracted = extractedTerms.length
 
+  // Recalculate mention_count for places affected by Step 3 downgrade
+  if (irrelevantPlaceIds.size > 0) {
+    await recalculateMentionCounts([...irrelevantPlaceIds])
+    result.mentionCountsUpdated += irrelevantPlaceIds.size
+    console.log(`[blog-noise-filter] Recalculated mention_count for ${irrelevantPlaceIds.size} places after downgrade`)
+  }
+
   // 6. Promote qualified terms
   const promoted = await promoteQualifiedTerms()
   result.termsPromoted = promoted.length
@@ -411,7 +418,7 @@ export async function recalculateMentionCounts(placeIds: number[]): Promise<void
           .from('blog_mentions')
           .select('id', { count: 'exact', head: true })
           .eq('place_id', placeId)
-          .gt('relevance_score', DOWNGRADE_SCORE)
+          .gte('relevance_score', 0.3)
 
         if (error) {
           console.error(`[blog-noise-filter] Count error for place ${placeId}:`, error)

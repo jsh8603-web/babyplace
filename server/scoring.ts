@@ -149,15 +149,21 @@ export async function runScoring(): Promise<ScoringResult> {
         const entry = scoreMap.get(place.id)
         if (!entry) continue
 
+        // Places with no mentions get a low base score (below any mentioned place)
+        if (place.mention_count === 0) {
+          entry.final = 0.30
+          continue
+        }
+
         // Normalize raw score
         const normalized = (entry.raw - minRaw) / range
 
-        // Apply Bayesian smoothing (weighted average with category average)
+        // Apply Bayesian smoothing with prior=0.35 (ensures mentioned places > unmentioned)
         const bayes =
-          (normalized * place.mention_count + 0.5 * bayesianConstant) /
+          (normalized * place.mention_count + 0.35 * bayesianConstant) /
           (place.mention_count + bayesianConstant)
 
-        entry.final = Math.max(0, Math.min(1, bayes)) // clamp to [0, 1]
+        entry.final = Math.max(0.31, Math.min(1, bayes)) // floor above unmentioned base
       }
     }
 
