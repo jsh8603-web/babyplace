@@ -74,11 +74,11 @@ export default function EventCard({ event, onClick, isSelected, distance }: Even
     >
       {/* Poster image or placeholder */}
       {event.poster_url && !imgError ? (
-        <div className="w-full max-h-[300px] overflow-hidden bg-warm-100 flex items-center justify-center">
+        <div className="w-full max-h-[750px] overflow-hidden bg-warm-100 flex items-center justify-center">
           <img
             src={event.poster_url}
             alt={event.name}
-            className="w-full h-full object-contain max-h-[300px]"
+            className="w-full h-full object-contain max-h-[750px]"
             loading="lazy"
             onError={() => setImgError(true)}
           />
