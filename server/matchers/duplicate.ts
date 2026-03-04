@@ -124,9 +124,10 @@ export async function findMatchingPlace(
     if (candidateAddress && place.address) {
       if (addressDistrictMatch(candidateAddress, place.address)) {
         finalScore = Math.min(1.0, score + 0.05)
-      } else if (score < 1.0) {
-        // Address hint exists but district doesn't match — penalize
-        finalScore = Math.max(0, score - 0.1)
+      } else {
+        // Address clearly contradicts — penalize (even for exact name matches
+        // to prevent chain-name-only matches like "라라코스트" → wrong branch)
+        finalScore = Math.max(0, score - 0.25)
       }
     }
 

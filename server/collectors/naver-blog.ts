@@ -557,6 +557,18 @@ const COMPETING_LOCATIONS = new Set([
   '춘천', '원주', '강릉', '속초', '동해',
 ])
 
+// Cities/areas within the service area (경기도 시 단위 + 주요 상권명)
+// Used to detect competing branches of chain stores within 서울/경기/인천
+const SERVICE_AREA_CITIES = [
+  // 경기도 시/군 (3글자+ 우선, 2글자는 false positive 낮은 것만)
+  '시흥', '이천', '수원', '성남', '안양', '부천', '용인', '고양', '김포',
+  '하남', '구리', '광명', '안산', '평택', '파주', '양주', '포천', '여주',
+  '안성', '오산', '의왕', '군포', '과천', '양평', '가평', '동두천', '연천',
+  '남양주', '의정부',
+  // 경기도 주요 생활권명 (행정 시명과 다른 이름)
+  '판교', '분당', '동탄', '일산', '산본', '광교', '위례', '운정', '배곧',
+]
+
 const IRRELEVANT_CONTENT_TERMS = [
   // Product reviews
   '구매후기', '제품리뷰', '상품평', '배송후기', '가격비교', '할인코드',
@@ -573,6 +585,54 @@ function hasCompetingLocation(text: string, ownCity: string): boolean {
   for (const loc of COMPETING_LOCATIONS) {
     if (loc === ownCity) continue
     if (text.includes(loc)) return true
+  }
+  return false
+}
+
+// Sub-area → parent city mapping (동탄→화성, 판교→성남, etc.)
+const SUB_AREA_TO_PARENT: Record<string, string> = {
+  '동탄': '화성', '병점': '화성', '봉담': '화성', '향남': '화성',
+  '판교': '성남', '분당': '성남', '야탑': '성남', '정자': '성남',
+  '일산': '고양', '화정': '고양', '행신': '고양', '삼송': '고양',
+  '산본': '군포', '광교': '수원', '영통': '수원',
+  '운정': '파주', '배곧': '시흥', '정왕': '시흥',
+  '위례': '하남',
+}
+
+/**
+ * Detects if the blog post TITLE mentions a different city/area within the service area.
+ * Only triggers when the title has a competing city AND does NOT mention the place's own location.
+ * This catches chain-store branch misattributions (e.g. "시흥 담솥" for 담솥 왕십리역점).
+ */
+function hasCompetingServiceAreaCity(
+  title: string, addr: AddressComponents
+): boolean {
+  const titleL = title.toLowerCase()
+  const fullAddr = `${addr.city} ${addr.district || ''} ${addr.dong || ''} ${addr.road || ''}`
+
+  // Resolve the place's parent city (e.g. addr.city="화성" → also covers "동탄","병점")
+  const ownCities = new Set<string>()
+  for (const token of [addr.city, addr.district, addr.dong]) {
+    if (token) ownCities.add(token)
+  }
+  // Add sub-area ↔ parent mappings for the place's city
+  for (const [sub, parent] of Object.entries(SUB_AREA_TO_PARENT)) {
+    if (ownCities.has(parent)) ownCities.add(sub) // 화성 → 동탄 also "own"
+    if (fullAddr.includes(sub)) ownCities.add(parent) // 동탄 in addr → 화성 also "own"
+  }
+
+  // Check if title mentions the place's own location (any addr component)
+  const ownTokens = [addr.city, addr.district, addr.dong, addr.road]
+    .filter((t): t is string => !!t && t.length >= 2)
+  const titleHasOwnLocation = ownTokens.some(t => titleL.includes(t.toLowerCase()))
+
+  // If title already mentions the place's location, not a competing branch
+  if (titleHasOwnLocation) return false
+
+  // Check if title mentions a different service-area city
+  for (const city of SERVICE_AREA_CITIES) {
+    if (ownCities.has(city)) continue // same city/sub-area as the place
+    if (titleL.includes(city)) return true
   }
   return false
 }
@@ -652,9 +712,14 @@ function computePostRelevance(
 
   // --- Negative signals ---
 
-  // Mentions a different city/province
+  // Mentions a different city/province (outside service area)
   if (hasCompetingLocation(text, addr.city)) {
     score -= 0.50
+  }
+
+  // Competing branch within service area (e.g. "시흥 담솥" for 담솥 왕십리역점)
+  if (hasCompetingServiceAreaCity(title, addr)) {
+    score -= 0.30
   }
 
   // Irrelevant content patterns (product reviews, real estate, spam)
