@@ -344,13 +344,17 @@ async function deduplicateAgainstDB(
   events: ExtractedEvent[],
   result: BlogEventDiscoveryResult
 ): Promise<ExtractedEvent[]> {
-  // Fetch active events from DB for similarity comparison
+  // Fetch active events from DB for similarity comparison (include NULL end_date)
+  const todayStr = new Date().toISOString().split('T')[0]
   const { data: existingEvents } = await supabaseAdmin
     .from('events')
-    .select('name')
-    .gte('end_date', new Date().toISOString().split('T')[0])
+    .select('name, venue_name')
+    .or(`end_date.gte.${todayStr},end_date.is.null`)
 
-  const existingNames = (existingEvents || []).map((e) => normalizePlaceName(e.name))
+  const existingEntries = (existingEvents || []).map((e) => ({
+    name: normalizeEventName(e.name),
+    venue: normalizePlaceName(e.venue_name || ''),
+  }))
 
   // Also deduplicate within the extracted batch
   const seen = new Set<string>()
@@ -358,6 +362,7 @@ async function deduplicateAgainstDB(
 
   for (const event of events) {
     const normalized = normalizeEventName(event.event)
+    const normalizedVenue = normalizePlaceName(event.venue || '')
 
     // Skip if we already have this event in our batch
     let batchDup = false
@@ -373,13 +378,23 @@ async function deduplicateAgainstDB(
       continue
     }
 
-    // Check similarity against DB events
+    // Check similarity against DB events (name match OR name+venue match)
     let isDuplicate = false
-    for (const existing of existingNames) {
-      const threshold = normalized.length <= 10 || existing.length <= 10 ? 0.65 : EVENT_SIMILARITY_THRESHOLD
-      if (similarity(normalized, existing) > threshold) {
+    for (const existing of existingEntries) {
+      const nameSim = similarity(normalized, existing.name)
+      const threshold = normalized.length <= 10 || existing.name.length <= 10 ? 0.65 : EVENT_SIMILARITY_THRESHOLD
+
+      // Primary: name similarity above threshold
+      if (nameSim > threshold) {
         isDuplicate = true
         break
+      }
+      // Secondary: moderate name similarity + same venue
+      if (nameSim > 0.5 && normalizedVenue && existing.venue) {
+        if (similarity(normalizedVenue, existing.venue) > 0.8) {
+          isDuplicate = true
+          break
+        }
       }
     }
 
@@ -398,11 +413,13 @@ async function deduplicateAgainstDB(
 /**
  * Normalize event name for dedup: strip years, city names, whitespace/hyphens
  */
-function normalizeEventName(name: string): string {
+export function normalizeEventName(name: string): string {
   return normalizePlaceName(
     name
+      .replace(/^\s*\[.*?\]\s*/, '') // Strip leading [기관명] bracket only
       .replace(/\d{4}/g, '') // Strip all years ("2026 포켓몬런" + "포켓몬런 2026")
       .replace(/서울|경기|인천|수원|성남|부산|대구|대전|광주|고양|용인|부천|안산|안양/g, '')
+      .replace(/\s+in\s+\S+$/i, '') // Strip " in Seoul" suffix
       .replace(/[\s\-]+/g, '')
   )
 }
@@ -784,8 +801,8 @@ export async function runExhibitionEventExtraction(): Promise<BlogEventDiscovery
     const { data: existingEventsData } = await supabaseAdmin
       .from('events')
       .select('name')
-      .gte('end_date', todayStr)
-    const existingEventNames = (existingEventsData || []).map((e) => normalizePlaceName(e.name))
+      .or(`end_date.gte.${todayStr},end_date.is.null`)
+    const existingEventNames = (existingEventsData || []).map((e) => normalizeEventName(e.name))
     console.log(`[exhibition-event] Pre-fetched ${existingEventNames.length} existing event names`)
 
     for (const place of places) {
@@ -836,7 +853,7 @@ ${JSON.stringify(items, null, 0)}`
           const sourceId = `exhibition_${normalizePlaceName(ev.event)}_${place.id}`
           if (knownSourceIds.has(sourceId)) { result.duplicatesSkipped++; continue }
 
-          const normalized = normalizePlaceName(ev.event)
+          const normalized = normalizeEventName(ev.event)
           let isDup = false
           for (const existingName of existingEventNames) {
             if (similarity(normalized, existingName) > EVENT_SIMILARITY_THRESHOLD) { isDup = true; break }
