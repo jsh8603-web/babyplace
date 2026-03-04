@@ -95,11 +95,11 @@ export default function EventDetail({
       <div className="space-y-3 pb-8">
         {/* Poster image */}
         {event.poster_url && !imgError ? (
-          <div className="w-full max-h-[500px] overflow-hidden bg-warm-100 flex items-center justify-center">
+          <div className="w-full max-h-[170px] overflow-hidden bg-warm-100 flex items-center justify-center">
             <img
               src={event.poster_url}
               alt={event.name}
-              className="max-w-full max-h-[500px] object-contain"
+              className="max-w-full max-h-[170px] object-contain"
               onError={() => setImgError(true)}
             />
           </div>
