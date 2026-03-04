@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
 
   if (isRunning) {
     query = query
-      .lte('start_date', today)
+      .or(`start_date.is.null,start_date.lte.${today}`)
       .or(`end_date.gte.${today},end_date.is.null`)
       .order('end_date', { ascending: true, nullsFirst: false })
       .order('id', { ascending: false })
