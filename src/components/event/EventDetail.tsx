@@ -95,16 +95,16 @@ export default function EventDetail({
       <div className="space-y-3 pb-8">
         {/* Poster image */}
         {event.poster_url && !imgError ? (
-          <div className="w-full aspect-[3/4] overflow-hidden bg-warm-100">
+          <div className="w-full max-h-[500px] overflow-hidden bg-warm-100 flex items-center justify-center">
             <img
               src={event.poster_url}
               alt={event.name}
-              className="w-full h-full object-contain"
+              className="max-w-full max-h-[500px] object-contain"
               onError={() => setImgError(true)}
             />
           </div>
         ) : (
-          <div className="w-full h-[250px] bg-gradient-to-br from-coral-100 to-coral-50 flex items-center justify-center">
+          <div className="w-full h-[200px] bg-gradient-to-br from-coral-100 to-coral-50 flex items-center justify-center">
             <span className="text-6xl opacity-50">{getCategoryEmoji(event.category)}</span>
           </div>
         )}
