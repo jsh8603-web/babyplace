@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Calendar, MapPin, Clock, DollarSign, Users } from 'lucide-react'
 import type { Event } from '@/types'
+import PopularityBar from '@/components/place/PopularityBar'
 
 interface EventCardProps {
   event: Event
@@ -168,6 +169,17 @@ export default function EventCard({ event, onClick, isSelected, distance }: Even
             </div>
           )}
         </div>
+
+        {/* Popularity bar */}
+        {event.popularity_score > 0 && (
+          <div className="mt-3">
+            <PopularityBar
+              score={event.popularity_score}
+              mentionCount={event.mention_count}
+              showLabel={true}
+            />
+          </div>
+        )}
       </div>
     </button>
   )
