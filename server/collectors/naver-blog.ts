@@ -323,16 +323,19 @@ async function reverseSearchPlace(
   isCommon: boolean
 ): Promise<number> {
   const searchTerm = buildSearchTerm(placeName, addr, isCommon)
-  let newCount = 0
 
   // --- Naver Blog ---
-  newCount += await searchNaverBlog(placeId, placeName, addr, isCommon, searchTerm)
+  const naver = await searchNaverBlog(placeId, placeName, addr, isCommon, searchTerm)
 
   // --- Daum Blog (Kakao) — covers 티스토리 + Daum 블로그 ---
-  newCount += await searchDaumBlog(placeId, placeName, addr, isCommon, searchTerm)
+  const daum = await searchDaumBlog(placeId, placeName, addr, isCommon, searchTerm)
 
+  const newCount = naver.count + daum.count
   if (newCount > 0) {
-    await updateMentionCount(placeId, newCount)
+    // Use the latest post_date from either source (not collection date)
+    const dates = [naver.maxDate, daum.maxDate].filter(Boolean) as string[]
+    const latestDate = dates.length > 0 ? dates.sort().pop()! : null
+    await updateMentionCount(placeId, newCount, latestDate)
   }
 
   return newCount
@@ -345,14 +348,15 @@ async function searchNaverBlog(
   addr: AddressComponents,
   isCommon: boolean,
   searchTerm: string
-): Promise<number> {
+): Promise<{ count: number; maxDate: string | null }> {
   const query = encodeURIComponent(searchTerm)
   const items = await fetchNaverSearch<NaverBlogItem>(
     `${NAVER_BLOG_URL}?query=${query}&display=${DISPLAY_COUNT}&sort=date`
   )
-  if (!items) return 0
+  if (!items) return { count: 0, maxDate: null }
 
   let count = 0
+  let maxDate: string | null = null
   for (const item of items) {
     if (!item.link) continue
     const title = stripHtml(item.title)
@@ -360,18 +364,22 @@ async function searchNaverBlog(
     const relevance = computePostRelevance(placeName, addr, isCommon, title, snippet)
     if (relevance < 0.4) continue
 
+    const postDate = parseNaverPostDate(item.postdate)
     const { error } = await supabaseAdmin.from('blog_mentions').insert({
       place_id: placeId,
       source_type: 'naver_blog',
       title,
       url: item.link,
-      post_date: parseNaverPostDate(item.postdate),
+      post_date: postDate,
       snippet,
       relevance_score: relevance,
     })
-    if (!error) count++
+    if (!error) {
+      count++
+      if (postDate && (!maxDate || postDate > maxDate)) maxDate = postDate
+    }
   }
-  return count
+  return { count, maxDate }
 }
 
 /** Search Daum/Kakao Blog API and insert relevant mentions. */
@@ -381,11 +389,12 @@ async function searchDaumBlog(
   addr: AddressComponents,
   isCommon: boolean,
   searchTerm: string
-): Promise<number> {
+): Promise<{ count: number; maxDate: string | null }> {
   const items = await fetchDaumSearch(searchTerm)
-  if (!items) return 0
+  if (!items) return { count: 0, maxDate: null }
 
   let count = 0
+  let maxDate: string | null = null
   for (const item of items) {
     if (!item.url) continue
     const title = stripHtml(item.title)
@@ -404,9 +413,12 @@ async function searchDaumBlog(
       snippet,
       relevance_score: relevance,
     })
-    if (!error) count++
+    if (!error) {
+      count++
+      if (postDate && (!maxDate || postDate > maxDate)) maxDate = postDate
+    }
   }
-  return count
+  return { count, maxDate }
 }
 
 // ─── Layer 1: Address component parser ────────────────────────────────────────
@@ -688,11 +700,13 @@ function computePostRelevance(
  * Uses a DB-side function so concurrent calls never lose increments
  * (avoids the read-then-write race condition in the previous implementation).
  */
-async function updateMentionCount(placeId: number, increment: number): Promise<void> {
+async function updateMentionCount(
+  placeId: number, increment: number, latestPostDate?: string | null
+): Promise<void> {
   const { error } = await supabaseAdmin.rpc('increment_mention_count', {
     p_place_id: placeId,
     p_increment: increment,
-    p_last_mentioned_at: new Date().toISOString(),
+    p_last_mentioned_at: latestPostDate || new Date().toISOString(),
   })
 
   if (error) {
@@ -989,8 +1003,9 @@ async function processExtractions(
           kStat.duplicates++
         }
       }
-      // Increment mention count once for the whole group
-      await updateMentionCount(existingMatch.placeId, group.length)
+      // Increment mention count once for the whole group (use actual post dates)
+      const maxPostDate = group.map(e => e.blogPostdate).filter(Boolean).sort().pop() ?? null
+      await updateMentionCount(existingMatch.placeId, group.length, maxPostDate)
 
       // Track match result
       if (batchId) {

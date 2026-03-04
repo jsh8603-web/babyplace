@@ -119,14 +119,15 @@ export async function findMatchingPlace(
   for (const place of candidates) {
     const score = similarity(candidateName, place.name)
 
-    // Boost if addresses share the same district prefix
+    // Address boost/penalty: reward district match, penalize mismatch
     let finalScore = score
-    if (
-      candidateAddress &&
-      place.address &&
-      addressDistrictMatch(candidateAddress, place.address)
-    ) {
-      finalScore = Math.min(1.0, score + 0.05)
+    if (candidateAddress && place.address) {
+      if (addressDistrictMatch(candidateAddress, place.address)) {
+        finalScore = Math.min(1.0, score + 0.05)
+      } else if (score < 1.0) {
+        // Address hint exists but district doesn't match — penalize
+        finalScore = Math.max(0, score - 0.1)
+      }
     }
 
     if (finalScore > bestScore) {

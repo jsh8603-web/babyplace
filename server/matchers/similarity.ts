@@ -52,7 +52,12 @@ export function similarity(a: string, b: string): number {
   if (na === nb) return 1.0
 
   // Substring containment (e.g. "코코몽" ⊂ "코코몽에코파크")
-  if (na.includes(nb) || nb.includes(na)) return 0.9
+  // Guard: short substrings (chain name only) fall through to Dice
+  if (na.includes(nb) || nb.includes(na)) {
+    const ratio = Math.min(na.length, nb.length) / Math.max(na.length, nb.length)
+    if (ratio >= 0.6) return 0.9
+    // Short name (e.g. "미도인" vs "미도인왕십리역사") → let Dice evaluate
+  }
 
   // Dice coefficient over bigrams
   const bigramsA = bigrams(na)
