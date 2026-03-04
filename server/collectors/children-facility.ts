@@ -75,10 +75,10 @@ interface FacilityTarget {
 const FACILITY_TARGETS: FacilityTarget[] = [
   {
     instlPlaceCd: 'A004',
-    label: '식품접객업소 (키즈카페)',
-    babyCategory: '놀이',
+    label: '식품접객업소 (키즈존식당)',
+    babyCategory: '식당/카페',
     isIndoor: true,
-    subCategory: '키즈카페',
+    subCategory: '키즈존식당',
   },
   {
     instlPlaceCd: 'A013',
@@ -339,7 +339,7 @@ async function processItem(
   // Place Gate: central quality filter
   const gate = await checkPlaceGate({
     name: item.pfctNm,
-    subCategory: item.instlPlaceCdNm,
+    subCategory: target.subCategory,
     source: 'children-facility',
   })
   if (!gate.allowed) return
@@ -353,7 +353,7 @@ async function processItem(
   const { error } = await supabaseAdmin.from('places').insert({
     name: item.pfctNm,
     category: target.babyCategory,
-    sub_category: item.instlPlaceCdNm || target.subCategory,
+    sub_category: target.subCategory,
     address,
     road_address: item.ronaAddr || null,
     lat,
