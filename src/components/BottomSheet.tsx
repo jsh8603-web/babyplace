@@ -136,6 +136,7 @@ export default function BottomSheet({
         shadow-lg
         flex flex-col
         outline-none
+        mx-auto max-w-2xl
       "
       style={{
         height: `${SHEET_HEIGHT_DVH}dvh`,
