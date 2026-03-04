@@ -16,6 +16,9 @@
  *   Weekly (Mon/Thu):
  *     0 17 * * 1,4  Pipeline B Method 2: keyword search (Batches API, 50% off)
  *
+ *   Weekly (Sunday):
+ *     0 15 * * 0   BabyGo place collector (00:00 KST)
+ *
  * LLM cost optimization:
  *   - Easy tasks (event classification, noise filter) → Gemini Flash-Lite (free)
  *   - Hard tasks (place name extraction) → Anthropic Batches API (50% off)
@@ -46,6 +49,7 @@ import { flagIrrelevantPlaces } from './matchers/place-gate'
 import { runEventCleanup } from './utils/event-cleanup'
 import { runEventBlogSearch } from './collectors/event-blog-search'
 import { runFullBlogAudit } from './utils/blog-full-audit'
+import { runBabygoCollector } from './collectors/babygo'
 import { runDataLabTrendDetection } from './keywords/datalab'
 import { initializeAllLimiters, flushAllLimiters } from './rate-limiter'
 
@@ -57,6 +61,7 @@ const EVENTS_SCHEDULE = '0 19 * * *'
 const SCORING_SCHEDULE = '0 20 * * *'
 const MONTHLY_SCHEDULE = '0 21 1 * *' // 1st of month, 06:00 KST (21:00 UTC)
 const KEYWORD_BATCH_SCHEDULE = '0 17 * * 1,4' // Mon/Thu — Pipeline B Method 2 (Batches API)
+const WEEKLY_BABYGO_SCHEDULE = '0 15 * * 0' // Sunday 00:00 KST — BabyGo collector
 const WEEKLY_AUDIT_SCHEDULE = '0 22 * * 0' // Sunday 07:00 KST — Full blog audit
 
 async function main(): Promise<void> {
@@ -96,8 +101,17 @@ async function main(): Promise<void> {
         await runKeywordBatchJob()
         break
 
+      case WEEKLY_BABYGO_SCHEDULE:
+        await runBabygoJob()
+        break
+
       case WEEKLY_AUDIT_SCHEDULE:
         await runWeeklyAuditJob()
+        break
+
+      case 'manual-babygo':
+        console.log('[run] Manual mode — BabyGo collector')
+        await runBabygoJob()
         break
 
       case 'manual-audit':
@@ -328,6 +342,12 @@ async function runKeywordBatchJob(): Promise<void> {
   console.log('[run] === Pipeline B Method 2: Keyword search (Gemini Flash) ===')
   const result = await runKeywordSearchBatch()
   console.log('[run] Keyword batch result:', JSON.stringify(result, null, 2))
+}
+
+async function runBabygoJob(): Promise<void> {
+  console.log('[run] === Weekly: BabyGo (애기야가자) place collector ===')
+  const result = await runBabygoCollector()
+  console.log('[run] BabyGo result:', JSON.stringify(result, null, 2))
 }
 
 async function runWeeklyAuditJob(resume = false): Promise<void> {
