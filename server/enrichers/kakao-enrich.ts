@@ -17,6 +17,7 @@ import { supabaseAdmin } from '../lib/supabase-admin'
 import { searchKakaoPlace, searchKakaoPlaceDetailed } from '../lib/kakao-search'
 import { kakaoLimiter } from '../rate-limiter'
 import { isInServiceArea } from './region'
+import { mapKakaoCategory } from '../collectors/kakao-category'
 
 const ENRICH_BATCH = 1000
 const MATCH_THRESHOLD = 0.75
@@ -55,7 +56,7 @@ export async function runKakaoEnrichment(): Promise<KakaoEnrichResult> {
   // (kakao_place_id presence means it was already matched/enriched)
   const { data: places, error: fetchError } = await supabaseAdmin
     .from('places')
-    .select('id, name, address, road_address, phone, kakao_place_id, sub_category')
+    .select('id, name, address, road_address, phone, kakao_place_id, sub_category, category')
     .eq('is_active', true)
     .is('kakao_place_id', null)
     .order('id', { ascending: true })
@@ -138,6 +139,7 @@ interface PlaceRow {
   phone: string | null
   kakao_place_id: string | null
   sub_category: string | null
+  category: string | null
 }
 
 async function enrichPlace(place: PlaceRow, usedKakaoIds: Set<string>): Promise<boolean> {
@@ -171,6 +173,17 @@ async function enrichPlace(place: PlaceRow, usedKakaoIds: Set<string>): Promise<
   }
   if (!place.sub_category && match.categoryName) {
     updates.sub_category = match.categoryName.split('>').pop()?.trim() ?? null
+  }
+
+  // Category correction: use Kakao's category_name to fix misclassified places
+  if (match.categoryName && place.category) {
+    const mapped = mapKakaoCategory(
+      { categoryName: match.categoryName, name: match.name },
+      place.category as any
+    )
+    if (mapped.category !== place.category) {
+      updates.category = mapped.category
+    }
   }
 
   const { error } = await supabaseAdmin

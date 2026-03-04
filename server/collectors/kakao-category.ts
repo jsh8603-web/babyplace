@@ -439,16 +439,28 @@ function shouldSkipKakaoPlace(name: string, categoryName: string): boolean {
 }
 
 /**
+ * Input shape for mapKakaoCategory — works with both KakaoDocument and KakaoPlaceMatch.
+ */
+interface KakaoCategoryInput {
+  category_name?: string
+  categoryName?: string  // KakaoPlaceMatch uses this
+  place_name?: string
+  name?: string          // KakaoPlaceMatch uses this
+}
+
+/**
  * Dynamically map Kakao category_name to BabyPlace PlaceCategory.
  * AT4 (관광명소) is too broad — use sub-category for fine-grained mapping.
  * Falls back to the target's babyCategory if no specific match.
+ *
+ * Exported for use in kakao-enrich.ts (category correction pass).
  */
-function mapKakaoCategory(
-  doc: KakaoDocument,
+export function mapKakaoCategory(
+  doc: KakaoCategoryInput,
   defaultCategory: PlaceCategory
 ): { category: PlaceCategory; isIndoor: boolean | null } {
-  const catName = doc.category_name || ''
-  const name = doc.place_name || ''
+  const catName = doc.category_name || doc.categoryName || ''
+  const name = doc.place_name || doc.name || ''
 
   // 동물원/아쿠아리움/농장 → 동물/자연
   if (/동물원|아쿠아리움|수족관|농장|목장|곤충|파충류/.test(catName) ||
@@ -461,15 +473,37 @@ function mapKakaoCategory(
     return { category: '수영/물놀이', isIndoor: null }
   }
 
-  // 박물관/미술관/과학관/전시 → 전시/체험
-  if (/박물관|미술관|과학관|전시관|체험관/.test(catName) ||
-      /박물관|미술관|과학관|전시|체험관/.test(name)) {
+  // 박물관/미술관/과학관/전시/궁 → 전시/체험
+  if (/박물관|미술관|과학관|전시관|체험관|문화원|문화회관|문화재/.test(catName) ||
+      /박물관|미술관|과학관|전시|체험관|궁$|궁궐|문화회관/.test(name)) {
     return { category: '전시/체험', isIndoor: true }
   }
 
   // 공원/놀이터 → 공원/놀이터
   if (/공원|놀이터|유원지/.test(catName) || /공원|놀이터/.test(name)) {
     return { category: '공원/놀이터', isIndoor: false }
+  }
+
+  // 식당/카페 → 식당/카페
+  if (/음식점|카페|레스토랑|뷔페|식당|분식|패스트푸드|제과/.test(catName)) {
+    return { category: '식당/카페', isIndoor: true }
+  }
+
+  // 도서관/서점 → 도서관
+  if (/도서관|서점|북카페/.test(catName) || /도서관|서점|북카페|교보문고|영풍문고/.test(name)) {
+    return { category: '도서관', isIndoor: true }
+  }
+
+  // 숙박 → 놀이 (kid-friendly stays are listed as 놀이)
+  if (/호텔|리조트|펜션|캠핑|글램핑|숙박/.test(catName) ||
+      /호텔|리조트|펜션|캠핑|글램핑/.test(name)) {
+    return { category: '놀이', isIndoor: null }
+  }
+
+  // 편의시설: 육아지원센터, 보건소, 소아과 등
+  if (/병원|소아과|의원|약국|보건소|육아|보육|어린이집|유치원|지원센터/.test(catName) ||
+      /육아.*센터|지원센터|보육.*센터|보건소|소아과/.test(name)) {
+    return { category: '편의시설', isIndoor: true }
   }
 
   // 테마파크 → keep as 동물/자연 (most theme parks in Korea have animal areas)

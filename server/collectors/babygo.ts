@@ -103,26 +103,28 @@ function inferCategory(name: string): {
   category: string
   subCategory: string | null
 } {
-  if (/키즈카페|놀이카페|키즈파크|실내놀이/.test(name))
+  if (/키즈카페|놀이카페|키즈파크|실내놀이|트램폴린|볼풀|바운스/.test(name))
     return { category: '놀이', subCategory: '키즈카페' }
   if (/놀이터|어린이공원/.test(name))
     return { category: '공원/놀이터', subCategory: '놀이터' }
-  if (/공원|숲|자연|생태/.test(name))
+  if (/공원|숲|자연|생태|수목원|식물원|정원$/.test(name))
     return { category: '공원/놀이터', subCategory: '공원' }
-  if (/전시|박물관|미술관|체험|과학관/.test(name))
+  if (/전시|박물관|미술관|체험|과학관|궁$|궁궐|문화회관|문화원|기념관/.test(name))
     return { category: '전시/체험', subCategory: null }
   if (/공연|극장|인형극|뮤지컬/.test(name))
     return { category: '공연', subCategory: null }
-  if (/동물원|아쿠아|수족관|농장/.test(name))
+  if (/동물원|아쿠아|수족관|농장|목장/.test(name))
     return { category: '동물/자연', subCategory: null }
-  if (/식당|카페|레스토랑|뷔페|맛집/.test(name))
+  if (/식당|카페|레스토랑|뷔페|맛집|베이커리|빵집/.test(name))
     return { category: '식당/카페', subCategory: null }
-  if (/도서관|북카페|서점/.test(name))
+  if (/도서관|북카페|서점|교보문고|영풍문고/.test(name))
     return { category: '도서관', subCategory: null }
   if (/수영|워터|물놀이|풀/.test(name))
     return { category: '수영/물놀이', subCategory: null }
-  if (/수유실|기저귀/.test(name))
+  if (/수유실|기저귀|육아.*센터|지원센터|보육.*센터|보건소|소아과/.test(name))
     return { category: '편의시설', subCategory: null }
+  if (/호텔|리조트|펜션|캠핑|글램핑/.test(name))
+    return { category: '놀이', subCategory: null }
 
   return { category: '놀이', subCategory: null }
 }
