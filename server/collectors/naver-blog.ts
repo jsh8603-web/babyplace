@@ -32,7 +32,7 @@ import { evaluateKeywordCycle } from '../keywords/rotation-engine'
 
 // ─── Naver API types ──────────────────────────────────────────────────────────
 
-interface NaverBlogItem {
+export interface NaverBlogItem {
   title: string          // HTML-escaped, may contain <b> tags
   link: string
   description: string
@@ -423,7 +423,7 @@ async function searchDaumBlog(
 
 // ─── Layer 1: Address component parser ────────────────────────────────────────
 
-interface AddressComponents {
+export interface AddressComponents {
   city: string          // "서울" | "경기" | "인천"
   district: string      // "중구" | "강남구" (접미사 포함)
   dong: string | null   // "남창동" | "와부읍"
@@ -660,7 +660,7 @@ function isLandmarkReference(placeName: string, text: string): boolean {
  * Compute relevance score (0~1) for a blog post relative to a specific place.
  * Uses address verification and negative signals to filter false positives.
  */
-function computePostRelevance(
+export function computePostRelevance(
   placeName: string,
   addr: AddressComponents,
   isCommon: boolean,
@@ -1542,7 +1542,7 @@ export function stripHtml(html: string): string {
 }
 
 /** Converts Naver's YYYYMMDD post date to ISO date string. */
-function parseNaverPostDate(postdate?: string): string | null {
+export function parseNaverPostDate(postdate?: string): string | null {
   if (!postdate || postdate.length !== 8) return null
   const y = postdate.slice(0, 4)
   const mo = postdate.slice(4, 6)

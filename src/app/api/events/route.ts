@@ -46,6 +46,7 @@ export async function GET(request: NextRequest) {
   const subCategories = subCategoryParam ? subCategoryParam.split(',').map((c) => c.trim()).filter(Boolean) : []
 
   const status = searchParams.get('status')
+  const sort = searchParams.get('sort')
 
   const cursorRaw = searchParams.get('cursor') ?? null
   const cursorPayload = cursorRaw ? decodeCursor(cursorRaw) : null
@@ -70,8 +71,16 @@ export async function GET(request: NextRequest) {
     query = query
       .or(`start_date.is.null,start_date.lte.${today}`)
       .or(`end_date.gte.${today},end_date.is.null`)
-      .order('end_date', { ascending: true, nullsFirst: false })
-      .order('id', { ascending: false })
+
+    if (sort === 'popularity') {
+      query = query
+        .order('popularity_score', { ascending: false })
+        .order('id', { ascending: false })
+    } else {
+      query = query
+        .order('end_date', { ascending: true, nullsFirst: false })
+        .order('id', { ascending: false })
+    }
   } else {
     query = query
       .order('start_date', { ascending: false })

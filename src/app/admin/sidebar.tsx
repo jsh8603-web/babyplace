@@ -2,7 +2,7 @@
 
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { BarChart3, MapPin, KeyRound, Radio, Users, TrendingUp, ArrowLeft, EyeOff } from 'lucide-react'
+import { BarChart3, MapPin, KeyRound, Radio, Users, TrendingUp, ArrowLeft, EyeOff, Settings } from 'lucide-react'
 
 const menuItems = [
   { href: '/admin', icon: BarChart3, label: 'Dashboard' },
@@ -12,6 +12,7 @@ const menuItems = [
   { href: '/admin/hidden', icon: EyeOff, label: 'Hidden' },
   { href: '/admin/pipeline', icon: Radio, label: 'Pipeline' },
   { href: '/admin/users', icon: Users, label: 'Users' },
+  { href: '/admin/settings', icon: Settings, label: 'Settings' },
 ]
 
 export default function AdminSidebar() {

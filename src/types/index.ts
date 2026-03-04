@@ -58,18 +58,24 @@ export interface Event {
   source_url: string | null
   poster_url: string | null
   description: string | null
+  mention_count: number
+  popularity_score: number
+  last_mentioned_at: string | null
+  auto_hidden: boolean
   created_at: string
   updated_at: string
 }
 
 export interface BlogMention {
   id: number
-  place_id: number
+  place_id: number | null
+  event_id: number | null
   source_type: 'naver_blog' | 'naver_cafe' | 'daum_blog'
   title: string | null
   url: string
   post_date: string | null
   snippet: string | null
+  relevance_score: number | null
   llm_reviewed: boolean
   collected_at: string
 }
@@ -176,6 +182,7 @@ export interface EventsResponse {
 
 export interface EventDetailResponse {
   event: Event
+  topPosts: BlogMention[]
   isFavorited: boolean
   isHidden: boolean
 }

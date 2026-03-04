@@ -170,13 +170,26 @@ export default function EventPage({ params }: EventPageProps) {
     <div className="h-dvh overflow-y-auto pb-[56px]">
       <EventDetail
         event={data.event}
+        topPosts={data.topPosts}
         isFavorited={data.isFavorited}
         isHidden={data.isHidden}
         onBack={handleBack}
         onShare={handleShare}
         onHideToggle={handleHideToggle}
-        onFavoriteToggle={() => {
-          // Favorite toggle logic handled by Logic Coder (Module B)
+        onFavoriteToggle={async () => {
+          if (!data) return
+          try {
+            const res = await fetch('/api/favorites', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ eventId: data.event.id }),
+            })
+            if (res.ok) {
+              queryClient.invalidateQueries({ queryKey: ['event', id] })
+            }
+          } catch {
+            // ignore
+          }
         }}
       />
       <BottomNav />

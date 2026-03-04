@@ -14,6 +14,7 @@ interface KakaoMapProps {
     zoom: number
   }) => void
   onPlaceClick?: (place: Place) => void
+  onMapClick?: () => void
   initialCenter?: { lat: number; lng: number }
   initialZoom?: number
   /** When set, the map smoothly pans to this location */
@@ -95,6 +96,7 @@ export default function KakaoMap({
   selectedPlaceId,
   onBoundsChanged,
   onPlaceClick,
+  onMapClick,
   initialCenter = { lat: 37.5665, lng: 126.978 },
   initialZoom = 8,
   center,
@@ -143,6 +145,9 @@ export default function KakaoMap({
 
         window.kakao.maps.event.addListener(map, 'bounds_changed', handleBoundsChanged)
         window.kakao.maps.event.addListener(map, 'zoom_changed', handleBoundsChanged)
+        window.kakao.maps.event.addListener(map, 'click', () => {
+          if (onMapClick) onMapClick()
+        })
 
         setMapReady(true)
         handleBoundsChanged()

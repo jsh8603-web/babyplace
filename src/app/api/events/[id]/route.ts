@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase-server'
-import type { Event, Favorite } from '@/types'
+import type { Event, BlogMention } from '@/types'
 
 export interface EventDetailResponse {
   event: Event
+  topPosts: BlogMention[]
   isFavorited: boolean
   isHidden: boolean
 }
@@ -25,9 +26,18 @@ export async function GET(
 
   const supabase = await createServerSupabase()
 
-  // Fetch event + user session
-  const [eventResult, userResult] = await Promise.all([
+  // Fetch event + top blog posts + user session
+  const [eventResult, mentionsResult, userResult] = await Promise.all([
     supabase.from('events').select('*').eq('id', eventId).single(),
+    supabase
+      .from('blog_mentions')
+      .select('*')
+      .eq('event_id', eventId)
+      .in('source_type', ['naver_blog', 'daum_blog'])
+      .gte('relevance_score', 0.3)
+      .order('relevance_score', { ascending: false })
+      .order('post_date', { ascending: false })
+      .limit(5),
     supabase.auth.getUser(),
   ])
 
@@ -66,6 +76,7 @@ export async function GET(
     isHidden = !!hideResult.data
   }
 
-  const response: EventDetailResponse = { event, isFavorited, isHidden }
+  const topPosts = (mentionsResult.data as BlogMention[]) ?? []
+  const response: EventDetailResponse = { event, topPosts, isFavorited, isHidden }
   return NextResponse.json(response)
 }

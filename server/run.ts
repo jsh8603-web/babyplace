@@ -30,7 +30,7 @@ import { runPipelineA } from './collectors/kakao-category'
 import { runPipelineB, runReverseSearchOnly, runKeywordSearchBatch, replayFromExtraction } from './collectors/naver-blog'
 import { runPublicData } from './collectors/public-data'
 import { runLocalData } from './collectors/localdata'
-import { runScoring } from './scoring'
+import { runScoring, runEventScoring, runEventAutoHide } from './scoring'
 import { runDensityControl } from './enrichers/density'
 import { runKakaoEnrichment, runEventKakaoEnrichment } from './enrichers/kakao-enrich'
 import { runAutoPromotion } from './candidates/auto-promote'
@@ -44,6 +44,7 @@ import { runKeywordRotation } from './keywords/keyword-rotation'
 import { runBlogNoiseFilter } from './utils/blog-noise-filter'
 import { flagIrrelevantPlaces } from './matchers/place-gate'
 import { runEventCleanup } from './utils/event-cleanup'
+import { runEventBlogSearch } from './collectors/event-blog-search'
 import { runFullBlogAudit } from './utils/blog-full-audit'
 import { runDataLabTrendDetection } from './keywords/datalab'
 import { initializeAllLimiters, flushAllLimiters } from './rate-limiter'
@@ -135,6 +136,24 @@ async function main(): Promise<void> {
       case 'manual-batch-replay':
         // Replay Kakao/DB matching from saved LLM extraction results
         await runReplayJob()
+        break
+
+      case 'manual-event-blog-search':
+        // Search Naver blogs for active events
+        console.log('[run] Manual mode — event blog search')
+        await initializeAllLimiters()
+        const eventBlogSearchResult = await runEventBlogSearch()
+        console.log('[run] Event blog search:', JSON.stringify(eventBlogSearchResult, null, 2))
+        await flushAllLimiters()
+        break
+
+      case 'manual-event-scoring':
+        // Event scoring + auto-hide
+        console.log('[run] Manual mode — event scoring + auto-hide')
+        const manualEventScoringResult = await runEventScoring()
+        console.log('[run] Event scoring:', JSON.stringify(manualEventScoringResult, null, 2))
+        const manualAutoHideResult = await runEventAutoHide()
+        console.log('[run] Event auto-hide:', JSON.stringify(manualAutoHideResult, null, 2))
         break
 
       case 'manual-blog-events':
@@ -232,6 +251,11 @@ async function runEventsJob(): Promise<void> {
   const blogEventResult = await runBlogEventDiscovery()
   console.log('[run] Blog event discovery:', JSON.stringify(blogEventResult, null, 2))
 
+  // Event blog search (Naver blog posts for active events)
+  console.log('[run] Running event blog search...')
+  const eventBlogResult = await runEventBlogSearch()
+  console.log('[run] Event blog search result:', JSON.stringify(eventBlogResult, null, 2))
+
   // Event deduplication
   console.log('[run] Running event deduplication...')
   const dedupResult = await runEventDeduplication()
@@ -255,6 +279,16 @@ async function runScoringJob(): Promise<void> {
   console.log('[run] Running popularity scoring...')
   const scoringResult = await runScoring()
   console.log('[run] Scoring result:', JSON.stringify(scoringResult, null, 2))
+
+  // Event popularity scoring
+  console.log('[run] Running event scoring...')
+  const eventScoringResult = await runEventScoring()
+  console.log('[run] Event scoring result:', JSON.stringify(eventScoringResult, null, 2))
+
+  // Event auto-hide: hide bottom N events by popularity
+  console.log('[run] Running event auto-hide...')
+  const eventAutoHideResult = await runEventAutoHide()
+  console.log('[run] Event auto-hide result:', JSON.stringify(eventAutoHideResult, null, 2))
 
   // Keyword rotation: evaluate keyword efficiency + state transitions + seasonal transitions
   console.log('[run] Running keyword rotation...')

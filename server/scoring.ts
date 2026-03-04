@@ -260,12 +260,206 @@ function computeDataCompleteness(place: Partial<Place>): number {
  *   - 180 days ago: exp(-1) ≈ 0.368
  *   - 360 days ago: exp(-2) ≈ 0.135
  */
-function computeRecency(lastMentionDate: string | null): number {
+export function computeRecency(lastMentionDate: string | null, halfLifeDays = RECENCY_HALF_LIFE_DAYS): number {
   if (!lastMentionDate) return 0 // No mention ever recorded
 
   const lastDate = new Date(lastMentionDate)
   const now = new Date()
   const daysSince = (now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24)
 
-  return Math.exp(-daysSince / RECENCY_HALF_LIFE_DAYS)
+  return Math.exp(-daysSince / halfLifeDays)
+}
+
+// ─── Event Scoring ───────────────────────────────────────────────────────────
+
+const EVENT_RECENCY_HALF_LIFE = 90 // events are more time-sensitive
+const EVENT_DATA_FIELDS = ['poster_url', 'description', 'venue_address'] as const
+
+export interface EventScoringResult {
+  eventsProcessed: number
+  minScore: number
+  maxScore: number
+  avgScore: number
+  updated: number
+  errors: number
+}
+
+export async function runEventScoring(): Promise<EventScoringResult> {
+  const result: EventScoringResult = {
+    eventsProcessed: 0,
+    minScore: 1.0,
+    maxScore: 0,
+    avgScore: 0,
+    updated: 0,
+    errors: 0,
+  }
+
+  try {
+    const { data: events, error: fetchError } = await supabaseAdmin
+      .from('events')
+      .select('id, mention_count, last_mentioned_at, poster_url, description, venue_address')
+      .eq('is_hidden', false)
+      .order('id', { ascending: true })
+
+    if (fetchError) {
+      console.error('[event-scoring] Failed to fetch events:', fetchError)
+      result.errors++
+      return result
+    }
+
+    if (!events || events.length === 0) {
+      console.log('[event-scoring] No events to score')
+      return result
+    }
+
+    console.log(`[event-scoring] Scoring ${events.length} events`)
+
+    // Bayesian constant C = 25th percentile of mention_count
+    const sortedMentions = events.map((e) => e.mention_count ?? 0).sort((a, b) => a - b)
+    const cIndex = Math.floor(events.length * 0.25)
+    const bayesianConstant = Math.max(sortedMentions[cIndex] ?? 1, 1)
+
+    // Max log for normalization
+    const maxMentionCount = events.reduce((max, e) => Math.max(max, e.mention_count ?? 0), 0)
+    const maxLogMention = Math.log(1 + maxMentionCount)
+
+    const updates: { id: number; score: number }[] = []
+    let scoreSum = 0
+
+    for (const event of events) {
+      const mc = event.mention_count ?? 0
+      const normalizedMention = maxLogMention > 0 ? Math.log(1 + mc) / maxLogMention : 0
+      const recency = computeRecency(event.last_mentioned_at, EVENT_RECENCY_HALF_LIFE)
+
+      // Data quality: poster_url, description, venue_address presence
+      let filledFields = 0
+      if (event.poster_url) filledFields++
+      if (event.description) filledFields++
+      if (event.venue_address) filledFields++
+      const dataQuality = filledFields / EVENT_DATA_FIELDS.length
+
+      const raw = 0.50 * normalizedMention + 0.30 * recency + 0.20 * dataQuality
+
+      // Bayesian smoothing
+      let finalScore: number
+      if (mc === 0) {
+        finalScore = 0.10
+      } else {
+        const bayes = (raw * mc + 0.15 * bayesianConstant) / (mc + bayesianConstant)
+        finalScore = Math.max(0.11, Math.min(1, bayes))
+      }
+
+      updates.push({ id: event.id, score: finalScore })
+      scoreSum += finalScore
+      result.minScore = Math.min(result.minScore, finalScore)
+      result.maxScore = Math.max(result.maxScore, finalScore)
+      result.eventsProcessed++
+    }
+
+    if (updates.length > 0) {
+      result.avgScore = scoreSum / updates.length
+
+      const { error: updateError } = await supabaseAdmin.rpc('update_event_scores_batch', {
+        updates_json: JSON.stringify(updates),
+      })
+
+      if (updateError) {
+        // Fallback: one by one
+        let successCount = 0
+        for (const { id, score } of updates) {
+          const { error } = await supabaseAdmin
+            .from('events')
+            .update({ popularity_score: score })
+            .eq('id', id)
+          if (!error) successCount++
+        }
+        result.updated = successCount
+      } else {
+        result.updated = updates.length
+      }
+    }
+
+    console.log(
+      `[event-scoring] Done: ${result.eventsProcessed} events, avg=${result.avgScore.toFixed(3)}`
+    )
+    return result
+  } catch (err) {
+    console.error('[event-scoring] Fatal error:', err)
+    result.errors++
+    return result
+  }
+}
+
+// ─── Event Auto-Hide ─────────────────────────────────────────────────────────
+
+export interface EventAutoHideResult {
+  previouslyHidden: number
+  newlyHidden: number
+  hideThreshold: number
+}
+
+export async function runEventAutoHide(): Promise<EventAutoHideResult> {
+  const result: EventAutoHideResult = {
+    previouslyHidden: 0,
+    newlyHidden: 0,
+    hideThreshold: 20,
+  }
+
+  try {
+    // Read threshold from app_settings
+    const { data: setting } = await supabaseAdmin
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'event_auto_hide_count')
+      .maybeSingle()
+
+    const hideCount = setting?.value ? Number(setting.value) : 20
+    result.hideThreshold = hideCount
+
+    // Reset previous auto-hidden events
+    const { data: resetData } = await supabaseAdmin
+      .from('events')
+      .update({ is_hidden: false, auto_hidden: false })
+      .eq('auto_hidden', true)
+      .select('id')
+
+    result.previouslyHidden = resetData?.length ?? 0
+
+    // Find bottom N events by popularity_score (only those with blog search completed)
+    const today = new Date().toISOString().split('T')[0]
+    const { data: bottomEvents, error: bottomError } = await supabaseAdmin
+      .from('events')
+      .select('id')
+      .eq('is_hidden', false)
+      .gt('mention_count', 0)
+      .or(`start_date.is.null,start_date.lte.${today}`)
+      .or(`end_date.gte.${today},end_date.is.null`)
+      .order('popularity_score', { ascending: true })
+      .limit(hideCount)
+
+    if (bottomError) {
+      console.error('[event-auto-hide] Failed to fetch bottom events:', bottomError)
+      return result
+    }
+
+    if (bottomEvents && bottomEvents.length > 0) {
+      const ids = bottomEvents.map((e) => e.id)
+      const { error: hideError } = await supabaseAdmin
+        .from('events')
+        .update({ is_hidden: true, auto_hidden: true })
+        .in('id', ids)
+
+      if (!hideError) {
+        result.newlyHidden = ids.length
+      }
+    }
+
+    console.log(
+      `[event-auto-hide] Reset ${result.previouslyHidden}, hidden ${result.newlyHidden} (threshold: ${hideCount})`
+    )
+    return result
+  } catch (err) {
+    console.error('[event-auto-hide] Fatal error:', err)
+    return result
+  }
 }

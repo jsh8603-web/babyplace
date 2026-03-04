@@ -177,8 +177,35 @@ export default function PlacePage({ params }: PlacePageProps) {
         onBack={handleBack}
         onShare={handleShare}
         onHideToggle={handleHideToggle}
-        onFavoriteToggle={() => {
-          // Favorite toggle logic handled by Logic Coder (Module B)
+        onFavoriteToggle={async () => {
+          if (!data) return
+          try {
+            const res = await fetch('/api/favorites', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ placeId: data.place.id }),
+            })
+            if (res.ok) {
+              queryClient.invalidateQueries({ queryKey: ['place', id] })
+            }
+          } catch {
+            // ignore
+          }
+        }}
+        onVisitRecord={async () => {
+          if (!data) return
+          try {
+            const res = await fetch('/api/visits', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ placeId: data.place.id }),
+            })
+            if (res.ok) {
+              queryClient.invalidateQueries({ queryKey: ['place', id] })
+            }
+          } catch {
+            // ignore
+          }
         }}
       />
       <BottomNav />

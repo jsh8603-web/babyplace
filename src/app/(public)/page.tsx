@@ -110,6 +110,7 @@ export default function HomePage() {
   })
   const [snapPoint, setSnapPoint] = useState<SnapPoint>(DEFAULT_SNAP)
   const listScrollRef = useRef<HTMLDivElement>(null)
+  const pointerDownRef = useRef<{ x: number; y: number } | null>(null)
 
   // Fetch places when map bounds change
   const {
@@ -248,6 +249,7 @@ export default function HomePage() {
           selectedPlaceId={selectedPlace?.id}
           onBoundsChanged={handleBoundsChanged}
           onPlaceClick={handlePlaceClick}
+          onMapClick={useCallback(() => setSelectedPlace(null), [])}
           center={mapCenter}
         />
       </div>
@@ -409,6 +411,16 @@ export default function HomePage() {
             <div
               ref={listScrollRef}
               className="flex-1 overflow-y-auto px-4 pb-[80px] space-y-2"
+              onPointerDown={(e) => { pointerDownRef.current = { x: e.clientX, y: e.clientY } }}
+              onClick={(e) => {
+                if (!selectedPlace) return
+                // Only deselect when clicking empty area (not a PlaceCard)
+                if ((e.target as HTMLElement).closest('button')) return
+                // Ignore drags/scrolls
+                const down = pointerDownRef.current
+                if (down && (Math.abs(e.clientX - down.x) > 5 || Math.abs(e.clientY - down.y) > 5)) return
+                setSelectedPlace(null)
+              }}
             >
               {isPlacesLoading ? (
                 // Skeleton placeholders
