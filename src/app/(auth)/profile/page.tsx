@@ -3,7 +3,8 @@
 import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { LogOut, Edit2, Check, X } from 'lucide-react'
+import { LogOut, Edit2, Check, X, Shield } from 'lucide-react'
+import Link from 'next/link'
 import { createClient } from '@supabase/supabase-js'
 import type { Profile } from '@/types'
 import BottomNav from '@/components/BottomNav'
@@ -308,6 +309,24 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* Admin link — only visible for admin role */}
+      {profile.role === 'admin' && (
+        <div className="px-4">
+          <Link
+            href="/admin"
+            className="
+              flex items-center gap-3
+              bg-white rounded-xl p-4 mb-4
+              text-[15px] font-semibold text-purple-700
+              active:bg-purple-50 transition-colors
+            "
+          >
+            <Shield size={20} className="text-purple-500" />
+            관리자 대시보드
+          </Link>
+        </div>
+      )}
 
       {/* Logout button */}
       <div className="px-4 py-4 bg-white border-t border-warm-200">
