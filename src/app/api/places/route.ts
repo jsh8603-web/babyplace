@@ -74,11 +74,12 @@ export async function GET(request: NextRequest) {
 
   const supabase = await createServerSupabase()
 
-  // Base query — bbox + active filter
+  // Base query — bbox + active filter + hide filter
   let query = supabase
     .from('places')
     .select('*')
     .eq('is_active', true)
+    .eq('is_hidden', false)
     .gte('lat', swLat)
     .lte('lat', neLat)
     .gte('lng', swLng)

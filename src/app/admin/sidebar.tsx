@@ -2,13 +2,14 @@
 
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { BarChart3, MapPin, KeyRound, Radio, Users, TrendingUp, ArrowLeft } from 'lucide-react'
+import { BarChart3, MapPin, KeyRound, Radio, Users, TrendingUp, ArrowLeft, EyeOff } from 'lucide-react'
 
 const menuItems = [
   { href: '/admin', icon: BarChart3, label: 'Dashboard' },
   { href: '/admin/places', icon: MapPin, label: 'Places' },
   { href: '/admin/keywords', icon: KeyRound, label: 'Keywords' },
   { href: '/admin/search-analysis', icon: TrendingUp, label: 'Search Analysis' },
+  { href: '/admin/hidden', icon: EyeOff, label: 'Hidden' },
   { href: '/admin/pipeline', icon: Radio, label: 'Pipeline' },
   { href: '/admin/users', icon: Users, label: 'Users' },
 ]

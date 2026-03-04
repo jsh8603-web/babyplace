@@ -59,6 +59,8 @@ export async function GET(request: NextRequest) {
       query = query.eq('is_active', true)
     } else if (status === 'inactive') {
       query = query.eq('is_active', false)
+    } else if (status === 'hidden') {
+      query = query.eq('is_hidden', true)
     }
 
     // Pagination

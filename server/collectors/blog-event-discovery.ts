@@ -147,13 +147,10 @@ export async function runBlogEventDiscovery(): Promise<BlogEventDiscoveryResult>
       await enrichStage2(needsStage2, result)
     }
 
-    // Final filter: dates required + permanent excluded
-    const verified = enriched.filter((ev) => {
-      if (ev._stage2Type === 'permanent') return false
-      return hasConfirmedDates(ev)
-    })
-    result.enrichmentFiltered = enriched.length - verified.length
-    console.log(`[blog-event] ${verified.length}/${enriched.length} events passed enrichment (stage2: ${result.stage2Processed} processed, ${result.stage2Permanent} permanent)`)
+    // No filter: allow permanent and unconfirmed-date events (hidden via admin/user UI)
+    const verified = enriched
+    result.enrichmentFiltered = 0
+    console.log(`[blog-event] ${verified.length} events passed (no filter, stage2: ${result.stage2Processed} processed, ${result.stage2Permanent} permanent)`)
 
     // Pre-fetch known source_ids to avoid N+1 queries (seoul-events.ts pattern)
     const knownSourceIds = await prefetchKnownSourceIds()
@@ -646,16 +643,29 @@ async function enrichEvents(events: ExtractedEvent[]): Promise<EnrichedEvent[]> 
     const webUrl = `${NAVER_WEB_URL}?query=${webQuery}&display=5`
     const webResults = await fetchNaverSearch<NaverWebItem>(webUrl)
 
-    // 2) Naver image search: "{event_name} 포스터"
-    const imgQuery = encodeURIComponent(`${event.event} 포스터`)
-    const imgUrl = `${NAVER_IMAGE_URL}?query=${imgQuery}&display=3&sort=sim`
+    // 2) Naver image search: "{event_name} 공식 포스터"
+    const imgQuery = encodeURIComponent(`${event.event} 공식 포스터`)
+    const imgUrl = `${NAVER_IMAGE_URL}?query=${imgQuery}&display=10&sort=sim`
     const imgResults = await fetchNaverSearch<NaverImageItem>(imgUrl)
+
+    // Pick best poster: full image link (not thumbnail), min 300px, prefer tall aspect ratio
+    const bestPoster = (imgResults || [])
+      .filter((img) => {
+        const w = parseInt(img.sizewidth) || 0
+        const h = parseInt(img.sizeheight) || 0
+        return w >= 300 && h >= 300
+      })
+      .sort((a, b) => {
+        const ratioA = (parseInt(a.sizeheight) || 0) / (parseInt(a.sizewidth) || 1)
+        const ratioB = (parseInt(b.sizeheight) || 0) / (parseInt(b.sizewidth) || 1)
+        return ratioB - ratioA // taller (poster-like) first
+      })[0]
 
     enriched.push({
       ...event,
       enriched_url: null,
       enriched_dates: null,
-      enriched_poster: imgResults?.[0]?.thumbnail || null,
+      enriched_poster: bestPoster?.link || null,
       _webResults: webResults || undefined,
     })
 
@@ -846,12 +856,8 @@ ${JSON.stringify(items, null, 0)}`
           await enrichStage2(needsStage2, result)
         }
 
-        // Final filter: dates required + permanent excluded
-        const verifiedCandidates = enrichedCandidates.filter((ev) => {
-          if (ev._stage2Type === 'permanent') return false
-          return hasConfirmedDates(ev)
-        })
-        result.enrichmentFiltered += enrichedCandidates.length - verifiedCandidates.length
+        // No filter: allow permanent and unconfirmed-date events (hidden via admin/user UI)
+        const verifiedCandidates = enrichedCandidates
 
         for (const ev of verifiedCandidates) {
           const sourceId = `exhibition_${normalizePlaceName(ev.event)}_${place.id}`

@@ -5,6 +5,7 @@ import type { Event, Favorite } from '@/types'
 export interface EventDetailResponse {
   event: Event
   isFavorited: boolean
+  isHidden: boolean
 }
 
 /**
@@ -40,21 +41,31 @@ export async function GET(
 
   const event = eventResult.data as Event
 
-  // Check if current user has favorited this event
+  // Check if current user has favorited / hidden this event
   let isFavorited = false
+  let isHidden = false
   const user = userResult.data?.user
 
   if (user) {
-    const { data: favData } = await supabase
-      .from('favorites')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('event_id', eventId)
-      .maybeSingle()
+    const [favResult, hideResult] = await Promise.all([
+      supabase
+        .from('favorites')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('event_id', eventId)
+        .maybeSingle(),
+      supabase
+        .from('user_hidden_items')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('event_id', eventId)
+        .maybeSingle(),
+    ])
 
-    isFavorited = !!favData
+    isFavorited = !!favResult.data
+    isHidden = !!hideResult.data
   }
 
-  const response: EventDetailResponse = { event, isFavorited }
+  const response: EventDetailResponse = { event, isFavorited, isHidden }
   return NextResponse.json(response)
 }

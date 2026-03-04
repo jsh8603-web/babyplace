@@ -2,7 +2,7 @@
 
 import { use } from 'react'
 import { useRouter } from 'next/navigation'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { PlaceDetailResponse } from '@/types'
 import PlaceDetail from '@/components/place/PlaceDetail'
 import BottomNav from '@/components/BottomNav'
@@ -91,6 +91,7 @@ function ErrorState({ message, onBack }: { message: string; onBack: () => void }
 export default function PlacePage({ params }: PlacePageProps) {
   const { id } = use(params)
   const router = useRouter()
+  const queryClient = useQueryClient()
 
   const {
     data,
@@ -107,6 +108,22 @@ export default function PlacePage({ params }: PlacePageProps) {
       router.back()
     } else {
       router.push('/')
+    }
+  }
+
+  const handleHideToggle = async () => {
+    if (!data) return
+    try {
+      const res = await fetch('/api/hide', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ placeId: data.place.id }),
+      })
+      if (res.ok) {
+        queryClient.invalidateQueries({ queryKey: ['place', id] })
+      }
+    } catch {
+      // ignore
     }
   }
 
@@ -156,8 +173,10 @@ export default function PlacePage({ params }: PlacePageProps) {
         topPosts={data.topPosts}
         nearbyEvents={data.nearbyEvents}
         isFavorited={data.isFavorited}
+        isHidden={data.isHidden}
         onBack={handleBack}
         onShare={handleShare}
+        onHideToggle={handleHideToggle}
         onFavoriteToggle={() => {
           // Favorite toggle logic handled by Logic Coder (Module B)
         }}

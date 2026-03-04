@@ -1,6 +1,6 @@
 'use client'
 
-import { Heart, Share2, Phone, Clock, MapPin, Navigation, ExternalLink, CalendarCheck, Globe, Info, Calendar } from 'lucide-react'
+import { Heart, Share2, Phone, Clock, MapPin, Navigation, ExternalLink, CalendarCheck, Globe, Info, Calendar, EyeOff, Eye } from 'lucide-react'
 import type { Place, BlogMention, Event } from '@/types'
 import FacilityIcons from './FacilityIcons'
 import PopularityBar from './PopularityBar'
@@ -10,8 +10,10 @@ interface PlaceDetailProps {
   topPosts: BlogMention[]
   nearbyEvents?: Event[]
   isFavorited?: boolean
+  isHidden?: boolean
   distance?: number
   onFavoriteToggle?: () => void
+  onHideToggle?: () => void
   onVisitRecord?: () => void
   onShare?: () => void
   onBack?: () => void
@@ -71,8 +73,10 @@ export default function PlaceDetail({
   topPosts,
   nearbyEvents,
   isFavorited = false,
+  isHidden = false,
   distance,
   onFavoriteToggle,
+  onHideToggle,
   onVisitRecord,
   onShare,
   onBack,
@@ -123,6 +127,17 @@ export default function PlaceDetail({
               {place.name}
             </h1>
             <div className="flex items-center gap-1">
+              <button
+                onClick={onHideToggle}
+                className="min-w-[44px] min-h-[44px] flex items-center justify-center transition-transform active:scale-90"
+                aria-label={isHidden ? '숨김 해제' : '숨기기'}
+              >
+                {isHidden ? (
+                  <Eye size={22} className="text-warm-500" />
+                ) : (
+                  <EyeOff size={22} className="text-warm-300" />
+                )}
+              </button>
               <button
                 onClick={onVisitRecord}
                 className="min-w-[44px] min-h-[44px] flex items-center justify-center transition-transform active:scale-90"

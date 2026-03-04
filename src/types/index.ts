@@ -155,6 +155,7 @@ export interface PlaceDetailResponse {
   topPosts: BlogMention[]
   nearbyEvents: Event[]
   isFavorited: boolean
+  isHidden: boolean
 }
 
 export interface EmergencyResponse {
@@ -176,6 +177,7 @@ export interface EventsResponse {
 export interface EventDetailResponse {
   event: Event
   isFavorited: boolean
+  isHidden: boolean
 }
 
 export interface Visit {

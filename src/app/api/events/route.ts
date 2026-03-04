@@ -64,6 +64,7 @@ export async function GET(request: NextRequest) {
   let query = supabase
     .from('events')
     .select('*')
+    .eq('is_hidden', false)
 
   if (isRunning) {
     query = query

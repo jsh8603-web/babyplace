@@ -1,13 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { Heart, Share2, Calendar, Clock, MapPin, DollarSign, Users, ExternalLink } from 'lucide-react'
+import { Heart, Share2, Calendar, Clock, MapPin, DollarSign, Users, ExternalLink, EyeOff, Eye } from 'lucide-react'
 import type { Event } from '@/types'
 
 interface EventDetailProps {
   event: Event
   isFavorited?: boolean
+  isHidden?: boolean
   onFavoriteToggle?: () => void
+  onHideToggle?: () => void
   onShare?: () => void
   onBack?: () => void
 }
@@ -50,7 +52,9 @@ function getCategoryEmoji(category: string): string {
 export default function EventDetail({
   event,
   isFavorited = false,
+  isHidden = false,
   onFavoriteToggle,
+  onHideToggle,
   onShare,
   onBack,
 }: EventDetailProps) {
@@ -111,16 +115,29 @@ export default function EventDetail({
             <h1 className="text-[20px] font-bold text-warm-800 leading-snug flex-1">
               {event.name}
             </h1>
-            <button
-              onClick={onFavoriteToggle}
-              className="min-w-[48px] min-h-[48px] flex items-center justify-center -mr-2 transition-transform active:scale-90"
-              aria-label={isFavorited ? '즐겨찾기 해제' : '즐겨찾기 추가'}
-            >
-              <Heart
-                size={24}
-                className={isFavorited ? 'text-coral-500 fill-coral-500' : 'text-warm-300'}
-              />
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={onHideToggle}
+                className="min-w-[44px] min-h-[44px] flex items-center justify-center transition-transform active:scale-90"
+                aria-label={isHidden ? '숨김 해제' : '숨기기'}
+              >
+                {isHidden ? (
+                  <Eye size={22} className="text-warm-500" />
+                ) : (
+                  <EyeOff size={22} className="text-warm-300" />
+                )}
+              </button>
+              <button
+                onClick={onFavoriteToggle}
+                className="min-w-[48px] min-h-[48px] flex items-center justify-center -mr-2 transition-transform active:scale-90"
+                aria-label={isFavorited ? '즐겨찾기 해제' : '즐겨찾기 추가'}
+              >
+                <Heart
+                  size={24}
+                  className={isFavorited ? 'text-coral-500 fill-coral-500' : 'text-warm-300'}
+                />
+              </button>
+            </div>
           </div>
 
           {/* Category + venue */}

@@ -45,19 +45,29 @@ export async function GET(
   const place = placeResult.data as Place
   const topPosts = (mentionsResult.data ?? []) as BlogMention[]
 
-  // Check if current user has favorited this place
+  // Check if current user has favorited / hidden this place
   let isFavorited = false
+  let isHidden = false
   const user = userResult.data?.user
 
   if (user) {
-    const { data: favData } = await supabase
-      .from('favorites')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('place_id', placeId)
-      .maybeSingle()
+    const [favResult, hideResult] = await Promise.all([
+      supabase
+        .from('favorites')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('place_id', placeId)
+        .maybeSingle(),
+      supabase
+        .from('user_hidden_items')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('place_id', placeId)
+        .maybeSingle(),
+    ])
 
-    isFavorited = !!favData
+    isFavorited = !!favResult.data
+    isHidden = !!hideResult.data
   }
 
   // Fetch nearby running events within 2km radius
@@ -88,7 +98,7 @@ export async function GET(
     })
   }
 
-  const response: PlaceDetailResponse = { place, topPosts, nearbyEvents, isFavorited }
+  const response: PlaceDetailResponse = { place, topPosts, nearbyEvents, isFavorited, isHidden }
   return NextResponse.json(response)
 }
 

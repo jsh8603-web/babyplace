@@ -2,7 +2,7 @@
 
 import { use } from 'react'
 import { useRouter } from 'next/navigation'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { EventDetailResponse } from '@/types'
 import EventDetail from '@/components/event/EventDetail'
 import BottomNav from '@/components/BottomNav'
@@ -95,6 +95,7 @@ function ErrorState({ message, onBack }: { message: string; onBack: () => void }
 export default function EventPage({ params }: EventPageProps) {
   const { id } = use(params)
   const router = useRouter()
+  const queryClient = useQueryClient()
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['event', id],
@@ -107,6 +108,22 @@ export default function EventPage({ params }: EventPageProps) {
       router.back()
     } else {
       router.push('/')
+    }
+  }
+
+  const handleHideToggle = async () => {
+    if (!data) return
+    try {
+      const res = await fetch('/api/hide', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId: data.event.id }),
+      })
+      if (res.ok) {
+        queryClient.invalidateQueries({ queryKey: ['event', id] })
+      }
+    } catch {
+      // ignore
     }
   }
 
@@ -154,8 +171,10 @@ export default function EventPage({ params }: EventPageProps) {
       <EventDetail
         event={data.event}
         isFavorited={data.isFavorited}
+        isHidden={data.isHidden}
         onBack={handleBack}
         onShare={handleShare}
+        onHideToggle={handleHideToggle}
         onFavoriteToggle={() => {
           // Favorite toggle logic handled by Logic Coder (Module B)
         }}
