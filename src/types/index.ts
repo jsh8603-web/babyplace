@@ -20,6 +20,10 @@ export interface Place {
   last_mentioned_at: string | null
   source_count: number
   is_active: boolean
+  submission_status: 'pending' | 'approved' | 'rejected' | null
+  submitted_by: string | null
+  submitted_at: string | null
+  submission_note: string | null
   created_at: string
   updated_at: string
 }
@@ -62,6 +66,10 @@ export interface Event {
   popularity_score: number
   last_mentioned_at: string | null
   auto_hidden: boolean
+  submission_status: 'pending' | 'approved' | 'rejected' | null
+  submitted_by: string | null
+  submitted_at: string | null
+  submission_note: string | null
   created_at: string
   updated_at: string
 }

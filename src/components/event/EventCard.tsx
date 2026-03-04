@@ -1,13 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { Calendar, MapPin, Clock, DollarSign, Users } from 'lucide-react'
+import { Calendar, MapPin, Clock, DollarSign, Users, EyeOff } from 'lucide-react'
 import type { Event } from '@/types'
 import PopularityBar from '@/components/place/PopularityBar'
 
 interface EventCardProps {
   event: Event
   onClick?: (event: Event) => void
+  onHide?: (event: Event) => void
   isSelected?: boolean
   distance?: number | null // meters from reference point
 }
@@ -56,7 +57,7 @@ function formatDistance(meters: number): string {
   return `${(meters / 1000).toFixed(1)}km`
 }
 
-export default function EventCard({ event, onClick, isSelected, distance }: EventCardProps) {
+export default function EventCard({ event, onClick, onHide, isSelected, distance }: EventCardProps) {
   const [imgError, setImgError] = useState(false)
   const hasLocation = event.venue_address || (event.lat !== null && event.lng !== null)
   const hasPriceInfo = event.price_info && event.price_info.trim() !== ''
@@ -170,16 +171,30 @@ export default function EventCard({ event, onClick, isSelected, distance }: Even
           )}
         </div>
 
-        {/* Popularity bar */}
-        {event.popularity_score > 0 && (
-          <div className="mt-3">
-            <PopularityBar
-              score={event.popularity_score}
-              mentionCount={event.mention_count}
-              showLabel={true}
-            />
+        {/* Popularity bar + hide button */}
+        <div className="mt-3 flex items-center gap-2">
+          <div className="flex-1">
+            {event.popularity_score > 0 && (
+              <PopularityBar
+                score={event.popularity_score}
+                mentionCount={event.mention_count}
+                showLabel={true}
+              />
+            )}
           </div>
-        )}
+          {onHide && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onHide(event)
+              }}
+              className="p-1.5 rounded-lg text-warm-300 hover:text-warm-500 hover:bg-warm-100 transition-colors shrink-0"
+              aria-label="숨기기"
+            >
+              <EyeOff size={16} />
+            </button>
+          )}
+        </div>
       </div>
     </button>
   )

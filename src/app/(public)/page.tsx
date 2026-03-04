@@ -109,6 +109,8 @@ export default function HomePage() {
     tags: [],
     sort: 'distance',
   })
+  const [hiddenPlaceIds, setHiddenPlaceIds] = useState<Set<number>>(new Set())
+  const [hiddenEventIds, setHiddenEventIds] = useState<Set<number>>(new Set())
   const [snapPoint, setSnapPoint] = useState<SnapPoint>(DEFAULT_SNAP)
   const listScrollRef = useRef<HTMLDivElement>(null)
   const pointerDownRef = useRef<{ x: number; y: number } | null>(null)
@@ -244,6 +246,33 @@ export default function HomePage() {
     }
     setIsEmergencyOpen(true)
   }
+
+  const handleHidePlace = useCallback(async (place: Place) => {
+    setHiddenPlaceIds((prev) => new Set(prev).add(place.id))
+    try {
+      await fetch('/api/hide', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ placeId: place.id }),
+      })
+    } catch {
+      // Revert on failure
+      setHiddenPlaceIds((prev) => { const s = new Set(prev); s.delete(place.id); return s })
+    }
+  }, [])
+
+  const handleHideEvent = useCallback(async (event: Event) => {
+    setHiddenEventIds((prev) => new Set(prev).add(event.id))
+    try {
+      await fetch('/api/hide', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId: event.id }),
+      })
+    } catch {
+      setHiddenEventIds((prev) => { const s = new Set(prev); s.delete(event.id); return s })
+    }
+  }, [])
 
   const totalActiveFilters = filters.categories.length + filters.tags.length
 
@@ -453,7 +482,7 @@ export default function HomePage() {
               ) : (
                 <>
                   {/* Selected place pinned at top */}
-                  {selectedPlace && (
+                  {selectedPlace && !hiddenPlaceIds.has(selectedPlace.id) && (
                     <PlaceCard
                       key={`selected-${selectedPlace.id}`}
                       place={selectedPlace}
@@ -462,10 +491,11 @@ export default function HomePage() {
                       onClick={(p) => {
                         window.location.href = `/place/${p.id}`
                       }}
+                      onHide={handleHidePlace}
                     />
                   )}
                   {/* Nearby or all places */}
-                  {filteredPlaces.map((place) => (
+                  {filteredPlaces.filter((p) => !hiddenPlaceIds.has(p.id)).map((place) => (
                     <PlaceCard
                       key={place.id}
                       place={place}
@@ -474,6 +504,7 @@ export default function HomePage() {
                         setSelectedPlace(p)
                         window.location.href = `/place/${p.id}`
                       }}
+                      onHide={handleHidePlace}
                     />
                   ))}
                 </>
@@ -519,7 +550,7 @@ export default function HomePage() {
               </div>
             ) : (
               <div className="px-4 space-y-3">
-                {sortedEvents.map((event) => (
+                {sortedEvents.filter((e) => !hiddenEventIds.has(e.id)).map((event) => (
                   <EventCard
                     key={event.id}
                     event={event}
@@ -527,6 +558,7 @@ export default function HomePage() {
                     onClick={(e) => {
                       window.location.href = `/event/${e.id}`
                     }}
+                    onHide={handleHideEvent}
                   />
                 ))}
               </div>

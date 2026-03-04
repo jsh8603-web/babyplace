@@ -1,4 +1,4 @@
-import { MapPin, Navigation } from 'lucide-react'
+import { MapPin, Navigation, EyeOff } from 'lucide-react'
 import type { Place } from '@/types'
 import FacilityIcons from './FacilityIcons'
 import PopularityBar from './PopularityBar'
@@ -7,6 +7,7 @@ interface PlaceCardProps {
   place: Place
   distance?: number
   onClick?: (place: Place) => void
+  onHide?: (place: Place) => void
   isSelected?: boolean
   label?: string
 }
@@ -32,7 +33,7 @@ function getCategoryColor(category: string): string {
   return colors[category] ?? 'bg-warm-100 text-warm-600'
 }
 
-export default function PlaceCard({ place, distance, onClick, isSelected, label }: PlaceCardProps) {
+export default function PlaceCard({ place, distance, onClick, onHide, isSelected, label }: PlaceCardProps) {
   return (
     <button
       onClick={() => onClick?.(place)}
@@ -107,15 +108,27 @@ export default function PlaceCard({ place, distance, onClick, isSelected, label 
           )}
         </div>
 
-        {/* Distance */}
-        {distance !== undefined && (
-          <div className="flex flex-col items-end shrink-0">
+        {/* Right side: distance + hide */}
+        <div className="flex flex-col items-end shrink-0 gap-2">
+          {distance !== undefined && (
             <div className="flex items-center gap-1 text-[13px] font-semibold text-warm-600">
               <Navigation size={12} className="text-coral-400" />
               {formatDistance(distance)}
             </div>
-          </div>
-        )}
+          )}
+          {onHide && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onHide(place)
+              }}
+              className="p-1.5 rounded-lg text-warm-300 hover:text-warm-500 hover:bg-warm-100 transition-colors"
+              aria-label="숨기기"
+            >
+              <EyeOff size={16} />
+            </button>
+          )}
+        </div>
       </div>
     </button>
   )
