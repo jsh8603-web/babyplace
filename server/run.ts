@@ -137,6 +137,15 @@ async function main(): Promise<void> {
         await runReplayJob()
         break
 
+      case 'manual-blog-events':
+        // Blog event discovery (Naver blog → Gemini extraction → enrichment → events)
+        console.log('[run] Manual mode — blog event discovery')
+        await initializeAllLimiters()
+        const blogEvResult = await runBlogEventDiscovery()
+        console.log('[run] Blog event discovery:', JSON.stringify(blogEvResult, null, 2))
+        await flushAllLimiters()
+        break
+
       case 'manual-exhibition-events':
         // Extract events from blog mentions of 전시/체험 places
         console.log('[run] Manual mode — exhibition event extraction')

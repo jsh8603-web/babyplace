@@ -54,6 +54,7 @@ export interface Event {
   age_range: string | null
   source: string
   source_id: string
+  date_confirmed: boolean | null
   source_url: string | null
   poster_url: string | null
   description: string | null

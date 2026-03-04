@@ -114,10 +114,16 @@ export default function EventCard({ event, onClick, isSelected, distance }: Even
           )}
 
           {/* Date badge */}
-          <span className="flex items-center gap-1 text-[12px] font-medium text-warm-500 bg-warm-50 px-2 py-0.5 rounded-full">
-            <Calendar size={12} />
-            {formatDateRange(event.start_date, event.end_date)}
-          </span>
+          {event.date_confirmed !== false ? (
+            <span className="flex items-center gap-1 text-[12px] font-medium text-warm-500 bg-warm-50 px-2 py-0.5 rounded-full">
+              <Calendar size={12} />
+              {formatDateRange(event.start_date, event.end_date)}
+            </span>
+          ) : (
+            <span className="text-[12px] font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+              일정 미확인
+            </span>
+          )}
 
           {/* Distance badge */}
           {distance != null && (

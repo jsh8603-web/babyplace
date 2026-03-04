@@ -145,6 +145,11 @@ export default function EventDetail({
               <p className="text-[15px] font-semibold text-warm-600">
                 {formatDateRange(event.start_date, event.end_date)}
               </p>
+              {event.date_confirmed === false && (
+                <p className="text-[13px] text-amber-600 mt-0.5">
+                  일정이 확인되지 않았습니다. 직접 확인해보세요.
+                </p>
+              )}
               {event.time_info && (
                 <p className="text-[13px] text-warm-500 mt-0.5">{event.time_info}</p>
               )}

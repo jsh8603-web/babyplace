@@ -51,6 +51,28 @@ interface ExtractedEvent {
   c: number
 }
 
+interface EnrichedEvent extends ExtractedEvent {
+  enriched_url: string | null
+  enriched_dates: string | null
+  enriched_poster: string | null
+  _webResults?: NaverWebItem[]
+  _stage2Type?: 'permanent' | 'limited' | 'unknown'
+}
+
+interface NaverWebItem {
+  title: string
+  link: string
+  description: string
+}
+
+interface NaverImageItem {
+  title: string
+  link: string
+  thumbnail: string
+  sizeheight: string
+  sizewidth: string
+}
+
 export interface BlogEventDiscoveryResult {
   keywordsProcessed: number
   blogPostsFetched: number
@@ -59,6 +81,9 @@ export interface BlogEventDiscoveryResult {
   venueValidated: number
   regionSkipped: number
   eventsInserted: number
+  enrichmentFiltered: number
+  stage2Processed: number
+  stage2Permanent: number
   errors: number
 }
 
@@ -73,6 +98,9 @@ export async function runBlogEventDiscovery(): Promise<BlogEventDiscoveryResult>
     venueValidated: 0,
     regionSkipped: 0,
     eventsInserted: 0,
+    enrichmentFiltered: 0,
+    stage2Processed: 0,
+    stage2Permanent: 0,
     errors: 0,
   }
 
@@ -108,12 +136,31 @@ export async function runBlogEventDiscovery(): Promise<BlogEventDiscoveryResult>
     const fresh = await deduplicateAgainstDB(extracted, result)
     console.log(`[blog-event] ${fresh.length} new events after dedup`)
 
+    // Step 4.5: Enrich Stage 1 (Naver search + LLM)
+    const enriched = await enrichEvents(fresh)
+    await enrichWithLLM(enriched)
+
+    // Stage 2: retry for events still missing dates
+    const needsStage2 = enriched.filter((ev) => !hasConfirmedDates(ev))
+    if (needsStage2.length > 0) {
+      console.log(`[blog-event] Stage 2: ${needsStage2.length}/${enriched.length} events need date enrichment`)
+      await enrichStage2(needsStage2, result)
+    }
+
+    // Final filter: dates required + permanent excluded
+    const verified = enriched.filter((ev) => {
+      if (ev._stage2Type === 'permanent') return false
+      return hasConfirmedDates(ev)
+    })
+    result.enrichmentFiltered = enriched.length - verified.length
+    console.log(`[blog-event] ${verified.length}/${enriched.length} events passed enrichment (stage2: ${result.stage2Processed} processed, ${result.stage2Permanent} permanent)`)
+
     // Pre-fetch known source_ids to avoid N+1 queries (seoul-events.ts pattern)
     const knownSourceIds = await prefetchKnownSourceIds()
     console.log(`[blog-event] Pre-fetched ${knownSourceIds.size} known source_ids`)
 
     // Step 5+6: Validate venue + insert
-    for (const event of fresh) {
+    for (const event of verified) {
       try {
         await validateAndInsert(event, result, knownSourceIds)
       } catch (err) {
@@ -352,20 +399,21 @@ async function deduplicateAgainstDB(
 }
 
 /**
- * Normalize event name for dedup: strip year prefixes, whitespace/hyphens
+ * Normalize event name for dedup: strip years, city names, whitespace/hyphens
  */
 function normalizeEventName(name: string): string {
   return normalizePlaceName(
     name
-      .replace(/^\d{4}\s*/, '') // Strip leading year (e.g. "2026 포켓몬런" → "포켓몬런")
-      .replace(/[\s\-]+/g, '') // Normalize whitespace/hyphens
+      .replace(/\d{4}/g, '') // Strip all years ("2026 포켓몬런" + "포켓몬런 2026")
+      .replace(/서울|경기|인천|수원|성남|부산|대구|대전|광주|고양|용인|부천|안산|안양/g, '')
+      .replace(/[\s\-]+/g, '')
   )
 }
 
 // ─── Step 5+6: Validate venue + insert ──────────────────────────────────────
 
 async function validateAndInsert(
-  event: ExtractedEvent,
+  event: EnrichedEvent | ExtractedEvent,
   result: BlogEventDiscoveryResult,
   knownSourceIds: Set<string>
 ): Promise<void> {
@@ -405,10 +453,13 @@ async function validateAndInsert(
     return
   }
 
-  // Parse dates
-  const { startDate, endDate } = parseDates(event.dates)
+  // Parse dates — prefer enriched dates over LLM-extracted dates
+  const enriched = 'enriched_dates' in event ? (event as EnrichedEvent) : null
+  const dateStr = enriched?.enriched_dates || event.dates
+  const { startDate, endDate } = parseDates(dateStr)
+  const dateConfirmed = !!(enriched?.enriched_dates) || !!(event.dates && event.dates.match(/\d{4}-\d{2}-\d{2}/))
 
-  // A2: Skip past events (endDate already passed)
+  // Skip past events (endDate already passed)
   const today = new Date().toISOString().split('T')[0]
   if (endDate < today) {
     result.duplicatesSkipped++
@@ -425,13 +476,14 @@ async function validateAndInsert(
     lng,
     start_date: startDate,
     end_date: endDate,
+    date_confirmed: dateConfirmed,
     time_info: null,
     price_info: null,
     age_range: null,
     source: 'blog_discovery',
     source_id: sourceId,
-    source_url: null,
-    poster_url: null,
+    source_url: enriched?.enriched_url || null,
+    poster_url: enriched?.enriched_poster || null,
     description: null,
   }
 
@@ -460,7 +512,7 @@ async function prefetchKnownSourceIds(): Promise<Set<string>> {
     const { data, error } = await supabaseAdmin
       .from('events')
       .select('source_id')
-      .eq('source', 'blog_discovery')
+      .in('source', ['blog_discovery', 'exhibition_extraction'])
       .range(offset, offset + batchSize - 1)
 
     if (error) {
@@ -480,6 +532,196 @@ async function prefetchKnownSourceIds(): Promise<Set<string>> {
   return ids
 }
 
+// ─── Enrichment constants ────────────────────────────────────────────────────
+
+const NAVER_WEB_URL = 'https://openapi.naver.com/v1/search/webkr'
+const NAVER_IMAGE_URL = 'https://openapi.naver.com/v1/search/image'
+const ENRICH_BATCH_SIZE = 10
+
+// ─── Date confirmation helper ────────────────────────────────────────────────
+
+function hasConfirmedDates(ev: EnrichedEvent): boolean {
+  return !!ev.enriched_dates || !!(ev.dates && ev.dates.match(/\d{4}-\d{2}-\d{2}/))
+}
+
+// ─── Stage 2 enrichment (retry with different search strategy) ──────────────
+
+async function enrichStage2(
+  events: EnrichedEvent[],
+  result: BlogEventDiscoveryResult
+): Promise<void> {
+  // Step A: Naver web re-search with different query strategy
+  for (const ev of events) {
+    const webQuery = encodeURIComponent(`"${ev.event}" 전시 기간 2026`)
+    const webUrl = `${NAVER_WEB_URL}?query=${webQuery}&display=10`
+    const webResults = await fetchNaverSearch<NaverWebItem>(webUrl)
+    ev._webResults = webResults || undefined
+    await new Promise((r) => setTimeout(r, 200))
+  }
+
+  // Step B: LLM batch classification + date extraction
+  const eventsWithWeb = events.filter((e) => e._webResults && e._webResults.length > 0)
+  if (eventsWithWeb.length === 0) return
+
+  for (let i = 0; i < eventsWithWeb.length; i += ENRICH_BATCH_SIZE) {
+    const batch = eventsWithWeb.slice(i, i + ENRICH_BATCH_SIZE)
+
+    const items = batch.map((ev, idx) => ({
+      n: idx + 1,
+      event: ev.event,
+      venue: ev.venue,
+      webResults: (ev._webResults || []).slice(0, 10).map((r) => ({
+        title: stripHtml(r.title),
+        desc: stripHtml(r.description).slice(0, 200),
+        link: r.link,
+      })),
+    }))
+
+    const today = new Date().toISOString().split('T')[0]
+    const prompt = `오늘: ${today}
+각 이벤트가 상설 운영인지 기간제인지 분류하고, 기간제면 날짜를 추출하세요.
+
+분류 기준:
+- "permanent": 상설 운영, 연중무휴, 상시 운영, 종료일 없음
+- "limited": 기간제, 종료일 있음 → 날짜 추출
+- "unknown": 판단 불가
+
+판단 힌트:
+- "상설", "연중무휴", "상시 운영" → permanent
+- "~까지", "기간:", "전시기간" → limited
+- 테마파크/놀이공원/키즈카페 자체 → permanent
+
+${JSON.stringify(items, null, 0)}
+
+JSON 배열만 응답: [{"n":1, "type":"limited", "dates":"YYYY-MM-DD~YYYY-MM-DD", "reason":"근거"}, ...]
+dates는 기간제(limited)일 때만 추출. permanent/unknown이면 빈 문자열.`
+
+    try {
+      const text = await extractWithGemini(prompt)
+      const parsed = JSON.parse(text) as { n: number; type?: string; dates?: string; reason?: string }[]
+
+      for (const r of parsed) {
+        const ev = batch[r.n - 1]
+        if (!ev) continue
+
+        result.stage2Processed++
+
+        if (r.type === 'permanent') {
+          ev._stage2Type = 'permanent'
+          result.stage2Permanent++
+          console.log(`[blog-event] Stage 2 permanent: "${ev.event}" (${r.reason || 'no reason'})`)
+        } else if (r.type === 'limited' && r.dates) {
+          ev._stage2Type = 'limited'
+          ev.enriched_dates = r.dates
+          console.log(`[blog-event] Stage 2 dates found: "${ev.event}" → ${r.dates}`)
+        } else {
+          ev._stage2Type = 'unknown'
+          console.log(`[blog-event] Stage 2 unknown: "${ev.event}" (${r.reason || 'no reason'})`)
+        }
+      }
+    } catch (err) {
+      console.error('[blog-event] Stage 2 LLM error:', err)
+      result.errors++
+    }
+
+    if (i + ENRICH_BATCH_SIZE < eventsWithWeb.length) {
+      await new Promise((r) => setTimeout(r, LLM_DELAY_MS))
+    }
+  }
+
+  // Clean up temp web results
+  for (const ev of events) {
+    delete ev._webResults
+  }
+}
+
+// ─── Event enrichment via Naver search + LLM (Stage 1) ──────────────────────
+
+async function enrichEvents(events: ExtractedEvent[]): Promise<EnrichedEvent[]> {
+  const enriched: EnrichedEvent[] = []
+
+  for (const event of events) {
+    // 1) Naver web search: "{event_name} {venue_name} 일정"
+    const webQuery = encodeURIComponent(`${event.event} ${event.venue} 일정`)
+    const webUrl = `${NAVER_WEB_URL}?query=${webQuery}&display=5`
+    const webResults = await fetchNaverSearch<NaverWebItem>(webUrl)
+
+    // 2) Naver image search: "{event_name} 포스터"
+    const imgQuery = encodeURIComponent(`${event.event} 포스터`)
+    const imgUrl = `${NAVER_IMAGE_URL}?query=${imgQuery}&display=3&sort=sim`
+    const imgResults = await fetchNaverSearch<NaverImageItem>(imgUrl)
+
+    enriched.push({
+      ...event,
+      enriched_url: null,
+      enriched_dates: null,
+      enriched_poster: imgResults?.[0]?.thumbnail || null,
+      _webResults: webResults || undefined,
+    })
+
+    await new Promise((r) => setTimeout(r, 200))
+  }
+
+  console.log(`[blog-event] Enriched ${enriched.length} events (${enriched.filter((e) => e.enriched_poster).length} with poster)`)
+  return enriched
+}
+
+async function enrichWithLLM(events: EnrichedEvent[]): Promise<void> {
+  const eventsWithWeb = events.filter((e) => e._webResults && e._webResults.length > 0)
+  if (eventsWithWeb.length === 0) return
+
+  for (let i = 0; i < eventsWithWeb.length; i += ENRICH_BATCH_SIZE) {
+    const batch = eventsWithWeb.slice(i, i + ENRICH_BATCH_SIZE)
+
+    const items = batch.map((ev, idx) => ({
+      n: idx + 1,
+      event: ev.event,
+      venue: ev.venue,
+      webResults: (ev._webResults || []).slice(0, 5).map((r) => ({
+        title: stripHtml(r.title),
+        desc: stripHtml(r.description).slice(0, 200),
+        link: r.link,
+      })),
+    }))
+
+    const today = new Date().toISOString().split('T')[0]
+    const prompt = `오늘: ${today}
+각 이벤트의 웹 검색 결과에서 공식 일정과 URL을 추출하세요.
+
+각 이벤트:
+- dates: 기간 (YYYY-MM-DD~YYYY-MM-DD). 검색 결과에 명시된 날짜만. 추측 금지.
+- url: 가장 공식적인 이벤트 페이지 URL (주최사/예매사이트/문화포털 우선)
+- found: true/false (이 이벤트의 공식 정보를 웹 검색 결과에서 찾았는지)
+
+${JSON.stringify(items, null, 0)}
+
+JSON 배열만 응답: [{"n":1,"dates":"...","url":"...","found":true}, ...]`
+
+    try {
+      const text = await extractWithGemini(prompt)
+      const parsed = JSON.parse(text) as { n: number; dates?: string; url?: string; found?: boolean }[]
+
+      for (const r of parsed) {
+        const ev = batch[r.n - 1]
+        if (!ev) continue
+        if (r.dates) ev.enriched_dates = r.dates
+        if (r.url) ev.enriched_url = r.url
+      }
+    } catch (err) {
+      console.error('[blog-event] Enrichment LLM error:', err)
+    }
+
+    if (i + ENRICH_BATCH_SIZE < eventsWithWeb.length) {
+      await new Promise((r) => setTimeout(r, LLM_DELAY_MS))
+    }
+  }
+
+  // Clean up temp web results
+  for (const ev of events) {
+    delete ev._webResults
+  }
+}
+
 // ─── Place-based event extraction (전시/체험 priority) ──────────────────────
 
 const EXHIBITION_BATCH_SIZE = 15
@@ -494,6 +736,9 @@ export async function runExhibitionEventExtraction(): Promise<BlogEventDiscovery
     venueValidated: 0,
     regionSkipped: 0,
     eventsInserted: 0,
+    enrichmentFiltered: 0,
+    stage2Processed: 0,
+    stage2Permanent: 0,
     errors: 0,
   }
 
@@ -574,31 +819,45 @@ ${JSON.stringify(items, null, 0)}`
         const parsed = JSON.parse(text) as { event: string; dates: string; c: number }[]
         const valid = parsed.filter((e) => e.c >= 0.7 && e.event)
 
+        // Convert to ExtractedEvent format for enrichment
+        const candidates: ExtractedEvent[] = []
         for (const ev of valid) {
           result.eventsExtracted++
-
           const sourceId = `exhibition_${normalizePlaceName(ev.event)}_${place.id}`
-          if (knownSourceIds.has(sourceId)) {
-            result.duplicatesSkipped++
-            continue
-          }
+          if (knownSourceIds.has(sourceId)) { result.duplicatesSkipped++; continue }
 
-          // Check existing events with similar name (using prefetched data)
           const normalized = normalizePlaceName(ev.event)
-
           let isDup = false
           for (const existingName of existingEventNames) {
-            if (similarity(normalized, existingName) > EVENT_SIMILARITY_THRESHOLD) {
-              isDup = true
-              break
-            }
+            if (similarity(normalized, existingName) > EVENT_SIMILARITY_THRESHOLD) { isDup = true; break }
           }
-          if (isDup) {
-            result.duplicatesSkipped++
-            continue
-          }
+          if (isDup) { result.duplicatesSkipped++; continue }
 
-          const { startDate, endDate } = parseDates(ev.dates)
+          candidates.push({ event: ev.event, venue: place.name, addr: place.road_address || place.address || '', dates: ev.dates, c: ev.c })
+        }
+
+        // Enrich Stage 1
+        const enrichedCandidates = await enrichEvents(candidates)
+        await enrichWithLLM(enrichedCandidates)
+
+        // Stage 2: retry for events still missing dates
+        const needsStage2 = enrichedCandidates.filter((ev) => !hasConfirmedDates(ev))
+        if (needsStage2.length > 0) {
+          await enrichStage2(needsStage2, result)
+        }
+
+        // Final filter: dates required + permanent excluded
+        const verifiedCandidates = enrichedCandidates.filter((ev) => {
+          if (ev._stage2Type === 'permanent') return false
+          return hasConfirmedDates(ev)
+        })
+        result.enrichmentFiltered += enrichedCandidates.length - verifiedCandidates.length
+
+        for (const ev of verifiedCandidates) {
+          const sourceId = `exhibition_${normalizePlaceName(ev.event)}_${place.id}`
+          const dateStr = ev.enriched_dates || ev.dates
+          const { startDate, endDate } = parseDates(dateStr)
+          const dateConfirmed = true // All verified events have confirmed dates
 
           const { error: insertErr } = await supabaseAdmin.from('events').insert({
             name: ev.event,
@@ -610,8 +869,11 @@ ${JSON.stringify(items, null, 0)}`
             lng: place.lng,
             start_date: startDate,
             end_date: endDate,
+            date_confirmed: dateConfirmed,
             source: 'exhibition_extraction',
             source_id: sourceId,
+            source_url: ev.enriched_url,
+            poster_url: ev.enriched_poster,
           })
 
           if (insertErr) {

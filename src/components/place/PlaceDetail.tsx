@@ -294,10 +294,16 @@ export default function PlaceDetail({
                           {ev.sub_category}
                         </span>
                       )}
-                      <span className="flex items-center gap-1 text-[12px] text-warm-500">
-                        <Calendar size={11} />
-                        {formatEventDateRange(ev.start_date, ev.end_date)}
-                      </span>
+                      {ev.date_confirmed !== false ? (
+                        <span className="flex items-center gap-1 text-[12px] text-warm-500">
+                          <Calendar size={11} />
+                          {formatEventDateRange(ev.start_date, ev.end_date)}
+                        </span>
+                      ) : (
+                        <span className="text-[11px] font-medium text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full">
+                          일정 미확인
+                        </span>
+                      )}
                     </div>
                     {ev.venue_name && (
                       <p className="text-[12px] text-warm-400 mt-0.5 truncate">

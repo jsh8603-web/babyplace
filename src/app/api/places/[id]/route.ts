@@ -64,7 +64,7 @@ export async function GET(
   const today = new Date().toISOString().split('T')[0]
   const { data: eventsData } = await supabase
     .from('events')
-    .select('id, name, sub_category, category, venue_name, venue_address, start_date, end_date, lat, lng, poster_url, time_info, price_info, age_range, source, source_id, source_url, description, created_at, updated_at')
+    .select('id, name, sub_category, category, venue_name, venue_address, start_date, end_date, date_confirmed, lat, lng, poster_url, time_info, price_info, age_range, source, source_id, source_url, description, created_at, updated_at')
     .gte('end_date', today)
     .lte('start_date', today)
     .not('lat', 'is', null)
