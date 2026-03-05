@@ -73,6 +73,8 @@ export interface Event {
   submission_note: string | null
   created_at: string
   updated_at: string
+  /** Distance from reference point in km (populated in nearby event queries) */
+  distance?: number
 }
 
 export interface BlogMention {

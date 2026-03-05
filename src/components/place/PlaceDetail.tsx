@@ -285,7 +285,7 @@ export default function PlaceDetail({
         {nearbyEvents && nearbyEvents.length > 0 && (
           <div className="bg-white px-4 py-4">
             <h2 className="text-[15px] font-semibold text-warm-700 mb-3">
-              진행중인 이벤트
+              진행중인 이벤트 (인근)
             </h2>
             <div className="space-y-0">
               {nearbyEvents.map((ev) => (
@@ -320,9 +320,16 @@ export default function PlaceDetail({
                         </span>
                       )}
                     </div>
-                    {ev.venue_name && (
+                    {(ev.venue_name || ev.distance != null) && (
                       <p className="text-[12px] text-warm-400 mt-0.5 truncate">
                         {ev.venue_name}
+                        {ev.distance != null && (
+                          <span className="ml-1.5 text-warm-300">
+                            {ev.distance < 1
+                              ? `${Math.round(ev.distance * 1000)}m`
+                              : `${ev.distance.toFixed(1)}km`}
+                          </span>
+                        )}
                       </p>
                     )}
                   </div>

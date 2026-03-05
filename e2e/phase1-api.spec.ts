@@ -551,7 +551,7 @@ test.describe('API Response Schema Validation', () => {
     const data = await detailResponse.json()
 
     // Check top-level keys
-    expect(Object.keys(data).sort()).toEqual(['isFavorited', 'place', 'topPosts'].sort())
+    expect(Object.keys(data).sort()).toEqual(['isFavorited', 'isHidden', 'nearbyEvents', 'place', 'topPosts'].sort())
 
     // Check place object
     expect(data.place).toHaveProperty('id')

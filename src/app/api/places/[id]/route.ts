@@ -87,15 +87,11 @@ export async function GET(
       if (ev.lat == null || ev.lng == null) continue
       const dist = haversineKm(place.lat, place.lng, ev.lat, ev.lng)
       if (dist <= RADIUS_KM) {
-        nearbyEvents.push(ev as Event)
+        nearbyEvents.push({ ...ev, distance: Math.round(dist * 100) / 100 } as Event)
       }
     }
     // Sort by distance (closest first)
-    nearbyEvents.sort((a, b) => {
-      const da = haversineKm(place.lat, place.lng, a.lat!, a.lng!)
-      const db = haversineKm(place.lat, place.lng, b.lat!, b.lng!)
-      return da - db
-    })
+    nearbyEvents.sort((a, b) => (a.distance ?? 0) - (b.distance ?? 0))
   }
 
   const response: PlaceDetailResponse = { place, topPosts, nearbyEvents, isFavorited, isHidden }

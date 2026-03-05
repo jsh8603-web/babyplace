@@ -82,10 +82,10 @@ const NAVER_BLOG_URL = 'https://openapi.naver.com/v1/search/blog.json'
 const DAUM_BLOG_URL = 'https://dapi.kakao.com/v2/search/blog'
 
 /** Number of places to reverse-search per pipeline run.
- *  Budget: each place = 2 API calls (naver blog + daum blog).
- *  Naver daily quota ~25K, Kakao search ~300K/month (~10K/day).
- *  4 runs/day × 500 = 4,000 calls per provider (well within budget). */
-const REVERSE_SEARCH_BATCH = 750
+ *  Budget: each place = 2-3 API calls (naver blog + daum blog + optional naver fallback).
+ *  Naver daily quota ~25K, Kakao search ~10K/day.
+ *  2,250 places/run ≈ naver ~3,375 + kakao-search ~2,250 = ~15-25% of daily quota. */
+const REVERSE_SEARCH_BATCH = 2250
 
 /** Number of results per API call. */
 const DISPLAY_COUNT = 30
@@ -252,12 +252,12 @@ export async function runPipelineB(): Promise<PipelineBResult> {
 async function runReverseSearch(
   stats: PipelineBResult['reverseSearch']
 ): Promise<void> {
-  // Phase 1: uncrawled places first (initial coverage, evenly distributed)
+  // Phase 1: never-crawled places first (initial coverage)
   const { data: uncrawled, error: err1 } = await supabaseAdmin
     .from('places')
     .select('id, name, road_address, address')
     .eq('is_active', true)
-    .is('last_mentioned_at', null)
+    .is('last_crawled_at', null)
     .order('id', { ascending: true })
     .limit(REVERSE_SEARCH_BATCH)
 
@@ -270,18 +270,16 @@ async function runReverseSearch(
   const uncrawledPlaces = uncrawled ?? []
   const remaining = REVERSE_SEARCH_BATCH - uncrawledPlaces.length
 
-  // Phase 2: popular places that haven't been refreshed recently
-  // Prioritize high mention_count (active places get new posts frequently)
-  // with staleness as tiebreaker (oldest refresh first)
+  // Phase 2: already-crawled places, oldest crawl first (round-robin)
+  // Removes popularity bias — all places get equal crawl frequency
   let popularPlaces: Array<{ id: number; name: string; road_address: string | null; address: string | null }> = []
   if (remaining > 0) {
     const { data, error: err2 } = await supabaseAdmin
       .from('places')
       .select('id, name, road_address, address')
       .eq('is_active', true)
-      .not('last_mentioned_at', 'is', null)
-      .order('mention_count', { ascending: false })
-      .order('last_mentioned_at', { ascending: true })
+      .not('last_crawled_at', 'is', null)
+      .order('last_crawled_at', { ascending: true })
       .limit(remaining)
 
     if (err2) {
@@ -331,13 +329,27 @@ async function reverseSearchPlace(
   // --- Daum Blog (Kakao) — covers 티스토리 + Daum 블로그 ---
   const daum = await searchDaumBlog(placeId, placeName, addr, isCommon, searchTerm)
 
-  const newCount = naver.count + daum.count
+  let newCount = naver.count + daum.count
+  const dates = [naver.maxDate, daum.maxDate].filter(Boolean) as string[]
+
+  // Fallback: if 0 results and searchTerm includes location, retry Naver with name only
+  if (newCount === 0 && searchTerm !== placeName) {
+    const retry = await searchNaverBlog(placeId, placeName, addr, isCommon, placeName)
+    newCount += retry.count
+    if (retry.maxDate) dates.push(retry.maxDate)
+  }
+
   if (newCount > 0) {
     // Use the latest post_date from either source (not collection date)
-    const dates = [naver.maxDate, daum.maxDate].filter(Boolean) as string[]
     const latestDate = dates.length > 0 ? dates.sort().pop()! : null
     await updateMentionCount(placeId, newCount, latestDate)
   }
+
+  // Always update last_crawled_at regardless of results (prevents Phase 1 blackhole)
+  await supabaseAdmin
+    .from('places')
+    .update({ last_crawled_at: new Date().toISOString() })
+    .eq('id', placeId)
 
   return newCount
 }

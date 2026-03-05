@@ -189,11 +189,11 @@ async function writeAuditLog(entry: AuditLogEntry): Promise<void> {
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-function stripHtml(str: string): string {
+export function stripHtml(str: string): string {
   return str.replace(/<[^>]+>/g, '').replace(/&[a-z]+;/g, ' ').trim()
 }
 
-function cleanEventName(name: string): string {
+export function cleanEventName(name: string): string {
   return name
     .replace(/<[^>]+>/g, ' ')
     .replace(/[「」『』《》<>〈〉]/g, ' ')
@@ -203,7 +203,7 @@ function cleanEventName(name: string): string {
     .trim()
 }
 
-function extractCoreKeywords(name: string): string {
+export function extractCoreKeywords(name: string): string {
   const cleaned = cleanEventName(name)
   const tokens = cleaned.split(' ').filter(t =>
     t.length >= 2 &&
@@ -212,7 +212,7 @@ function extractCoreKeywords(name: string): string {
   return tokens.slice(0, 3).join(' ')
 }
 
-function hasStaleYear(url: string): boolean {
+export function hasStaleYear(url: string): boolean {
   const currentYear = new Date().getFullYear()
   const yearMatches = url.match(/\/(20[0-2]\d)\//g)
   if (!yearMatches) return false
@@ -222,12 +222,12 @@ function hasStaleYear(url: string): boolean {
   })
 }
 
-function isBlocked(url: string): boolean {
+export function isBlocked(url: string): boolean {
   const lower = url.toLowerCase()
   return POSTER_BLOCKED_DOMAINS.some((d) => lower.includes(d))
 }
 
-function isTrusted(url: string): boolean {
+export function isTrusted(url: string): boolean {
   return POSTER_TRUSTED_DOMAINS.some((d) => url.includes(d))
 }
 
@@ -290,7 +290,7 @@ async function fetchOgImage(pageUrl: string): Promise<{ url: string; title: stri
   } catch { return null }
 }
 
-function preFilter(images: NaverImageItem[]): ImageCandidate[] {
+export function preFilter(images: NaverImageItem[]): ImageCandidate[] {
   return images
     .filter((img) => {
       if (isBlocked(img.link)) return false
@@ -467,9 +467,10 @@ export async function runPosterEnrichment(): Promise<PosterEnrichmentResult> {
     while (true) {
       const { data, error } = await supabaseAdmin
         .from('events')
-        .select('id, name, venue_name, poster_url, poster_hidden, source, source_url')
+        .select('id, name, venue_name, poster_url, poster_hidden, poster_locked, source, source_url')
         .or(`end_date.gte.${today},end_date.is.null`)
         .eq('poster_hidden', false)
+        .eq('poster_locked', false)
         .range(offset, offset + PAGE - 1)
       if (error) throw new Error(`Failed to fetch events: ${error.message}`)
       if (!data || data.length === 0) break

@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "updated_at": "2026-03-05",
+  "weights": {
+    "title_match": 0.3,
+    "place_name_in_content": 0.25,
+    "address_match": 0.2,
+    "keyword_density": 0.15,
+    "source_authority": 0.1
+  },
+  "thresholds": {
+    "accept": 0.5,
+    "borderline_low": 0.4,
+    "reject": 0.3
+  },
+  "changelog": [
+    { "version": 1, "date": "2026-03-05", "change": "초기 가중치 설정 — 포스터 감사 패턴 적용" }
+  ]
+}

@@ -241,7 +241,7 @@ export async function runScoring(): Promise<ScoringResult> {
  * Computes data completeness: ratio of non-null, non-empty fields.
  * Fields checked: name, address, phone, tags, description
  */
-function computeDataCompleteness(place: Partial<Place>): number {
+export function computeDataCompleteness(place: Partial<Place>): number {
   let filled = 0
 
   if (place.name && place.name.trim().length > 0) filled++

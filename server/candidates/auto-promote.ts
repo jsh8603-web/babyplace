@@ -259,42 +259,56 @@ async function evaluateCandidate(candidate: CandidateRow): Promise<boolean> {
     throw new Error(error.message)
   }
 
+  // Get the newly created place ID
+  const { data: newPlace } = await supabaseAdmin
+    .from('places')
+    .select('id')
+    .eq('kakao_place_id', kakaoResult.kakaoPlaceId!)
+    .single()
+
   // Create blog_mentions from candidate's source_metadata
   const metadata = candidate.source_metadata ?? []
-  if (metadata.length > 0) {
-    // Get the newly created place ID
-    const { data: newPlace } = await supabaseAdmin
-      .from('places')
-      .select('id')
-      .eq('kakao_place_id', kakaoResult.kakaoPlaceId!)
-      .single()
+  if (metadata.length > 0 && newPlace) {
+    let mentionCount = 0
+    for (let i = 0; i < metadata.length; i++) {
+      const meta = metadata[i]
+      const url = meta.url || candidate.source_urls?.[i] || ''
 
-    if (newPlace) {
-      let mentionCount = 0
-      for (let i = 0; i < metadata.length; i++) {
-        const meta = metadata[i]
-        const url = meta.url || candidate.source_urls?.[i] || ''
+      const { error: mentionErr } = await supabaseAdmin.from('blog_mentions').insert({
+        place_id: newPlace.id,
+        source_type: meta.source_type || 'naver_blog',
+        title: meta.title,
+        url,
+        post_date: meta.post_date,
+        snippet: meta.snippet,
+        relevance_score: 0.6,
+      })
+      if (!mentionErr) mentionCount++
+    }
 
-        const { error: mentionErr } = await supabaseAdmin.from('blog_mentions').insert({
-          place_id: newPlace.id,
-          source_type: meta.source_type || 'naver_blog',
-          title: meta.title,
-          url,
-          post_date: meta.post_date,
-          snippet: meta.snippet,
-          relevance_score: 0.6,
-        })
-        if (!mentionErr) mentionCount++
-      }
-
-      if (mentionCount > 0) {
-        await supabaseAdmin
-          .from('places')
-          .update({ mention_count: mentionCount })
-          .eq('id', newPlace.id)
-      }
+    if (mentionCount > 0) {
+      await supabaseAdmin
+        .from('places')
+        .update({ mention_count: mentionCount })
+        .eq('id', newPlace.id)
     }
   }
+
+  // Record promotion in audit log
+  const hasPublicData = (candidate.source_metadata ?? []).some(
+    (m: any) => ['data_go_kr', 'localdata', 'tour_api', 'seoul_gov'].includes(m.source_type)
+  )
+  await supabaseAdmin.from('candidate_promotion_audit_log').insert({
+    place_id: newPlace?.id ?? null,
+    candidate_id: candidate.id,
+    place_name: kakaoResult.kakaoName!,
+    place_category: category,
+    source_count: candidate.source_count,
+    kakao_similarity: candidate.kakao_best_score ?? null,
+    promotion_reason: hasPublicData ? 'public_data' : 'multi_blog',
+  }).then(({ error: auditErr }) => {
+    if (auditErr) console.error('[auto-promote] Audit log error:', auditErr.message)
+  })
 
   console.log(
     `[auto-promote] Promoted: "${kakaoResult.kakaoName}" (candidate ${candidate.id}, ${metadata.length} blog mentions)`
@@ -342,7 +356,7 @@ async function verifyWithKakao(
  * Counts independent sources by extracting domain origins from URLs.
  * Same blogger domain is NOT counted as independent.
  */
-function countIndependentSources(sourceUrls: string[]): number {
+export function countIndependentSources(sourceUrls: string[]): number {
   if (!sourceUrls || sourceUrls.length === 0) return 0
 
   const domains = new Set<string>()
@@ -365,7 +379,7 @@ function countIndependentSources(sourceUrls: string[]): number {
 /**
  * Infers a BabyPlace category from Kakao's category string and candidate name.
  */
-function inferCategory(
+export function inferCategory(
   kakaoCategory: string | undefined,
   candidateName: string
 ): PlaceCategory | null {

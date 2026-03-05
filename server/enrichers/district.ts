@@ -110,7 +110,7 @@ export async function getDistrictCode(
  * Format: first two tokens joined, lowercased (approximate).
  * Returns a string like "서울강남구" — not an official code but useful for grouping.
  */
-function extractDistrictCodeFromAddress(address: string): string | null {
+export function extractDistrictCodeFromAddress(address: string): string | null {
   const parts = address.trim().split(/\s+/)
   if (parts.length < 2) return null
 

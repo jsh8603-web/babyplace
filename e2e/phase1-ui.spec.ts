@@ -49,7 +49,7 @@ test.describe('Phase 1 — UI Components (Module A)', () => {
 
   test('BottomSheet snap points responsive', async ({ page }) => {
     // Bottom sheet should be visible at default snap point
-    const bottomSheet = page.locator('[aria-label="장소 목록"]')
+    const bottomSheet = page.locator('[aria-label="장소 및 이벤트"]')
     await expect(bottomSheet).toBeVisible()
 
     // Check for draggable handle
@@ -219,7 +219,7 @@ test.describe('Phase 1 — UI Components (Module A)', () => {
     }
 
     // Verify main elements are present
-    const bottomSheet = page.locator('[aria-label="장소 목록"]')
+    const bottomSheet = page.locator('[aria-label="장소 및 이벤트"]')
     const nav = page.locator('nav[aria-label="하단 탭 네비게이션"]')
 
     await expect(bottomSheet).toBeVisible()

@@ -167,6 +167,13 @@ async function main(): Promise<void> {
         await runReplayJob()
         break
 
+      case 'manual-reverse':
+        // Run Pipeline B Method 1 (reverse search) only
+        console.log('[run] Manual mode — reverse search only')
+        const manualReverseResult = await runReverseSearchOnly()
+        console.log('[run] Reverse search result:', JSON.stringify(manualReverseResult, null, 2))
+        break
+
       case 'manual-event-blog-search':
         // Search Naver blogs for active events
         console.log('[run] Manual mode — event blog search')

@@ -240,7 +240,7 @@ export async function runEventDeduplication(): Promise<EventDeduplicationResult>
 /**
  * Check if two events are likely duplicates.
  */
-function isProbableDuplicate(
+export function isProbableDuplicate(
   event1: any,
   event2: any
 ): boolean {
@@ -275,7 +275,7 @@ function isProbableDuplicate(
  * Token-based similarity (order-independent).
  * Splits names into tokens and computes Jaccard-like overlap.
  */
-function tokenSimilarity(name1: string, name2: string): number {
+export function tokenSimilarity(name1: string, name2: string): number {
   const normalize = (s: string) =>
     s.replace(/[〈〉<>()[\]'"「」『』：:·\-–—,./\\]/g, ' ')
       .replace(/\d{4}/g, '') // strip years
@@ -300,7 +300,7 @@ function tokenSimilarity(name1: string, name2: string): number {
 /**
  * Check if two date ranges overlap.
  */
-function datesOverlap(
+export function datesOverlap(
   start1: string,
   end1: string | null,
   start2: string,
@@ -383,6 +383,22 @@ async function mergeEvents(event1: any, event2: any, processed: Set<number>): Pr
   if (error) {
     throw error
   }
+
+  // Record merge in dedup audit log
+  const nameSim = similarity(keep.name, del.name)
+  const matchReason = keep.venue_name && keep.venue_name === del.venue_name
+    ? 'venue_name'
+    : keep.source === del.source ? 'source_id' : 'name_date'
+  await supabaseAdmin.from('event_dedup_audit_log').insert({
+    kept_event_id: keep.id,
+    removed_event_id: del.id,
+    kept_event_name: keep.name,
+    removed_event_name: del.name,
+    similarity_score: nameSim,
+    match_reason: matchReason,
+  }).then(({ error: auditErr }) => {
+    if (auditErr) console.error('[event-dedup] Audit log error:', auditErr.message)
+  })
 
   processed.add(del.id)
 }

@@ -147,7 +147,7 @@ export async function findMatchingPlace(
  * Returns true if two address strings share the same district-level prefix.
  * Examples: "서울 강남구" matches "서울특별시 강남구 삼성동".
  */
-function addressDistrictMatch(addrA: string, addrB: string): boolean {
+export function addressDistrictMatch(addrA: string, addrB: string): boolean {
   // Extract first two address tokens (e.g. "서울" "강남구")
   const tokensA = addrA.split(/\s+/).slice(0, 2).join('')
   const tokensB = addrB.split(/\s+/).slice(0, 2).join('')

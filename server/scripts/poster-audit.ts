@@ -254,6 +254,59 @@ function showPromptInfo(): void {
   }
 }
 
+async function lockPoster(eventId: number, posterUrl?: string): Promise<void> {
+  const update: Record<string, any> = { poster_locked: true }
+  if (posterUrl) update.poster_url = posterUrl
+
+  const { error } = await supabase
+    .from('events')
+    .update(update)
+    .eq('id', eventId)
+
+  if (error) { console.error('Error:', error.message); return }
+
+  // Also approve any pending audit logs for this event
+  await supabase
+    .from('poster_audit_log')
+    .update({ audit_status: 'approved', audit_notes: 'poster_locked' })
+    .eq('event_id', eventId)
+    .eq('audit_status', 'pending')
+
+  console.log(`Locked poster for event #${eventId}${posterUrl ? ` → ${posterUrl}` : ''}`)
+}
+
+async function unlockPoster(eventId: number): Promise<void> {
+  const { error } = await supabase
+    .from('events')
+    .update({ poster_locked: false })
+    .eq('id', eventId)
+
+  if (error) console.error('Error:', error.message)
+  else console.log(`Unlocked poster for event #${eventId}`)
+}
+
+async function listLocked(limit = 50): Promise<void> {
+  const { data, error } = await supabase
+    .from('events')
+    .select('id, name, poster_url, source')
+    .eq('poster_locked', true)
+    .order('id', { ascending: false })
+    .limit(limit)
+
+  if (error) { console.error('Error:', error.message); return }
+
+  const { count } = await supabase
+    .from('events')
+    .select('id', { count: 'exact', head: true })
+    .eq('poster_locked', true)
+
+  console.log(`\n=== Locked Posters (${count ?? data?.length ?? 0}건) ===\n`)
+  for (const ev of data || []) {
+    console.log(`  event #${ev.id} "${ev.name}" (${ev.source}) → ${ev.poster_url || '(none)'}`)
+  }
+  console.log('')
+}
+
 // ─── CLI Parser ──────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
@@ -288,6 +341,22 @@ async function main(): Promise<void> {
     const actionIdx = args.indexOf('--action')
     const action = actionIdx >= 0 ? args[actionIdx + 1] : undefined
     await bulkApprove(action)
+  } else if (args.includes('--lock')) {
+    const idx = args.indexOf('--lock')
+    const eventId = parseInt(args[idx + 1])
+    if (isNaN(eventId)) { console.error('Usage: --lock <event_id> --poster <url>'); return }
+    const posterIdx = args.indexOf('--poster')
+    const posterUrl = posterIdx >= 0 ? args[posterIdx + 1] : undefined
+    await lockPoster(eventId, posterUrl)
+  } else if (args.includes('--unlock')) {
+    const idx = args.indexOf('--unlock')
+    const eventId = parseInt(args[idx + 1])
+    if (isNaN(eventId)) { console.error('Usage: --unlock <event_id>'); return }
+    await unlockPoster(eventId)
+  } else if (args.includes('--locked')) {
+    const limitIdx = args.indexOf('--limit')
+    const limit = limitIdx >= 0 ? parseInt(args[limitIdx + 1]) || 50 : 50
+    await listLocked(limit)
   } else if (args.includes('--prompt')) {
     showPromptInfo()
   } else {
@@ -301,6 +370,9 @@ Commands:
   --reject <audit_id> [--note] Reject with optional reason
   --flag <audit_id> [--note]   Flag for further review
   --bulk-approve [--action X]  Approve all pending (optionally filter by action)
+  --lock <event_id> [--poster <url>]  Lock poster (set URL + lock + approve)
+  --unlock <event_id>          Unlock poster for re-enrichment
+  --locked [--limit N]         List locked events
   --prompt                     Show current prompt config
 
 Examples:
@@ -309,6 +381,8 @@ Examples:
   poster-audit.ts --approve 123
   poster-audit.ts --reject 123 --note "블로그 이미지"
   poster-audit.ts --bulk-approve --action kept
+  poster-audit.ts --lock 456 --poster "https://example.com/poster.jpg"
+  poster-audit.ts --unlock 456
   poster-audit.ts --prompt
 `)
   }
