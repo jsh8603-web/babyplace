@@ -424,7 +424,7 @@ async function processAsEvent(
   // Skip events from past years or already ended
   const currentYear = new Date().getFullYear()
   const today = new Date().toISOString().split('T')[0]
-  if (parseInt(startDate.substring(0, 4)) < currentYear) return
+  if (parseInt(startDate.substring(0, 4)) < currentYear - 1) return
   if (endDate && endDate < today) return
 
   const { error } = await supabaseAdmin.from('events').insert({

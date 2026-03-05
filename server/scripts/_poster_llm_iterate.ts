@@ -30,7 +30,7 @@ interface ImageCandidate {
   link: string
   width: number
   height: number
-  source: 'og:image' | 'naver_image' | 'web_og:image'
+  source: 'og:image' | 'naver_image' | 'web_og:image' | 'current'
 }
 
 interface NaverImageItem {
@@ -110,7 +110,7 @@ async function fetchOgImage(pageUrl: string): Promise<{ url: string; title: stri
       imgUrl = base.origin + imgUrl
     }
 
-    // R8: Block site-wide default og:images (logos, placeholders, banners)
+    // R8+R23: Block site-wide default og:images (logos, placeholders, banners)
     const OG_IMAGE_BLOCKLIST = [
       'culturePotalImg',        // culture.seoul.go.kr default
       'mainUX/main.png',        // kopis.or.kr logo
@@ -127,6 +127,15 @@ async function fetchOgImage(pageUrl: string): Promise<{ url: string; title: stri
       'defaultMobileBanner',    // nanta default banner
       'defaultBanner',          // generic default banners
       'tketlink.dn.toastoven.net/static', // ticketlink CDN statics
+      // R23: generic og:image patterns found in R22
+      'og_image',               // gangnam.go.kr og_image_src.png, royal.khs.go.kr og_image.jpg
+      'og_img',                 // gwanak.go.kr og_img.png, ydpcf.or.kr og_img_white.jpg
+      'ogimage',                // gsartscenter.com ogimage.jpg
+      'meta_img',               // seoulstrollerrun.co.kr meta_img.png
+      'sns_sImg',               // seoulchildrensmuseum.org sns_sImg.png
+      '_meta2',                 // lib.seoul.go.kr m_seoullib_meta2.png
+      '/templete/',             // royal.khs.go.kr /templete/royal/img/common/
+      '/include/image/common/', // artbookbogo.kr /include/image/common/og.jpg
     ]
     if (OG_IMAGE_BLOCKLIST.some(p => imgUrl.includes(p))) return null
 
@@ -181,7 +190,7 @@ const POSTER_BLOCKED_DOMAINS = [
   'overseas.mofa.go.kr', 'www.traveli.co.kr', 'www.youthnavi.net',
   'pds.saramin.co.kr', 'ldb-phinf.pstatic.net', 'dbscthumb-phinf.pstatic.net',
   'lh7-rt.googleusercontent.com',
-  'scontent-nrt1-2.cdninstagram.com', 'scontent-nrt1-1.cdninstagram.com',
+  'cdninstagram.com',  // all instagram CDN variants
   'inaturalist-open-data.s3.amazonaws.com',
   'gall-img.com', '3.gall-img.com',
   'image.slidesharecdn.com', 'cdn.class101.net', 'cdn.crowdpic.net',
@@ -202,6 +211,11 @@ const POSTER_BLOCKED_DOMAINS = [
   'previews.123rf.com', 'us.123rf.com',
   'thumbs.dreamstime.com', 'www.shutterstock.com',
   'image.shutterstock.com', 'thumb.ac-illust.com',
+  // R23: site logos found as og:images
+  'img.designhouse.co.kr',
+  'e7.pngegg.com', 'pngegg.com',
+  'play-lh.googleusercontent.com',
+  'lh3.googleusercontent.com',
 ]
 
 const POSTER_TRUSTED_DOMAINS = [
@@ -389,12 +403,16 @@ function buildLLMPrompt(
 후보에서 이 이벤트의 **공식 포스터 또는 대표 홍보 이미지**를 1개 선택하세요.
 
 판단 순서:
-1. [공식] 표시 후보 → source_url 또는 공식 페이지에서 직접 가져온 이미지. 최우선 선택.
-2. [신뢰] 표시 후보 → 예매/문화포털 공식 포스터. 이벤트 키워드 하나라도 매칭되면 선택.
+1. [현재] 표시 후보 → 현재 DB에 저장된 공식 API 포스터. 다른 후보가 명확히 더 나은 경우에만 교체.
+   "명확히 더 나은" = 이벤트명이 정확히 일치하는 공식 포스터 또는 이벤트 전용 이미지.
+   뉴스 기사 이미지, 블로그 이미지, 유사 키워드만 매칭되는 이미지는 [현재]보다 낫지 않음.
+2. [공식] 표시 후보 → source_url 또는 공식 페이지에서 직접 가져온 이벤트 전용 이미지.
+   단, 사이트 로고/기본 이미지가 아닌 실제 이벤트 콘텐츠 이미지만.
+3. [신뢰] 표시 후보 → 예매/문화포털 공식 포스터. 이벤트 키워드 하나라도 매칭되면 선택.
    단, yes24/interpark 상품이 도서·음반 표지인 경우 제외 (공연 포스터만 허용).
-3. 이벤트명 핵심 키워드가 제목에 포함된 이미지 (뉴스 보도 허용).
-4. 같은 IP/브랜드의 다른 행사 포스터도 허용.
-5. 후보 모두 이벤트명과 완전히 무관하면 → 0.
+4. 이벤트명 핵심 키워드가 제목에 포함된 이미지 (뉴스 보도 허용).
+5. 같은 IP/브랜드의 다른 행사 포스터도 허용.
+6. 후보 모두 이벤트명과 완전히 무관하면 → 0.
 
 중요: 같은 제목/IP의 공연·전시가 다른 공연장에서도 열리면 허용 (순회공연, 전국투어).
 단, 완전히 다른 행사(다른 지역의 유사 테마 행사)는 제외.
@@ -409,7 +427,7 @@ function buildLLMPrompt(
 
 후보:
 ${candidates.map((c) => {
-  const tag = c.source === 'og:image' ? '[공식]' : c.trusted ? '[신뢰]' : ''
+  const tag = c.source === 'current' ? '[현재]' : c.source === 'og:image' ? '[공식]' : c.trusted ? '[신뢰]' : ''
   const size = c.w > 0 ? ` (${c.w}×${c.h})` : ''
   return `${c.idx}. ${tag} [${c.domain}] "${c.title}"${size}`
 }).join('\n')}
@@ -420,9 +438,24 @@ JSON만 응답: {"pick": 번호, "reason": "이유"}`
 async function selectPosterWithLLM(
   candidates: ImageCandidate[],
   eventName: string,
-  venueName: string
+  venueName: string,
+  currentPosterUrl?: string | null
 ): Promise<{ url: string | null; reason: string; candidateCount: number; candidates: { title: string; link: string; domain: string; source: string }[] }> {
-  const allCandidates = candidates.slice(0, 15).map((img, i) => {
+  // R24: Include current poster as candidate with [현재] tag so LLM can compare
+  const allInput = [...candidates]
+  if (currentPosterUrl && !candidates.some(c => c.link === currentPosterUrl)) {
+    let currentDomain = ''
+    try { currentDomain = new URL(currentPosterUrl).hostname } catch { /* */ }
+    allInput.unshift({
+      title: `[현재 DB 포스터] ${currentDomain}`,
+      link: currentPosterUrl,
+      width: 0,
+      height: 0,
+      source: 'current' as ImageCandidate['source'],
+    })
+  }
+
+  const allCandidates = allInput.slice(0, 15).map((img, i) => {
     let domain = ''
     try { domain = new URL(img.link).hostname } catch { domain = 'unknown' }
     const trusted = isTrusted(img.link)
@@ -530,8 +563,8 @@ async function main() {
     return
   }
 
-  const toProcess = events.filter((e) => e.source !== 'seoul_events')
-  console.log(`Events: ${events.length} total, ${toProcess.length} to process (excluding seoul_events)\n`)
+  const toProcess = events
+  console.log(`Events: ${events.length} total, ${toProcess.length} to process (all sources)\n`)
 
   const results: EventResult[] = []
   let processed = 0
@@ -546,8 +579,8 @@ async function main() {
       ev.source_url || null
     )
 
-    // LLM selection
-    const llmResult = await selectPosterWithLLM(candidates, ev.name, ev.venue_name || '')
+    // LLM selection (R24: pass current poster as candidate)
+    const llmResult = await selectPosterWithLLM(candidates, ev.name, ev.venue_name || '', ev.poster_url)
 
     let status: EventResult['status'] = 'both_empty'
     if (llmResult.url) {

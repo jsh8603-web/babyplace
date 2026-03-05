@@ -12,9 +12,10 @@ import { readFileSync, existsSync } from 'fs'
 import { join } from 'path'
 
 // Turf types — only imported if GeoJSON is available
-let booleanPointInPolygon: ((pt: unknown, polygon: unknown) => boolean) | null =
-  null
-let turfPoint: ((coords: [number, number]) => unknown) | null = null
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let booleanPointInPolygon: ((pt: any, polygon: any) => boolean) | null = null
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let turfPoint: ((coords: [number, number]) => any) | null = null
 
 interface DistrictFeature {
   type: 'Feature'
@@ -55,10 +56,12 @@ async function loadGeoJSON(): Promise<void> {
     // Dynamically import Turf (optional dependency)
     const turfPip = await import('@turf/boolean-point-in-polygon')
     const turfHelpers = await import('@turf/helpers')
+    const pip = turfPip as any
+    const helpers = turfHelpers as any
     booleanPointInPolygon =
-      (turfPip.default as typeof booleanPointInPolygon) ?? turfPip.booleanPointInPolygon
+      (pip.default ?? pip.booleanPointInPolygon) as typeof booleanPointInPolygon
     turfPoint =
-      (turfHelpers.point as typeof turfPoint) ?? turfHelpers.default?.point
+      (helpers.point ?? helpers.default?.point) as typeof turfPoint
   } catch (err) {
     console.warn('[district] Failed to load GeoJSON or turf:', err)
     districtsGeoJSON = null

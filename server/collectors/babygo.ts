@@ -14,6 +14,7 @@
 
 import { supabaseAdmin } from '../lib/supabase-admin'
 import { logCollection } from '../lib/collection-log'
+import { prefetchIds } from '../lib/prefetch'
 import { checkDuplicate } from '../matchers/duplicate'
 import { checkPlaceGate } from '../matchers/place-gate'
 import { isInServiceRegion } from '../enrichers/region'
@@ -372,7 +373,7 @@ async function createBabygoEvent(place: BabygoPlace, result: BabygoResult): Prom
   // Skip events from past years or already ended
   const currentYear = new Date().getFullYear()
   const today = new Date().toISOString().split('T')[0]
-  if (parseInt(startDate.substring(0, 4)) < currentYear) return
+  if (parseInt(startDate.substring(0, 4)) < currentYear - 1) return
   if (endDate && endDate < today) return
 
   const sourceId = `babygo_event_${place.id}`
@@ -403,4 +404,226 @@ async function createBabygoEvent(place: BabygoPlace, result: BabygoResult): Prom
   } else {
     result.events++
   }
+}
+
+// ─── BabyGo Events API ──────────────────────────────────────────────────────
+
+interface BabygoEventListItem {
+  id: string
+  name: string
+  thumbnail: string | null
+  place_type: string | null
+  starts_at: string | null
+  ends_at: string | null
+}
+
+interface BabygoEventDetail {
+  id: string
+  name: string
+  address: string | null
+  lat: number | null
+  lng: number | null
+  phone_number: string | null
+  images: { image: string }[] | null
+  note: string | null
+  amenities: { name: string }[] | null
+  products: { name: string; price: number }[] | null
+  business_hours: { name: string; start_at: string; end_at: string }[] | null
+  url: string | null
+  top_region: { id: number; name: string } | null
+}
+
+export interface BabygoEventsResult {
+  fetched: number
+  outOfArea: number
+  skipped: number
+  inserted: number
+  errors: number
+}
+
+function mapPlaceTypeToSubCategory(placeType: string | null): string | null {
+  if (!placeType) return null
+  if (/전시/.test(placeType)) return '전시'
+  if (/축제/.test(placeType)) return '축제'
+  if (/공연|뮤지컬|연극/.test(placeType)) return '공연'
+  return null
+}
+
+/**
+ * Collect events from BabyGo Events API.
+ * Fetches current + next 2 months, enriches with detail API, filters by region.
+ */
+export async function fetchBabygoEvents(): Promise<BabygoEventsResult> {
+  const result: BabygoEventsResult = {
+    fetched: 0,
+    outOfArea: 0,
+    skipped: 0,
+    inserted: 0,
+    errors: 0,
+  }
+
+  const startedAt = Date.now()
+
+  try {
+    console.log('[babygo-events] Starting BabyGo Events API collection')
+
+    // Prefetch existing babygo_event source_ids
+    const existingIds = await prefetchIds({
+      table: 'events',
+      column: 'source_id',
+      filters: [{ op: 'eq', column: 'source', value: 'babygo' }],
+    })
+    console.log(`[babygo-events] Existing babygo events: ${existingIds.size}`)
+
+    const currentYear = new Date().getFullYear()
+    const today = new Date().toISOString().split('T')[0]
+
+    // Fetch current month + next 2 months
+    const months = getTargetMonths(3)
+    const allEvents = new Map<string, BabygoEventListItem>()
+
+    for (const month of months) {
+      let page = 1
+      while (true) {
+        const url = `${API_BASE}/places/events?range=${month}&page=${page}`
+        const data = await fetchJson<{ next_url: string | null; events: BabygoEventListItem[] }>(url)
+
+        if (!data?.events || data.events.length === 0) break
+
+        for (const ev of data.events) {
+          if (!allEvents.has(ev.id)) allEvents.set(ev.id, ev)
+        }
+
+        if (!data.next_url) break
+        page++
+        await sleep(DELAY_MS)
+      }
+      await sleep(DELAY_MS)
+    }
+
+    result.fetched = allEvents.size
+    console.log(`[babygo-events] Fetched ${allEvents.size} events from ${months.length} months`)
+
+    // Process each event
+    for (const [id, ev] of allEvents) {
+      try {
+        const sourceId = `babygo_event_${id}`
+        if (existingIds.has(sourceId)) {
+          result.skipped++
+          continue
+        }
+
+        // Parse dates
+        const startDate = ev.starts_at ? ev.starts_at.substring(0, 10) : null
+        const endDate = ev.ends_at ? ev.ends_at.substring(0, 10) : null
+
+        // Date filters
+        if (startDate && parseInt(startDate.substring(0, 4)) < currentYear - 1) {
+          result.skipped++
+          continue
+        }
+        if (endDate && endDate < today) {
+          result.skipped++
+          continue
+        }
+
+        // Fetch detail for location, description, etc.
+        const detail = await fetchJson<BabygoEventDetail>(`${API_BASE}/places/${id}`)
+        await sleep(DELAY_MS)
+
+        if (!detail) {
+          result.errors++
+          continue
+        }
+
+        // Region filter using top_region
+        const regionName = detail.top_region?.name
+        if (regionName && regionName !== '서울' && regionName !== '경기') {
+          result.outOfArea++
+          continue
+        }
+
+        // If no top_region, check coordinates/address
+        if (!regionName) {
+          if (detail.lat && detail.lng) {
+            if (!isInServiceRegion(detail.lat, detail.lng, detail.address || null)) {
+              result.outOfArea++
+              continue
+            }
+          } else {
+            // No location info at all — skip
+            result.skipped++
+            continue
+          }
+        }
+
+        // Build data
+        const thumbnail = ev.thumbnail || detail.images?.[0]?.image || null
+        const priceInfo = detail.products?.map((p) => `${p.name} ${p.price}원`).join(', ') || null
+        const timeInfo = detail.business_hours?.map((h) => `${h.name} ${h.start_at}~${h.end_at}`).join(', ') || null
+        const subCategory = mapPlaceTypeToSubCategory(ev.place_type) || classifyEventByTitle(ev.name)
+
+        const { error } = await supabaseAdmin.from('events').insert({
+          name: ev.name,
+          category: '문화행사',
+          sub_category: subCategory,
+          venue_name: ev.name,
+          venue_address: detail.address || null,
+          lat: detail.lat || null,
+          lng: detail.lng || null,
+          start_date: startDate,
+          end_date: endDate,
+          price_info: priceInfo,
+          time_info: timeInfo,
+          description: detail.note || null,
+          source: 'babygo',
+          source_id: sourceId,
+          source_url: detail.url || null,
+          poster_url: thumbnail,
+        })
+
+        if (error) {
+          if (error.code === '23505') {
+            result.skipped++
+          } else {
+            console.error(`[babygo-events] Insert error: ${error.message}`, ev.name)
+            result.errors++
+          }
+        } else {
+          result.inserted++
+          existingIds.add(sourceId)
+        }
+      } catch (err) {
+        console.error(`[babygo-events] Error processing ${id}:`, err)
+        result.errors++
+      }
+    }
+
+    console.log(`[babygo-events] Done: ${result.inserted} inserted, ${result.outOfArea} out-of-area, ${result.skipped} skipped`)
+  } catch (err) {
+    console.error('[babygo-events] Fatal error:', err)
+    result.errors++
+  }
+
+  await logCollection({
+    collector: 'babygo-events',
+    startedAt,
+    resultsCount: result.fetched,
+    newEvents: result.inserted,
+    errors: result.errors,
+  })
+
+  return result
+}
+
+function getTargetMonths(count: number): string[] {
+  const months: string[] = []
+  const now = new Date()
+  for (let i = 0; i < count; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1)
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    months.push(`${y}-${m}`)
+  }
+  return months
 }

@@ -107,7 +107,7 @@ export async function runSeoulEventsCollector(): Promise<SeoulEventsCollectorRes
     const today = new Date().toISOString().split('T')[0]
     const currentEvents = allEvents.filter((e) => {
       const startDate = parseSeoulDateTime(e.STRTDATE)
-      if (startDate && parseInt(startDate.substring(0, 4)) < currentYear) return false
+      if (startDate && parseInt(startDate.substring(0, 4)) < currentYear - 1) return false
       const endDate = parseSeoulDateTime(e.END_DATE)
       if (endDate && endDate < today) return false
       return true

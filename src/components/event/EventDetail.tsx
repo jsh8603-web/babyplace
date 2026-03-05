@@ -62,6 +62,18 @@ function formatDateRange(startDate: string, endDate: string | null): string {
   return `${formatDate(start)} ~ ${formatDate(end)}`
 }
 
+function getSourceLabel(source: string): { label: string; className: string } {
+  const map: Record<string, { label: string; className: string }> = {
+    tour_api: { label: 'Tour API', className: 'bg-indigo-50 text-indigo-500 border-indigo-200' },
+    seoul_events: { label: '서울시', className: 'bg-indigo-50 text-indigo-500 border-indigo-200' },
+    interpark: { label: '인터파크', className: 'bg-teal-50 text-teal-600 border-teal-200' },
+    babygo: { label: '베이비고', className: 'bg-teal-50 text-teal-600 border-teal-200' },
+    blog_discovery: { label: '블로그', className: 'bg-warm-50 text-warm-500 border-warm-200' },
+    exhibition_extraction: { label: '전시추출', className: 'bg-warm-50 text-warm-500 border-warm-200' },
+  }
+  return map[source] ?? { label: source, className: 'bg-warm-50 text-warm-500 border-warm-200' }
+}
+
 function getCategoryEmoji(category: string): string {
   const emojis: Record<string, string> = {
     '전시': '🖼️',
@@ -166,11 +178,19 @@ export default function EventDetail({
             </div>
           </div>
 
-          {/* Category + venue */}
+          {/* Category + source + venue */}
           <div className="flex items-center gap-2 mb-3 flex-wrap">
             <span className="text-[13px] font-medium text-warm-500 bg-warm-100 px-2 py-0.5 rounded-full">
               {event.category}
             </span>
+            {(() => {
+              const src = getSourceLabel(event.source)
+              return (
+                <span className={`text-[11px] font-medium px-1.5 py-0.5 rounded border ${src.className}`}>
+                  {src.label}
+                </span>
+              )
+            })()}
             {event.venue_name && (
               <span className="text-[13px] font-medium text-coral-600 bg-coral-50 px-2 py-0.5 rounded-full">
                 {event.venue_name}

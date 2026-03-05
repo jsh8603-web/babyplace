@@ -76,7 +76,7 @@ export async function prefetchIds(config: PrefetchConfig): Promise<Set<string>> 
     if (!data || data.length === 0) break
 
     for (const row of data) {
-      const val = (row as Record<string, unknown>)[config.column]
+      const val = (row as unknown as Record<string, unknown>)[config.column]
       if (val != null) ids.add(String(val))
     }
 

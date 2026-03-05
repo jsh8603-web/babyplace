@@ -49,7 +49,8 @@ import { flagIrrelevantPlaces } from './matchers/place-gate'
 import { runEventCleanup } from './utils/event-cleanup'
 import { runEventBlogSearch } from './collectors/event-blog-search'
 import { runFullBlogAudit } from './utils/blog-full-audit'
-import { runBabygoCollector } from './collectors/babygo'
+import { runBabygoCollector, fetchBabygoEvents } from './collectors/babygo'
+import { runInterparkCollector } from './collectors/interpark'
 import { runDataLabTrendDetection } from './keywords/datalab'
 import { initializeAllLimiters, flushAllLimiters } from './rate-limiter'
 import { supabaseAdmin } from './lib/supabase-admin'
@@ -113,6 +114,12 @@ async function main(): Promise<void> {
       case 'manual-babygo':
         console.log('[run] Manual mode — BabyGo collector')
         await runBabygoJob()
+        break
+
+      case 'manual-interpark':
+        console.log('[run] Manual mode — Interpark collector')
+        const interparkManualResult = await runInterparkCollector()
+        console.log('[run] Interpark result:', JSON.stringify(interparkManualResult, null, 2))
         break
 
       case 'manual-audit':
@@ -250,6 +257,16 @@ async function runEventsJob(): Promise<void> {
   const seoulResult = await runSeoulEventsCollector()
   console.log('[run] Seoul events result:', JSON.stringify(seoulResult, null, 2))
 
+  // Interpark Ticket family genre
+  console.log('[run] Running Interpark collector...')
+  const interparkResult = await runInterparkCollector()
+  console.log('[run] Interpark result:', JSON.stringify(interparkResult, null, 2))
+
+  // BabyGo Events API
+  console.log('[run] Running BabyGo events API...')
+  const babygoEvResult = await fetchBabygoEvents()
+  console.log('[run] BabyGo events result:', JSON.stringify(babygoEvResult, null, 2))
+
   // Exhibition event extraction (priority: 전시/체험 places first)
   console.log('[run] Running exhibition event extraction...')
   const exhibitionResult = await runExhibitionEventExtraction()
@@ -343,6 +360,11 @@ async function runBabygoJob(): Promise<void> {
   console.log('[run] === Weekly: BabyGo (애기야가자) place collector ===')
   const result = await runBabygoCollector()
   console.log('[run] BabyGo result:', JSON.stringify(result, null, 2))
+
+  // BabyGo Events API (also runs in daily eventsJob)
+  console.log('[run] Running BabyGo events API...')
+  const evResult = await fetchBabygoEvents()
+  console.log('[run] BabyGo events result:', JSON.stringify(evResult, null, 2))
 }
 
 async function runWeeklyAuditJob(resume = false): Promise<void> {

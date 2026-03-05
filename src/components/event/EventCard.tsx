@@ -40,6 +40,18 @@ function isRunning(startDate: string, endDate: string | null): boolean {
   return startDate <= today && (endDate === null || endDate >= today)
 }
 
+function getSourceLabel(source: string): { label: string; className: string } {
+  const map: Record<string, { label: string; className: string }> = {
+    tour_api: { label: 'Tour API', className: 'bg-indigo-50 text-indigo-500 border-indigo-200' },
+    seoul_events: { label: '서울시', className: 'bg-indigo-50 text-indigo-500 border-indigo-200' },
+    interpark: { label: '인터파크', className: 'bg-teal-50 text-teal-600 border-teal-200' },
+    babygo: { label: '베이비고', className: 'bg-teal-50 text-teal-600 border-teal-200' },
+    blog_discovery: { label: '블로그', className: 'bg-warm-50 text-warm-500 border-warm-200' },
+    exhibition_extraction: { label: '전시추출', className: 'bg-warm-50 text-warm-500 border-warm-200' },
+  }
+  return map[source] ?? { label: source, className: 'bg-warm-50 text-warm-500 border-warm-200' }
+}
+
 function getCategoryColor(category: string): string {
   const colors: Record<string, string> = {
     '전시': 'bg-purple-100 text-purple-700',
@@ -98,8 +110,8 @@ export default function EventCard({ event, onClick, onHide, isSelected, distance
           {event.name}
         </h3>
 
-        {/* Category + status + distance badges */}
-        <div className="flex items-center gap-2 mb-3 flex-wrap">
+        {/* Category + source + status + distance badges */}
+        <div className="flex items-center gap-1.5 mb-3 flex-wrap">
           <span
             className={`text-[12px] font-semibold px-2 py-0.5 rounded-full ${getCategoryColor(
               event.sub_category || event.category
@@ -107,6 +119,16 @@ export default function EventCard({ event, onClick, onHide, isSelected, distance
           >
             {event.sub_category || event.category}
           </span>
+
+          {/* Source badge */}
+          {(() => {
+            const src = getSourceLabel(event.source)
+            return (
+              <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded border ${src.className}`}>
+                {src.label}
+              </span>
+            )
+          })()}
 
           {/* Running badge */}
           {event.start_date && isRunning(event.start_date, event.end_date) && (

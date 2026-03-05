@@ -477,7 +477,7 @@ async function validateAndInsert(
   // Skip events from past years or already ended
   const currentYear = new Date().getFullYear()
   const today = new Date().toISOString().split('T')[0]
-  if (startDate && parseInt(startDate.substring(0, 4)) < currentYear) {
+  if (startDate && parseInt(startDate.substring(0, 4)) < currentYear - 1) {
     result.duplicatesSkipped++
     return
   }
@@ -596,7 +596,7 @@ const POSTER_BLOCKED_DOMAINS = [
   'overseas.mofa.go.kr', 'www.traveli.co.kr', 'www.youthnavi.net',
   'pds.saramin.co.kr', 'ldb-phinf.pstatic.net', 'dbscthumb-phinf.pstatic.net',
   'lh7-rt.googleusercontent.com',
-  'scontent-nrt1-2.cdninstagram.com', 'scontent-nrt1-1.cdninstagram.com',
+  'cdninstagram.com',  // all instagram CDN variants
   'inaturalist-open-data.s3.amazonaws.com',
   'gall-img.com', '3.gall-img.com',
   'image.slidesharecdn.com', 'cdn.class101.net', 'cdn.crowdpic.net',
@@ -610,6 +610,9 @@ const POSTER_BLOCKED_DOMAINS = [
   'influencer-phinf.pstatic.net', 'www.bucheonphil.or.kr',
   'www.forest.go.kr', 't1.daumcdn.net/cafeattach',
   'search.pstatic.net/common', 'www.idfac.or.kr',
+  // R23: site logos found as og:images
+  'img.designhouse.co.kr', 'pngegg.com',
+  'play-lh.googleusercontent.com', 'lh3.googleusercontent.com',
 ]
 
 /**
@@ -641,6 +644,9 @@ const OG_IMAGE_BLOCKLIST = [
   '/common/img/', 'share_img', 'shareImg', 'back_img',
   '/images/common/', 'ticketlink_rebranding', 'defaultMobileBanner',
   'defaultBanner', 'tketlink.dn.toastoven.net/static',
+  // R23: generic og:image patterns (site logos)
+  'og_image', 'og_img', 'ogimage', 'meta_img',
+  'sns_sImg', '_meta2', '/templete/', '/include/image/common/',
 ]
 
 function cleanEventName(name: string): string {
@@ -720,7 +726,7 @@ interface PosterCandidate {
   link: string
   width: number
   height: number
-  source: 'og:image' | 'naver_image' | 'web_og:image'
+  source: 'og:image' | 'naver_image' | 'web_og:image' | 'current'
 }
 
 function preFilterImages(images: NaverImageItem[]): PosterCandidate[] {
@@ -751,7 +757,7 @@ function hasStaleYear(url: string): boolean {
   if (!yearMatches) return false
   return yearMatches.some((m) => {
     const year = parseInt(m.replace(/\//g, ''))
-    return year < currentYear
+    return year < currentYear - 1
   })
 }
 
@@ -807,9 +813,9 @@ function selectBestPoster(images: NaverImageItem[], eventName: string, venueName
         const urlYearMatch = img.link.match(/\/(20\d{2})\//)
         const urlYear = urlYearMatch ? parseInt(urlYearMatch[1]) : 0
         const currentYear = new Date().getFullYear()
-        if (titleRelevance >= 0.5 && urlYear >= currentYear) {
+        if (titleRelevance >= 0.5 && urlYear >= currentYear - 1) {
           score += 5
-        } else if (titleRelevance < 0.3 || urlYear < currentYear) {
+        } else if (titleRelevance < 0.3 || urlYear < currentYear - 1) {
           score -= 15
         }
       }
@@ -923,11 +929,25 @@ async function collectPosterCandidates(
 export async function selectPosterWithLLM(
   candidates: PosterCandidate[],
   eventName: string,
-  venueName?: string
+  venueName?: string,
+  currentPosterUrl?: string | null
 ): Promise<string | null> {
-  if (candidates.length === 0) return null
+  // R24: Include current poster as candidate with [현재] tag
+  const allInput = [...candidates]
+  if (currentPosterUrl && !candidates.some(c => c.link === currentPosterUrl)) {
+    let currentDomain = ''
+    try { currentDomain = new URL(currentPosterUrl).hostname } catch { /* */ }
+    allInput.unshift({
+      title: `[현재 DB 포스터] ${currentDomain}`,
+      link: currentPosterUrl,
+      width: 0, height: 0,
+      source: 'current' as PosterCandidate['source'],
+    })
+  }
 
-  const allCandidates = candidates.slice(0, 15).map((img, i) => {
+  if (allInput.length === 0) return null
+
+  const allCandidates = allInput.slice(0, 15).map((img, i) => {
     let domain = ''
     try { domain = new URL(img.link).hostname } catch { domain = 'unknown' }
     const trusted = isTrusted(img.link)
@@ -942,12 +962,16 @@ export async function selectPosterWithLLM(
   const prompt = `이벤트 "${eventName}"${venueName ? ` (장소: ${venueName})` : ''}의 포스터를 선택하세요.
 
 판단 순서:
-1. [공식] 표시 후보 → source_url 또는 공식 페이지 이미지. 최우선 선택.
-2. [신뢰] 표시 후보 → 예매/문화포털 공식 포스터.
+1. [현재] 표시 후보 → 현재 DB에 저장된 공식 API 포스터. 다른 후보가 명확히 더 나은 경우에만 교체.
+   "명확히 더 나은" = 이벤트명이 정확히 일치하는 공식 포스터 또는 이벤트 전용 이미지.
+   뉴스 기사 이미지, 블로그 이미지, 유사 키워드만 매칭되는 이미지는 [현재]보다 낫지 않음.
+2. [공식] 표시 후보 → source_url 또는 공식 페이지에서 직접 가져온 이벤트 전용 이미지.
+   단, 사이트 로고/기본 이미지가 아닌 실제 이벤트 콘텐츠 이미지만.
+3. [신뢰] 표시 후보 → 예매/문화포털 공식 포스터.
    단, yes24/interpark 상품이 도서·음반 표지인 경우 제외 (공연 포스터만).
-3. 이벤트명 핵심 키워드가 제목에 포함된 이미지 (뉴스 보도 허용).
-4. 같은 IP/브랜드의 다른 행사 포스터도 허용.
-5. 후보 모두 이벤트명과 완전히 무관하면 → 0.
+4. 이벤트명 핵심 키워드가 제목에 포함된 이미지 (뉴스 보도 허용).
+5. 같은 IP/브랜드의 다른 행사 포스터도 허용.
+6. 후보 모두 이벤트명과 완전히 무관하면 → 0.
 
 중요: 같은 제목/IP의 공연·전시 순회공연은 다른 공연장이어도 허용.
 단, 완전히 다른 행사(다른 지역 유사 테마)는 제외.
@@ -960,7 +984,7 @@ export async function selectPosterWithLLM(
 
 후보:
 ${allCandidates.map((c) => {
-  const tag = c.source === 'og:image' ? '[공식]' : c.trusted ? '[신뢰]' : ''
+  const tag = c.source === 'current' ? '[현재]' : c.source === 'og:image' ? '[공식]' : c.trusted ? '[신뢰]' : ''
   const size = c.w > 0 ? ` (${c.w}×${c.h})` : ''
   return `${c.idx}. ${tag} [${c.domain}] "${c.title}"${size}`
 }).join('\n')}
