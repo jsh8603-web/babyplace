@@ -1,0 +1,408 @@
+[2m[WebServer] [22m [33m[1m⚠[22m[39m Port 3000 is in use by process 19652, using available port 3001 instead.
+
+Running 76 tests using 4 workers
+
+  ✓   4 [chromium] › e2e\phase2-modules-def.spec.ts:44:7 › Module D: User Pages & Authentication › GET /api/profile — unauthenticated returns 401 (653ms)
+  ✘   2 [chromium] › e2e\phase1-api.spec.ts:35:7 › API Routes — Module B › GET /api/places — bbox query returns places array (764ms)
+  ✓   5 [chromium] › e2e\phase2-modules-def.spec.ts:58:7 › Module D: User Pages & Authentication › GET /api/profile — successful response structure (6ms)
+  ✓   6 [chromium] › e2e\phase2-modules-def.spec.ts:84:7 › Module D: User Pages & Authentication › PATCH /api/profile — empty display_name returns 400 (41ms)
+  ✓   7 [chromium] › e2e\phase2-modules-def.spec.ts:97:7 › Module D: User Pages & Authentication › PATCH /api/profile — display_name > 50 chars returns 400 (15ms)
+  ✓   8 [chromium] › e2e\phase2-modules-def.spec.ts:111:7 › Module D: User Pages & Authentication › PATCH /api/profile — unauthenticated returns 401 (25ms)
+  ✓  10 [chromium] › e2e\phase1-api.spec.ts:54:7 › API Routes — Module B › GET /api/places — missing bbox parameters returns 400 (50ms)
+  ✘  11 [chromium] › e2e\phase1-api.spec.ts:68:7 › API Routes — Module B › GET /api/places — pagination with cursor (33ms)
+  ✓   1 [chromium] › e2e\phase2-scoring-events.spec.ts:15:7 › Module G - Scoring & Density › API endpoints should be defined and handle requests (1.8s)
+  ✓  13 [chromium] › e2e\phase2-scoring-events.spec.ts:31:7 › Module G - Scoring & Density › Scoring formula components should be valid (0.35+0.25+0.25+0.15=1.0) (1ms)
+  ✓  14 [chromium] › e2e\phase2-scoring-events.spec.ts:44:7 › Module G - Scoring & Density › Bayesian constant calculation should use 25th percentile (0ms)
+  ✓  15 [chromium] › e2e\phase2-scoring-events.spec.ts:56:7 › Module G - Scoring & Density › Recency exponential decay formula exp(-days/180) (4ms)
+  ✓  16 [chromium] › e2e\phase2-scoring-events.spec.ts:70:7 › Module G - Scoring & Density › Density control: Top-20 per district (1ms)
+  ✓  17 [chromium] › e2e\phase2-scoring-events.spec.ts:76:7 › Module G - Scoring & Density › Auto-promote: Public data sources should be recognized (2ms)
+  ✓  18 [chromium] › e2e\phase2-scoring-events.spec.ts:87:7 › Module G - Scoring & Density › Auto-deactivate: Category-specific TTL (1ms)
+  ✓  19 [chromium] › e2e\phase2-scoring-events.spec.ts:112:7 › Module I - Event UI › EventCard should render with all optional fields (43ms)
+  ✘  12 [chromium] › e2e\phase1-api.spec.ts:109:7 › API Routes — Module B › GET /api/places — filter by category (1.3s)
+  ✓  20 [chromium] › e2e\phase2-scoring-events.spec.ts:141:7 › Module I - Event UI › Event pagination cursor should be base64 encoded (1.0s)
+  ✓  21 [chromium] › e2e\phase2-scoring-events.spec.ts:161:7 › Integration - Module G + I › Main page route should exist in Next.js build (1ms)
+  ✓  22 [chromium] › e2e\phase2-scoring-events.spec.ts:175:7 › Integration - Module G + I › Events tab component should be defined and exported (1ms)
+  ✓  23 [chromium] › e2e\phase2-scoring-events.spec.ts:181:7 › Integration - Module G + I › TypeScript compilation should succeed with no errors (0ms)
+  ✓  24 [chromium] › e2e\phase2-scoring-events.spec.ts:187:7 › Integration - Module G + I › All event UI routes should be generated (65ms)
+  ✓  25 [chromium] › e2e\phase2-scoring-events.spec.ts:204:7 › Module G + I - Performance › React Query cache stale times configured correctly (1ms)
+  ✓  26 [chromium] › e2e\phase2-scoring-events.spec.ts:214:7 › Module G + I - Performance › Verification badge should use 1-hour cache (48ms)
+  ✓  27 [chromium] › e2e\phase2-scoring-events.spec.ts:222:7 › Module G + I - Performance › Seasonal curation should cache events for 1 hour (42ms)
+  ✘  28 [chromium] › e2e\phase1-api.spec.ts:133:7 › API Routes — Module B › GET /api/places — filter by tags (facilities) (48ms)
+  ✘  29 [chromium] › e2e\phase1-api.spec.ts:158:7 › API Routes — Module B › GET /api/places — distance sort with user location (89ms)
+  ✓   9 [chromium] › e2e\phase2-modules-def.spec.ts:123:7 › Module D: User Pages & Authentication › GET /favorites — protected route (redirects to login) (5.5s)
+  ✓   3 [chromium] › e2e\phase1-ui.spec.ts:11:7 › Phase 1 — UI Components (Module A) › Home page loads with main route (5.6s)
+  ✓  30 [chromium] › e2e\phase2-modules-def.spec.ts:137:7 › Module D: User Pages & Authentication › GET /favorites — page structure validates (874ms)
+  ✘  33 [chromium] › e2e\phase1-api.spec.ts:206:7 › API Routes — Module B › GET /api/places/[id] — returns place with top 5 posts (54ms)
+  ✓  32 [chromium] › e2e\phase2-modules-def.spec.ts:153:7 › Module D: User Pages & Authentication › GET /profile — page loads with header (743ms)
+  ✓  35 [chromium] › e2e\phase1-api.spec.ts:251:7 › API Routes — Module B › GET /api/places/[id] — invalid id returns 400 (63ms)
+  ✘  36 [chromium] › e2e\phase1-api.spec.ts:258:7 › API Routes — Module B › GET /api/places/[id] — nonexistent place returns 404 (33ms)
+  ✓  34 [chromium] › e2e\phase2-modules-def.spec.ts:162:7 › Module D: User Pages & Authentication › GET /profile — buttons and form elements present (718ms)
+  ✓  37 [chromium] › e2e\phase2-modules-def.spec.ts:174:7 › Module D: User Pages & Authentication › GET /profile — edit form structure (544ms)
+  ✓  38 [chromium] › e2e\phase2-modules-def.spec.ts:214:7 › Module E: Public Data Collectors › public-data.ts — runPublicDataResult type structure (9ms)
+  ✓  39 [chromium] › e2e\phase2-modules-def.spec.ts:242:7 › Module E: Public Data Collectors › localdata.ts — LocalDataResult type structure (1ms)
+  ✓  40 [chromium] › e2e\phase2-modules-def.spec.ts:262:7 › Module E: Public Data Collectors › Region validation — Seoul/Gyeonggi coordinate bounds (2ms)
+  ✓  41 [chromium] › e2e\phase2-modules-def.spec.ts:282:7 › Module E: Public Data Collectors › District code enrichment — district field mapping (11ms)
+  ✓  42 [chromium] › e2e\phase2-modules-def.spec.ts:308:7 › Module E: Public Data Collectors › collection_logs — record structure validation (3ms)
+  ✓  43 [chromium] › e2e\phase2-modules-def.spec.ts:349:7 › Module F: Event Collectors & Scheduling › kopis.ts — KOPISCollectorResult type structure (1ms)
+  ✓  44 [chromium] › e2e\phase2-modules-def.spec.ts:367:7 › Module F: Event Collectors & Scheduling › tour-api.ts — TourAPICollectorResult type structure (1ms)
+  ✓  45 [chromium] › e2e\phase2-modules-def.spec.ts:385:7 › Module F: Event Collectors & Scheduling › seoul-events.ts — SeoulEventsCollectorResult type structure (4ms)
+  ✓  46 [chromium] › e2e\phase2-modules-def.spec.ts:403:7 › Module F: Event Collectors & Scheduling › event-dedup.ts — EventDeduplicationResult type structure (1ms)
+  ✓  47 [chromium] › e2e\phase2-modules-def.spec.ts:419:7 › Module F: Event Collectors & Scheduling › Event collection cron — runs at 19:00 UTC (04:00 KST) (1ms)
+  ✓  48 [chromium] › e2e\phase2-modules-def.spec.ts:436:7 › Module F: Event Collectors & Scheduling › Event deduplication — name similarity detection (1ms)
+  ✓  49 [chromium] › e2e\phase2-modules-def.spec.ts:455:7 › Module F: Event Collectors & Scheduling › Event deduplication — date overlap detection (1ms)
+  ✓  50 [chromium] › e2e\phase2-modules-def.spec.ts:489:7 › Integration Tests — Cross-Module › All event collector result types follow consistent pattern (3ms)
+  ✓  51 [chromium] › e2e\phase2-modules-def.spec.ts:504:7 › Integration Tests — Cross-Module › All place collector result types follow consistent pattern (1ms)
+  ✓  52 [chromium] › e2e\phase2-modules-def.spec.ts:537:7 › Integration Tests — Cross-Module › collection_logs table structure is correct (2ms)
+  ✓  53 [chromium] › e2e\phase2-modules-def.spec.ts:565:7 › Build Output › All routes are configured in production build (214ms)
+  ✘  54 [chromium] › e2e\phase1-api.spec.ts:265:7 › API Routes — Module B › GET /api/weather — returns weather data (223ms)
+  ✓  55 [chromium] › e2e\phase1-api.spec.ts:283:7 › API Routes — Module B › GET /api/weather — missing lat/lng returns 400 (34ms)
+  ✘  56 [chromium] › e2e\phase1-api.spec.ts:296:7 › API Routes — Module B › GET /api/places/emergency — returns nearest 5 facilities (225ms)
+  ✓  31 [chromium] › e2e\phase1-ui.spec.ts:24:7 › Phase 1 — UI Components (Module A) › Map renders or shows error fallback (4.9s)
+  ✓  58 [chromium] › e2e\phase1-api.spec.ts:319:7 › API Routes — Module B › GET /api/places/emergency — missing lat/lng returns 400 (35ms)
+  ✓  59 [chromium] › e2e\phase1-api.spec.ts:332:7 › API Routes — Module B › GET /api/places/emergency — invalid type returns 400 (14ms)
+  ✓  60 [chromium] › e2e\phase1-api.spec.ts:346:7 › API Routes — Module B › POST /api/favorites — unauthenticated returns 401 (307ms)
+  ✓  61 [chromium] › e2e\phase1-api.spec.ts:358:7 › API Routes — Module B › POST /api/favorites — missing both placeId and eventId returns 400 (25ms)
+  ✓  62 [chromium] › e2e\phase1-api.spec.ts:367:7 › API Routes — Module B › POST /api/favorites — providing both placeId and eventId returns 400 (25ms)
+  ✓  63 [chromium] › e2e\phase1-api.spec.ts:384:7 › Integration Tests — UI + API › Home page loads and displays map (590ms)
+  ✓  64 [chromium] › e2e\phase1-api.spec.ts:395:7 › Integration Tests — UI + API › Clicking filter button triggers API call (474ms)
+  ✓  65 [chromium] › e2e\phase1-api.spec.ts:418:7 › Integration Tests — UI + API › Clicking place card navigates to detail page (490ms)
+  -  66 [chromium] › e2e\phase1-api.spec.ts:434:7 › Integration Tests — UI + API › Favorite button toggles favorite state
+  ✘  67 [chromium] › e2e\phase1-api.spec.ts:449:7 › Integration Tests — UI + API › Weather filter updates visible places (1.4s)
+  ✘  57 [chromium] › e2e\phase1-ui.spec.ts:50:7 › Phase 1 — UI Components (Module A) › BottomSheet snap points responsive (5.8s)
+  ✘  68 [chromium] › e2e\phase1-api.spec.ts:481:7 › Integration Tests — UI + API › Emergency mode shows nearest nursing rooms (676ms)
+  ✘  70 [chromium] › e2e\phase1-api.spec.ts:506:7 › API Response Schema Validation › GET /api/places — response schema (48ms)
+  ✓  69 [chromium] › e2e\phase1-ui.spec.ts:69:7 › Phase 1 — UI Components (Module A) › CategoryChips toggle multi-select (1.5s)
+  ✘  72 [chromium] › e2e\phase1-api.spec.ts:532:7 › API Response Schema Validation › GET /api/places/[id] — response schema (56ms)
+  ✘  73 [chromium] › e2e\phase1-api.spec.ts:570:7 › API Response Schema Validation › GET /api/weather — response schema (316ms)
+  ✓  71 [chromium] › e2e\phase1-ui.spec.ts:114:7 › Phase 1 — UI Components (Module A) › FilterPanel opens and closes (2.0s)
+  ✓  74 [chromium] › e2e\phase1-ui.spec.ts:149:7 › Phase 1 — UI Components (Module A) › BottomNav tabs clickable with active state (738ms)
+  ✘  76 [chromium] › e2e\phase1-api.spec.ts:585:7 › API Response Schema Validation › GET /api/places/emergency — response schema (52ms)
+  ✘  75 [chromium] › e2e\phase1-ui.spec.ts:191:7 › Phase 1 — UI Components (Module A) › Page handles initial load without crashes (7.6s)
+
+
+  1) [chromium] › e2e\phase1-api.spec.ts:35:7 › API Routes — Module B › GET /api/places — bbox query returns places array 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoBe[2m([22m[32mexpected[39m[2m) // Object.is equality[22m
+
+    Expected: [32m200[39m
+    Received: [31m500[39m
+
+      44 |     })
+      45 |
+    > 46 |     expect(response.status()).toBe(200)
+         |                               ^
+      47 |     const data = await response.json()
+      48 |     expect(data).toHaveProperty('places')
+      49 |     expect(data).toHaveProperty('nextCursor')
+        at D:\projects\babyplace\e2e\phase1-api.spec.ts:46:31
+
+  2) [chromium] › e2e\phase1-api.spec.ts:68:7 › API Routes — Module B › GET /api/places — pagination with cursor 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoBe[2m([22m[32mexpected[39m[2m) // Object.is equality[22m
+
+    Expected: [32m200[39m
+    Received: [31m500[39m
+
+      79 |     })
+      80 |
+    > 81 |     expect(response1.status()).toBe(200)
+         |                                ^
+      82 |     const page1 = await response1.json()
+      83 |     expect(page1.places.length).toBeLessThanOrEqual(5)
+      84 |
+        at D:\projects\babyplace\e2e\phase1-api.spec.ts:81:32
+
+  3) [chromium] › e2e\phase1-api.spec.ts:109:7 › API Routes — Module B › GET /api/places — filter by category 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoBe[2m([22m[32mexpected[39m[2m) // Object.is equality[22m
+
+    Expected: [32m200[39m
+    Received: [31m500[39m
+
+      119 |     })
+      120 |
+    > 121 |     expect(response.status()).toBe(200)
+          |                               ^
+      122 |     const data = await response.json()
+      123 |     expect(Array.isArray(data.places)).toBe(true)
+      124 |     // If places returned, verify category filter applied
+        at D:\projects\babyplace\e2e\phase1-api.spec.ts:121:31
+
+  4) [chromium] › e2e\phase1-api.spec.ts:133:7 › API Routes — Module B › GET /api/places — filter by tags (facilities) 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoBe[2m([22m[32mexpected[39m[2m) // Object.is equality[22m
+
+    Expected: [32m200[39m
+    Received: [31m500[39m
+
+      143 |     })
+      144 |
+    > 145 |     expect(response.status()).toBe(200)
+          |                               ^
+      146 |     const data = await response.json()
+      147 |     expect(Array.isArray(data.places)).toBe(true)
+      148 |     // If places returned, verify tags filter applied
+        at D:\projects\babyplace\e2e\phase1-api.spec.ts:145:31
+
+  5) [chromium] › e2e\phase1-api.spec.ts:158:7 › API Routes — Module B › GET /api/places — distance sort with user location 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoBe[2m([22m[32mexpected[39m[2m) // Object.is equality[22m
+
+    Expected: [32m200[39m
+    Received: [31m500[39m
+
+      170 |     })
+      171 |
+    > 172 |     expect(response.status()).toBe(200)
+          |                               ^
+      173 |     const data = await response.json()
+      174 |     expect(Array.isArray(data.places)).toBe(true)
+      175 |     
+        at D:\projects\babyplace\e2e\phase1-api.spec.ts:172:31
+
+  6) [chromium] › e2e\phase1-api.spec.ts:206:7 › API Routes — Module B › GET /api/places/[id] — returns place with top 5 posts 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoBe[2m([22m[32mexpected[39m[2m) // Object.is equality[22m
+
+    Expected: [32m200[39m
+    Received: [31m500[39m
+
+      216 |     })
+      217 |
+    > 218 |     expect(placesResponse.status()).toBe(200)
+          |                                     ^
+      219 |     const placesData = await placesResponse.json()
+      220 |
+      221 |     if (placesData.places.length === 0) {
+        at D:\projects\babyplace\e2e\phase1-api.spec.ts:218:37
+
+  7) [chromium] › e2e\phase1-api.spec.ts:258:7 › API Routes — Module B › GET /api/places/[id] — nonexistent place returns 404 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoBe[2m([22m[32mexpected[39m[2m) // Object.is equality[22m
+
+    Expected: [32m404[39m
+    Received: [31m500[39m
+
+      258 |   test('GET /api/places/[id] — nonexistent place returns 404', async ({ request }) => {
+      259 |     const response = await request.get('/api/places/999999')
+    > 260 |     expect(response.status()).toBe(404)
+          |                               ^
+      261 |     const data = await response.json()
+      262 |     expect(data).toHaveProperty('error')
+      263 |   })
+        at D:\projects\babyplace\e2e\phase1-api.spec.ts:260:31
+
+  8) [chromium] › e2e\phase1-api.spec.ts:265:7 › API Routes — Module B › GET /api/weather — returns weather data 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoBe[2m([22m[32mexpected[39m[2m) // Object.is equality[22m
+
+    Expected: [32m200[39m
+    Received: [31m502[39m
+
+      271 |     })
+      272 |
+    > 273 |     expect(response.status()).toBe(200)
+          |                               ^
+      274 |     const data = await response.json()
+      275 |     expect(data).toHaveProperty('isRaining')
+      276 |     expect(data).toHaveProperty('temperature')
+        at D:\projects\babyplace\e2e\phase1-api.spec.ts:273:31
+
+  9) [chromium] › e2e\phase1-api.spec.ts:296:7 › API Routes — Module B › GET /api/places/emergency — returns nearest 5 facilities 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoBe[2m([22m[32mexpected[39m[2m) // Object.is equality[22m
+
+    Expected: [32m200[39m
+    Received: [31m500[39m
+
+      303 |     })
+      304 |
+    > 305 |     expect(response.status()).toBe(200)
+          |                               ^
+      306 |     const data = await response.json()
+      307 |     expect(data).toHaveProperty('places')
+      308 |     expect(Array.isArray(data.places)).toBe(true)
+        at D:\projects\babyplace\e2e\phase1-api.spec.ts:305:31
+
+  10) [chromium] › e2e\phase1-api.spec.ts:449:7 › Integration Tests — UI + API › Weather filter updates visible places 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoBe[2m([22m[32mexpected[39m[2m) // Object.is equality[22m
+
+    Expected: [32mtrue[39m
+    Received: [31mfalse[39m
+
+      459 |     })
+      460 |
+    > 461 |     expect(weatherResponse.ok()).toBe(true)
+          |                                  ^
+      462 |     const weatherData = await weatherResponse.json()
+      463 |     
+      464 |     if (weatherData.isRaining) {
+        at D:\projects\babyplace\e2e\phase1-api.spec.ts:461:34
+
+    Error Context: test-results\phase1-api-Integration-Tes-413f2-lter-updates-visible-places-chromium\error-context.md
+
+  11) [chromium] › e2e\phase1-api.spec.ts:481:7 › Integration Tests — UI + API › Emergency mode shows nearest nursing rooms 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoBe[2m([22m[32mexpected[39m[2m) // Object.is equality[22m
+
+    Expected: [32mtrue[39m
+    Received: [31mfalse[39m
+
+      492 |     })
+      493 |
+    > 494 |     expect(emergencyResponse.ok()).toBe(true)
+          |                                    ^
+      495 |     const emergencyData = await emergencyResponse.json()
+      496 |     expect(emergencyData.places).toBeDefined()
+      497 |     expect(Array.isArray(emergencyData.places)).toBe(true)
+        at D:\projects\babyplace\e2e\phase1-api.spec.ts:494:36
+
+    Error Context: test-results\phase1-api-Integration-Tes-ef02e-shows-nearest-nursing-rooms-chromium\error-context.md
+
+  12) [chromium] › e2e\phase1-api.spec.ts:506:7 › API Response Schema Validation › GET /api/places — response schema 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoEqual[2m([22m[32mexpected[39m[2m) // deep equality[22m
+
+    [32m- Expected  - 2[39m
+    [31m+ Received  + 1[39m
+
+    [2m  Array [[22m
+    [32m-   "nextCursor",[39m
+    [32m-   "places",[39m
+    [31m+   "error",[39m
+    [2m  ][22m
+
+      518 |     
+      519 |     // Check top-level keys
+    > 520 |     expect(Object.keys(data).sort()).toEqual(['nextCursor', 'places'].sort())
+          |                                      ^
+      521 |
+      522 |     // Check places array structure
+      523 |     if (data.places.length > 0) {
+        at D:\projects\babyplace\e2e\phase1-api.spec.ts:520:38
+
+  13) [chromium] › e2e\phase1-api.spec.ts:532:7 › API Response Schema Validation › GET /api/places/[id] — response schema 
+
+    TypeError: Cannot read properties of undefined (reading 'length')
+
+      543 |
+      544 |     const placesData = await placesResponse.json()
+    > 545 |     if (placesData.places.length === 0) {
+          |                           ^
+      546 |       test.skip()
+      547 |     }
+      548 |
+        at D:\projects\babyplace\e2e\phase1-api.spec.ts:545:27
+
+  14) [chromium] › e2e\phase1-api.spec.ts:570:7 › API Response Schema Validation › GET /api/weather — response schema 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoEqual[2m([22m[32mexpected[39m[2m) // deep equality[22m
+
+    [32m- Expected  - 3[39m
+    [31m+ Received  + 1[39m
+
+    [2m  Array [[22m
+    [32m-   "description",[39m
+    [32m-   "isRaining",[39m
+    [32m-   "temperature",[39m
+    [31m+   "error",[39m
+    [2m  ][22m
+
+      577 |
+      578 |     const data = await response.json()
+    > 579 |     expect(Object.keys(data).sort()).toEqual(['description', 'isRaining', 'temperature'].sort())
+          |                                      ^
+      580 |     expect(typeof data.isRaining).toBe('boolean')
+      581 |     expect(typeof data.temperature).toBe('number')
+      582 |     expect(typeof data.description).toBe('string')
+        at D:\projects\babyplace\e2e\phase1-api.spec.ts:579:38
+
+  15) [chromium] › e2e\phase1-api.spec.ts:585:7 › API Response Schema Validation › GET /api/places/emergency — response schema 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoHaveProperty[2m([22m[32mpath[39m[2m)[22m
+
+    Expected path: [32m"places"[39m
+    Received path: [31m[][39m
+
+    Received value: [31m{"error": "Database query failed"}[39m
+
+      593 |
+      594 |     const data = await response.json()
+    > 595 |     expect(data).toHaveProperty('places')
+          |                  ^
+      596 |     expect(Array.isArray(data.places)).toBe(true)
+      597 |
+      598 |     if (data.places.length > 0) {
+        at D:\projects\babyplace\e2e\phase1-api.spec.ts:595:18
+
+  16) [chromium] › e2e\phase1-ui.spec.ts:50:7 › Phase 1 — UI Components (Module A) › BottomSheet snap points responsive 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: locator('[aria-label="장소 목록"]')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for locator('[aria-label="장소 목록"]')[22m
+
+
+      51 |     // Bottom sheet should be visible at default snap point
+      52 |     const bottomSheet = page.locator('[aria-label="장소 목록"]')
+    > 53 |     await expect(bottomSheet).toBeVisible()
+         |                               ^
+      54 |
+      55 |     // Check for draggable handle
+      56 |     const handle = page.locator('div.bg-warm-300.rounded-full').first()
+        at D:\projects\babyplace\e2e\phase1-ui.spec.ts:53:31
+
+    Error Context: test-results\phase1-ui-Phase-1-—-UI-Com-a5369-heet-snap-points-responsive-chromium\error-context.md
+
+  17) [chromium] › e2e\phase1-ui.spec.ts:191:7 › Phase 1 — UI Components (Module A) › Page handles initial load without crashes 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: locator('[aria-label="장소 목록"]')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for locator('[aria-label="장소 목록"]')[22m
+
+
+      223 |     const nav = page.locator('nav[aria-label="하단 탭 네비게이션"]')
+      224 |
+    > 225 |     await expect(bottomSheet).toBeVisible()
+          |                               ^
+      226 |     await expect(nav).toBeVisible()
+      227 |   })
+      228 | })
+        at D:\projects\babyplace\e2e\phase1-ui.spec.ts:225:31
+
+    Error Context: test-results\phase1-ui-Phase-1-—-UI-Com-2d8c8-nitial-load-without-crashes-chromium\error-context.md
+
+  17 failed
+    [chromium] › e2e\phase1-api.spec.ts:35:7 › API Routes — Module B › GET /api/places — bbox query returns places array 
+    [chromium] › e2e\phase1-api.spec.ts:68:7 › API Routes — Module B › GET /api/places — pagination with cursor 
+    [chromium] › e2e\phase1-api.spec.ts:109:7 › API Routes — Module B › GET /api/places — filter by category 
+    [chromium] › e2e\phase1-api.spec.ts:133:7 › API Routes — Module B › GET /api/places — filter by tags (facilities) 
+    [chromium] › e2e\phase1-api.spec.ts:158:7 › API Routes — Module B › GET /api/places — distance sort with user location 
+    [chromium] › e2e\phase1-api.spec.ts:206:7 › API Routes — Module B › GET /api/places/[id] — returns place with top 5 posts 
+    [chromium] › e2e\phase1-api.spec.ts:258:7 › API Routes — Module B › GET /api/places/[id] — nonexistent place returns 404 
+    [chromium] › e2e\phase1-api.spec.ts:265:7 › API Routes — Module B › GET /api/weather — returns weather data 
+    [chromium] › e2e\phase1-api.spec.ts:296:7 › API Routes — Module B › GET /api/places/emergency — returns nearest 5 facilities 
+    [chromium] › e2e\phase1-api.spec.ts:449:7 › Integration Tests — UI + API › Weather filter updates visible places 
+    [chromium] › e2e\phase1-api.spec.ts:481:7 › Integration Tests — UI + API › Emergency mode shows nearest nursing rooms 
+    [chromium] › e2e\phase1-api.spec.ts:506:7 › API Response Schema Validation › GET /api/places — response schema 
+    [chromium] › e2e\phase1-api.spec.ts:532:7 › API Response Schema Validation › GET /api/places/[id] — response schema 
+    [chromium] › e2e\phase1-api.spec.ts:570:7 › API Response Schema Validation › GET /api/weather — response schema 
+    [chromium] › e2e\phase1-api.spec.ts:585:7 › API Response Schema Validation › GET /api/places/emergency — response schema 
+    [chromium] › e2e\phase1-ui.spec.ts:50:7 › Phase 1 — UI Components (Module A) › BottomSheet snap points responsive 
+    [chromium] › e2e\phase1-ui.spec.ts:191:7 › Phase 1 — UI Components (Module A) › Page handles initial load without crashes 
+  1 skipped
+  58 passed (1.9m)
