@@ -1,0 +1,717 @@
+{
+  "round": 2,
+  "timestamp": "2026-03-05T03:14:12.170Z",
+  "results": [
+    {
+      "id": 8649,
+      "name": "1+1 이벤트",
+      "venue": "앤드엣 터프팅공방",
+      "source": "exhibition_extraction",
+      "currentPoster": "https://cdn.class101.net/images/ede51717-df00-43ff-b88e-54c17ac3cfc4/3840xauto.webp",
+      "llmPoster": null,
+      "llmReason": "no candidates after filter",
+      "searchQuery": "1+1 이벤트 포스터",
+      "candidateCount": 0,
+      "candidates": [],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8632,
+      "name": "LEE YOUNGJI 2.0",
+      "venue": "올림픽공원",
+      "source": "exhibition_extraction",
+      "currentPoster": null,
+      "llmPoster": "http://imgnews.naver.net/image/468/2026/02/08/0001215697_002_20260208131215865.png",
+      "llmReason": "이미지 제목에 이벤트명 '이영지 ‘2.0’'이 직접 포함되어 있으며, 뉴스 이미지라도 이벤트명이 포함되면 허용된다는 기준에 부합합니다.",
+      "searchQuery": "LEE YOUNGJI 2.0 포스터",
+      "candidateCount": 1,
+      "candidates": [
+        {
+          "title": "“와주세요X35” 이영지, 절박함 섞인 외침… 이영지 ‘2.0’ 무대 약속",
+          "link": "http://imgnews.naver.net/image/468/2026/02/08/0001215697_002_20260208131215865.png",
+          "domain": "imgnews.naver.net"
+        }
+      ],
+      "status": "new_poster"
+    },
+    {
+      "id": 8674,
+      "name": "가회만사성 (嘉會萬師成)",
+      "venue": "가회민화박물관",
+      "source": "exhibition_extraction",
+      "currentPoster": "https://image.yes24.com/goods/125270831/XL",
+      "llmPoster": null,
+      "llmReason": "제시된 이미지 후보 중 이벤트명 \"가회만사성\"이 이미지 제목에 직접 포함된 공식 포스터 또는 대표 홍보 이미지가 없습니다. 모든 후보는 박물관 자체에 대한 정보이거나 다른 특정 전시회/이벤트에 대한 이미지입니다.",
+      "searchQuery": "가회만사성 (嘉會萬師成) 가회민화박물관",
+      "candidateCount": 6,
+      "candidates": [
+        {
+          "title": "가회민화박물관 - 나무위키 가회민화박물관",
+          "link": "https://i.namu.wiki/i/y7vduCQ9MB72pp4RuF0FT67HpxOVhb0zYqfC3Nj5ZXpLyNb1dWntftPlIoDr3znqIMB8sbH_b9_KCg_J0fFPRA.webp",
+          "domain": "i.namu.wiki"
+        },
+        {
+          "title": "가회민화박물관 - Google Play 앱",
+          "link": "https://play-lh.googleusercontent.com/dW0oNwA6bY-dz1VFzdn8aZXXqW7Wxjju38rCX5I-Sj9bBn339I08C5XVJAHKkavP2-8",
+          "domain": "play-lh.googleusercontent.com"
+        },
+        {
+          "title": "Gahoe Museum (가회민화박물관) - Culture - Korea travel and tourism information",
+          "link": "http://tong.visitkorea.or.kr/cms/resource/82/2550582_image2_1.jpg",
+          "domain": "tong.visitkorea.or.kr"
+        },
+        {
+          "title": "난솔 이정옥 가회민화박물관 초대전",
+          "link": "http://imgnews.naver.net/image/5364/2026/01/11/0001146193_001_20260111210614980.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "가회박물관 - 민화와 다도를 배울 수 있는 곳 - 사회과학 가회박물관 - 민화와 다도를 배울 수 있는 곳 대학레포트 사회과학",
+          "link": "https://image.reportshop.co.kr/newprimg/943/942089-0002.gif",
+          "domain": "image.reportshop.co.kr"
+        },
+        {
+          "title": "[중고샵] 익살과 재치 -꿈꾸는 우리민화-가회박물관 초청 민화특별전-248/250/18, 237쪽- - 예스24 [중고샵]익살과 재치 -꿈꾸는 우리민화...",
+          "link": "https://image.yes24.com/goods/125270831/XL",
+          "domain": "image.yes24.com"
+        }
+      ],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8662,
+      "name": "건강한 집밥의 회복 쿠킹 클래스",
+      "venue": "외할머니의 부엌",
+      "source": "exhibition_extraction",
+      "currentPoster": "http://t1.daumcdn.net/tvpot/thumb/s6756j3MQMbHrQbHI3bjLto/thumb.png?ts=1541778474",
+      "llmPoster": null,
+      "llmReason": "제시된 이미지 후보 중 이벤트명 '건강한 집밥의 회복 쿠킹 클래스'와 일치하는 공식 포스터 또는 대표 홍보 이미지가 없습니다. 후보 1은 '건강한 집밥' 키워드를 포함하지만, 'kakaoTV 건강한 집밥의 조건!'이라는 제목으로 보아 쿠킹 클래스 이벤트가 아닌 방송 프로그램의 썸네일로 판단됩니다. 후보 2는 '건강한 집밥의 안식처 | 세상의 모든 여행, 위시빈'이라는 제목으로 보아 여행 또는 장소 관련 이미지로, 쿠킹 클래스 이벤트와는 관련이 없습니다. 두 후보 모두 이벤트의 핵심 요소인 '회복 쿠킹 클래스'와는 직접적인 연관성이 부족하여 선택 기준에 부합하지 않습니다.",
+      "searchQuery": "건강한 집밥의 회복 쿠킹 클래스 포스터",
+      "candidateCount": 2,
+      "candidates": [
+        {
+          "title": "건강한 집밥의 조건! - kakaoTV 건강한 집밥의 조건!",
+          "link": "http://t1.daumcdn.net/tvpot/thumb/s6756j3MQMbHrQbHI3bjLto/thumb.png?ts=1541778474",
+          "domain": "t1.daumcdn.net"
+        },
+        {
+          "title": "건강한 집밥의 안식처 | 세상의 모든 여행, 위시빈",
+          "link": "https://thumb-wishbeen.akamaized.net/8Ifm8t1G4HQuQP8w5X__8fLccpU=/880x/smart/filters:no_upscale()/img-wishbeen.akamaized.net/post/1463979399314_%EC%9D%B5%EC%84%A0%EB%8F%99121_02.jpg",
+          "domain": "thumb-wishbeen.akamaized.net"
+        }
+      ],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8661,
+      "name": "관악구 국제 스페셜 뮤직&아트 페스티벌",
+      "venue": "관악산 호수공원",
+      "source": "exhibition_extraction",
+      "currentPoster": null,
+      "llmPoster": null,
+      "llmReason": "no candidates after filter",
+      "searchQuery": "관악구 국제 스페셜 뮤직&아트 페스티벌 포스터",
+      "candidateCount": 0,
+      "candidates": [],
+      "status": "both_empty"
+    },
+    {
+      "id": 8660,
+      "name": "관악산공원 신림계곡 물놀이장",
+      "venue": "관악산 호수공원",
+      "source": "exhibition_extraction",
+      "currentPoster": "https://t1.daumcdn.net/cafeattach/1Bswa/ca5b7361b609817ccf0f2986147da738fba65a69",
+      "llmPoster": null,
+      "llmReason": "no candidates after filter",
+      "searchQuery": "관악산공원 신림계곡 물놀이장 포스터",
+      "candidateCount": 0,
+      "candidates": [],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8639,
+      "name": "국중박 X 블랙핑크 프로젝트",
+      "venue": "국립중앙박물관",
+      "source": "exhibition_extraction",
+      "currentPoster": "http://imgnews.naver.net/image/003/2026/02/27/NISI20260227_0021189324_web_20260227085419_20260227085516838.jpg",
+      "llmPoster": "http://imgnews.naver.net/image/421/2026/02/27/0008798106_001_20260227150714759.jpg",
+      "llmReason": "이미지 제목이 이벤트명인 \"국중박 X 블랙핑크 프로젝트\"와 정확히 일치하며, 현장 사진이나 관련 없는 이미지에 해당하지 않아 공식 포스터 또는 대표 홍보 이미지로 가장 적합합니다.",
+      "searchQuery": "국중박 X 블랙핑크 프로젝트 포스터",
+      "candidateCount": 15,
+      "candidates": [
+        {
+          "title": "국중박 X 블랙핑크 프로젝트",
+          "link": "http://imgnews.naver.net/image/421/2026/02/27/0008798106_001_20260227150714759.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "국중박 X 블랙핑크 프로젝트",
+          "link": "http://imgnews.naver.net/image/421/2026/02/27/0008798113_001_20260227150735401.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "국중박 X 블랙핑크 프로젝트 기다리는 관람객들",
+          "link": "http://imgnews.naver.net/image/421/2026/02/27/0008798108_001_20260227150720388.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "국중박 X 블랙핑크 프로젝트 기다리는 관람객들",
+          "link": "http://imgnews.naver.net/image/421/2026/02/27/0008798109_001_20260227150723113.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "[포토] 국중박 X 블랙핑크 프로젝트 현장",
+          "link": "http://imgnews.naver.net/image/408/2026/02/27/0000299899_006_20260227200014709.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "[포토] 국중박 X 블랙핑크 프로젝트 현장",
+          "link": "http://imgnews.naver.net/image/408/2026/02/27/0000299899_007_20260227200014718.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "[포토] 국중박 X 블랙핑크 프로젝트 현장",
+          "link": "http://imgnews.naver.net/image/408/2026/02/27/0000299899_008_20260227200014730.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "'국중박 X 블랙핑크' 프로젝트",
+          "link": "http://imgnews.naver.net/image/003/2026/02/27/NISI20260227_0021189323_web_20260227085419_20260227085514294.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "'국중박 X 블랙핑크' 프로젝트",
+          "link": "http://imgnews.naver.net/image/003/2026/02/27/NISI20260227_0021189326_web_20260227085419_20260227085519515.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "'국중박 X 블랙핑크' 프로젝트",
+          "link": "http://imgnews.naver.net/image/003/2026/02/27/NISI20260227_0021189322_web_20260227085419_20260227085511817.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "'국중박 X 블랙핑크' 프로젝트",
+          "link": "http://imgnews.naver.net/image/003/2026/02/27/NISI20260227_0021189325_web_20260227085419_20260227085521886.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "국립중앙박물관에서 열리는 '국중박X블랙핑크' 프로젝트",
+          "link": "http://imgnews.naver.net/image/421/2026/02/26/0008796666_001_20260226202433717.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "국립중앙박물관에서 열리는 '국중박X블랙핑크' 프로젝트",
+          "link": "http://imgnews.naver.net/image/421/2026/02/26/0008796675_001_20260226202712380.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "블랙핑크, 국중박 컴백 프로젝트",
+          "link": "http://imgnews.naver.net/image/421/2026/02/26/0008796659_001_20260226202419177.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "[포토] 국중박 X 블랙핑크 프로젝트 현장",
+          "link": "http://imgnews.naver.net/image/408/2026/02/27/0000299899_001_20260227200014663.jpg",
+          "domain": "imgnews.naver.net"
+        }
+      ],
+      "status": "different"
+    },
+    {
+      "id": 8665,
+      "name": "도파민 하이프",
+      "venue": "김희수아트센터",
+      "source": "exhibition_extraction",
+      "currentPoster": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/bLhF/image/bFh_S_uzjq8N7mLpFUgOfJ2TR3I.jpg",
+      "llmPoster": null,
+      "llmReason": "제시된 이미지 후보 중 이벤트명 '도파민 하이프'와 이미지 제목이 직접적으로 일치하거나, 해당 이벤트를 대표하는 공식 포스터/홍보 이미지로 볼 수 있는 이미지가 없습니다. 대부분 '도파민'이라는 키워드만 포함하고 있으며, 스톡 이미지이거나 '도파민 중독' 등 다른 맥락의 콘텐츠 이미지입니다.",
+      "searchQuery": "도파민 하이프 포스터",
+      "candidateCount": 12,
+      "candidates": [
+        {
+          "title": "뇌 해부학적 포스터의 신경화학적 경로세로토닌, 도파민, 스톡 벡터(로열티 프리) 2067684905 | Shutterstock",
+          "link": "https://www.shutterstock.com/shutterstock/photos/2067684905/display_1500/stock-vector-neurochemical-pathway-in-the-brain-anatomical-poster-serotonin-dopamine-acetylcholine-and-2067684905.jpg",
+          "domain": "www.shutterstock.com"
+        },
+        {
+          "title": "생산적인 도파민 중독자가 되자",
+          "link": "https://cdn.maily.so/yoj1e6ya53czrpjycuk3a0bs3cip",
+          "domain": "cdn.maily.so"
+        },
+        {
+          "title": "도파민과 맞바꾼 수면건강..",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fpng/?fname=http://t1.daumcdn.net/brunch/service/user/9kxx/image/Gl2WTK2_UQBrn4NdnvSa7m9HlW4.png",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "이게 바로 도파민?",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fpng/?fname=http://t1.daumcdn.net/brunch/service/user/dvXo/image/8Bn3EgykxdoMSMcArl8PW3mATWM.png",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "재미있는 만화 스타일의 도파민 포스터. 호르몬 스톡 벡터(로열티 프리) 2547527039 | Shutterstock",
+          "link": "https://www.shutterstock.com/image-vector/dopamine-poster-funny-cartoon-style-600w-2547527039.jpg",
+          "domain": "www.shutterstock.com"
+        },
+        {
+          "title": "도파민 중독 (Dopamin Addiction)",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fpng/?fname=http://t1.daumcdn.net/brunch/service/user/5a2M/image/8gTk4_ORGcvxvZvY1gJY8z1Ee-g.png",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "도파민 과잉 시대에 성공의 열쇠는?",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fwebp/?fname=http://t1.daumcdn.net/brunch/service/user/3A6V/image/sh5uJwqK8imqGAQGuq8wHwElTEQ",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "에피소드 #10. 도파민 중독자",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fpng/?fname=http://t1.kakaocdn.net/brunch/service/user/ikSk/image/dvBty8WYzSJ5xAr3jcnKig9eCoQ.png",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "도파민 중독자는 광고대행사로 오세요.",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/2fCF/image/09eTysrQSC-SYPXh1NZ3Si6AFRY.jpg",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "[98호] 도파민에 중독된 사람들",
+          "link": "https://cdn.maily.so/202309/consalad/1694003148290489.png",
+          "domain": "cdn.maily.so"
+        },
+        {
+          "title": "도파민",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/8IRm/image/4LFc42Vt0O4ApxgzeMGmok8jFVU.jpg",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "새로운 도파민을 찾아서",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fpng/?fname=http://t1.daumcdn.net/brunch/service/user/5Hho/image/Q-YUqCrOgXUbPDFvoiiMWyxDvk4.png",
+          "domain": "img1.daumcdn.net"
+        }
+      ],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8636,
+      "name": "머그컵 만들기 체험",
+      "venue": "잔아문학박물관",
+      "source": "exhibition_extraction",
+      "currentPoster": "http://imgnews.naver.net/image/5693/2026/01/08/0000100589_001_20260108170415467.jpg",
+      "llmPoster": null,
+      "llmReason": "제시된 후보 이미지는 '머그컵 만들기 체험'이라는 활동명은 유사하나, 이벤트 주최/장소가 '배화여대 메이커 스페이스 사업단'으로 명시되어 있어 요청된 이벤트('잔아문학박물관'에서 진행되는 '머그컵 만들기 체험')와는 다른 이벤트의 포스터입니다. 이벤트명(장소 포함)의 일치도가 가장 중요하므로 적합한 포스터가 없습니다.",
+      "searchQuery": "머그컵 만들기 체험 포스터",
+      "candidateCount": 1,
+      "candidates": [
+        {
+          "title": "배화여대 메이커 스페이스 사업단, 승화전사 기술로 완성하는 '나만의 머그컵 만들기' 체험 운영",
+          "link": "http://imgnews.naver.net/image/5693/2026/01/08/0000100589_001_20260108170415467.jpg",
+          "domain": "imgnews.naver.net"
+        }
+      ],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8628,
+      "name": "버틴스키 - 추출/추상전",
+      "venue": "서울역사박물관",
+      "source": "exhibition_extraction",
+      "currentPoster": "http://imgnews.naver.net/image/5851/2026/01/10/0000019378_016_20260110090011432.jpg",
+      "llmPoster": "http://imgnews.naver.net/image/5851/2026/01/10/0000019378_001_20260110090010499.jpg",
+      "llmReason": "이미지 제목 \"[현장스케치] 산업적 '추출'이 '추상'의 미학으로 바뀌다, 서울역사박물관 사진전 《버틴스키: 추출/추상》\"에 이벤트명 \"버틴스키: 추출/추상\"과 장소 \"서울역사박물관\"이 명확하게 포함되어 있어, 이벤트명과 이미지 제목의 일치도가 가장 높습니다. 뉴스 이미지라도 이벤트명이 포함되면 허용된다는 기준에 부합합니다.",
+      "searchQuery": "버틴스키 - 추출/추상전 포스터",
+      "candidateCount": 15,
+      "candidates": [
+        {
+          "title": "[현장스케치] 산업적 '추출'이 '추상'의 미학으로 바뀌다, 서울역사박물관 사진전 《버틴스키: 추출/추상》",
+          "link": "http://imgnews.naver.net/image/5851/2026/01/10/0000019378_001_20260110090010499.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "[현장스케치] 산업적 '추출'이 '추상'의 미학으로 바뀌다, 서울역사박물관 사진전 《버틴스키: 추출/추상》",
+          "link": "http://imgnews.naver.net/image/5851/2026/01/10/0000019378_007_20260110090010932.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "[현장스케치] 산업적 '추출'이 '추상'의 미학으로 바뀌다, 서울역사박물관 사진전 《버틴스키: 추출/추상》",
+          "link": "http://imgnews.naver.net/image/5851/2026/01/10/0000019378_016_20260110090011432.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "[현장스케치] 산업적 '추출'이 '추상'의 미학으로 바뀌다, 서울역사박물관 사진전 《버틴스키: 추출/추상》",
+          "link": "http://imgnews.naver.net/image/5851/2026/01/10/0000019378_004_20260110090010722.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "[현장스케치] 산업적 '추출'이 '추상'의 미학으로 바뀌다, 서울역사박물관 사진전 《버틴스키: 추출/추상》",
+          "link": "http://imgnews.naver.net/image/5851/2026/01/10/0000019378_012_20260110090011175.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "[현장스케치] 산업적 '추출'이 '추상'의 미학으로 바뀌다, 서울역사박물관 사진전 《버틴스키: 추출/추상》",
+          "link": "http://imgnews.naver.net/image/5851/2026/01/10/0000019378_011_20260110090011132.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "[현장스케치] 산업적 '추출'이 '추상'의 미학으로 바뀌다, 서울역사박물관 사진전 《버틴스키: 추출/추상》",
+          "link": "http://imgnews.naver.net/image/5851/2026/01/10/0000019378_014_20260110090011334.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "[현장스케치] 산업적 '추출'이 '추상'의 미학으로 바뀌다, 서울역사박물관 사진전 《버틴스키: 추출/추상》",
+          "link": "http://imgnews.naver.net/image/5851/2026/01/10/0000019378_013_20260110090011271.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "[현장스케치] 산업적 '추출'이 '추상'의 미학으로 바뀌다, 서울역사박물관 사진전 《버틴스키: 추출/추상》",
+          "link": "http://imgnews.naver.net/image/5851/2026/01/10/0000019378_009_20260110090011034.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "서울 사진전  감상. 이번주가 마지막 기회(탐론 17-70mm F2.8 Di III-A VC RXD)",
+          "link": "https://blog.kakaocdn.net/dna/dBgdw3/dJMcaaqN7XP/AAAAAAAAAAAAAAAAAAAAANnKNy5ckEXLT9h5biD0bXgg_qSoBs5Evno3QAvxm6Ma/img.jpg?credential=yqXZFxpELC7KVnFOS48ylbz2pIh7yKj8&expires=1772290799&allow_ip=&allow_referer=&signature=vWI73%2FKehnk1N%2BhPiN9fsJKQYKQ%3D",
+          "domain": "blog.kakaocdn.net"
+        },
+        {
+          "title": "서울 사진전  감상. 이번주가 마지막 기회(탐론 17-70mm F2.8 Di III-A VC RXD)",
+          "link": "https://blog.kakaocdn.net/dna/btGHMR/dJMcahQZyPl/AAAAAAAAAAAAAAAAAAAAAOcu7tlg3aCzLvSC9eVFVxYlIJR_4OoioDRL2sE3MiEt/img.jpg?credential=yqXZFxpELC7KVnFOS48ylbz2pIh7yKj8&expires=1772290799&allow_ip=&allow_referer=&signature=kSDdF20ooo9YJtpzpf1yKoQISiU%3D",
+          "domain": "blog.kakaocdn.net"
+        },
+        {
+          "title": "서울 사진전  감상. 이번주가 마지막 기회(탐론 17-70mm F2.8 Di III-A VC RXD)",
+          "link": "https://blog.kakaocdn.net/dna/dhmOAh/dJMcaiClkwm/AAAAAAAAAAAAAAAAAAAAAMNjKHnLFq1K77n3GLbxBdxvaVKe2R8HaGrunm24IUWL/img.jpg?credential=yqXZFxpELC7KVnFOS48ylbz2pIh7yKj8&expires=1772290799&allow_ip=&allow_referer=&signature=8Mwb5soBbFfP04JUsfywfNvaKZI%3D",
+          "domain": "blog.kakaocdn.net"
+        },
+        {
+          "title": "[현장스케치] 산업적 '추출'이 '추상'의 미학으로 바뀌다, 서울역사박물관 사진전 《버틴스키: 추출/추상》",
+          "link": "http://imgnews.naver.net/image/5851/2026/01/10/0000019378_008_20260110090010985.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "[현장스케치] 산업적 '추출'이 '추상'의 미학으로 바뀌다, 서울역사박물관 사진전 《버틴스키: 추출/추상》",
+          "link": "http://imgnews.naver.net/image/5851/2026/01/10/0000019378_010_20260110090011079.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "[현장스케치] 산업적 '추출'이 '추상'의 미학으로 바뀌다, 서울역사박물관 사진전 《버틴스키: 추출/추상》",
+          "link": "http://imgnews.naver.net/image/5851/2026/01/10/0000019378_006_20260110090010877.jpg",
+          "domain": "imgnews.naver.net"
+        }
+      ],
+      "status": "different"
+    },
+    {
+      "id": 8635,
+      "name": "산딸기 체험",
+      "venue": "소담산딸기",
+      "source": "exhibition_extraction",
+      "currentPoster": "https://www.hanwharesort.co.kr/download.do?path=6C9E3EF5F800A24FEED4BB7D1D2D292B&oriName=0319AFFF5624FFA4348F7E049FD27C233562DAC86F8361ABAE2249485D19AEEF&svrName=0319AFFF5624FFA4348F7E049FD27C233562DAC86F8361ABAE2249485D19AEEF",
+      "llmPoster": "https://www.hanwharesort.co.kr/download.do?path=6C9E3EF5F800A24FEED4BB7D1D2D292B&oriName=0319AFFF5624FFA4348F7E049FD27C233562DAC86F8361ABAE2249485D19AEEF&svrName=0319AFFF5624FFA4348F7E049FD27C233562DAC86F8361ABAE2249485D19AEEF",
+      "llmReason": "이미지 제목에 이벤트명 '산딸기 체험'이 직접 포함되어 있으며, 공식 리조트 웹사이트의 이벤트/패키지 페이지에 있는 홍보 포스터/배너로 판단됩니다. 핵심 원칙인 '이벤트명과 이미지 제목의 일치도'가 가장 높습니다.",
+      "searchQuery": "산딸기 체험 포스터",
+      "candidateCount": 1,
+      "candidates": [
+        {
+          "title": "이벤트&패키지 | Hanwha Resorts 상큼하게 즐기는 산딸기 체험",
+          "link": "https://www.hanwharesort.co.kr/download.do?path=6C9E3EF5F800A24FEED4BB7D1D2D292B&oriName=0319AFFF5624FFA4348F7E049FD27C233562DAC86F8361ABAE2249485D19AEEF&svrName=0319AFFF5624FFA4348F7E049FD27C233562DAC86F8361ABAE2249485D19AEEF",
+          "domain": "www.hanwharesort.co.kr"
+        }
+      ],
+      "status": "match"
+    },
+    {
+      "id": 8629,
+      "name": "상하이 역사박물관 소장품 특별전 _ 찬란한 은빛 보물",
+      "venue": "서울역사박물관",
+      "source": "exhibition_extraction",
+      "currentPoster": null,
+      "llmPoster": null,
+      "llmReason": "no candidates after filter",
+      "searchQuery": "상하이 역사박물관 소장품 특별전 _ 찬란한 은빛 보물 포스터",
+      "candidateCount": 0,
+      "candidates": [],
+      "status": "both_empty"
+    },
+    {
+      "id": 8627,
+      "name": "서울역사박물관 어린이박물관",
+      "venue": "서울역사박물관",
+      "source": "exhibition_extraction",
+      "currentPoster": "https://www.all-con.co.kr/data/poster/2310/505956.jpg?v=1698035790",
+      "llmPoster": "https://museum.seoul.go.kr/chd/share/images/layout/chd_popup_251222_2.jpg",
+      "llmReason": "이미지 제목 '서울역사 어린이박물관'이 이벤트명 '서울역사박물관 어린이박물관'과 가장 높은 일치도를 보이며, 공식 박물관 도메인(museum.seoul.go.kr)에서 제공되어 대표 홍보 이미지로 적합합니다. 다른 후보들은 조성 공모, 특정 기획전시, 또는 일반적인 뉴스 기사 제목으로 이벤트명과 직접적인 일치도가 낮거나 이벤트의 성격이 다릅니다.",
+      "searchQuery": "서울역사박물관 어린이박물관 포스터",
+      "candidateCount": 5,
+      "candidates": [
+        {
+          "title": "서울역사박물관 어린이박물관 조성 제안공모 | 올콘 l 공모전·대외활동 서울역사박물관 어린이박물관 조성 제안공모",
+          "link": "https://www.all-con.co.kr/data/poster/2310/505956.jpg?v=1698035790",
+          "domain": "www.all-con.co.kr"
+        },
+        {
+          "title": "서울역사 어린이박물관",
+          "link": "https://museum.seoul.go.kr/chd/share/images/layout/chd_popup_251222_2.jpg",
+          "domain": "museum.seoul.go.kr"
+        },
+        {
+          "title": "어린이박물관>자료>연구자료>목록 Home",
+          "link": "https://hfahwqczalka895040.cdn.gov-ntruss.com/op/2026/01/02/e9b8030bdbb54d0fb451bb3ee85cbec1.png",
+          "domain": "hfahwqczalka895040.cdn.gov-ntruss.com"
+        },
+        {
+          "title": "서울역사박물관 \"전쟁을 겪은 어린이들의 이야기\" 기획전시",
+          "link": "https://museum.seoul.go.kr:8088/ARCHIVE_DATA/vr/CHILDHOOD_UNDER_THE_SIEGE/vtour/custom/assets/video/video_02_thumb.jpg",
+          "domain": "museum.seoul.go.kr"
+        },
+        {
+          "title": "상상력이 도시를 만나다…서울역사박물관, 세계 어린이 전시와 글로벌 연대",
+          "link": "http://imgnews.naver.net/image/5692/2026/02/10/0000043739_002_20260210133012410.jpg",
+          "domain": "imgnews.naver.net"
+        }
+      ],
+      "status": "different"
+    },
+    {
+      "id": 8668,
+      "name": "소나기 Project 20주년 기념 공연 <The Origin Of Sonagi>",
+      "venue": "김희수아트센터",
+      "source": "exhibition_extraction",
+      "currentPoster": "https://cdn.wikiwiki.jp/proxy-image/w/nijisanji?url=https%3A%2F%2Fpbs.twimg.com%2Fmedia%2FFE5Ch5XagAA5ibA.png",
+      "llmPoster": "https://image.slidesharecdn.com/2b207-231229041436-64593521/75/SONAGI-1-2048.jpg",
+      "llmReason": "이벤트명 \"소나기 Project 20주년 기념 공연 <The Origin Of Sonagi>\"의 핵심 키워드인 \"소나기\"가 이미지 제목 \"SONAGI 소나기 | PDF SONAGI 소나기\"에 직접 포함되어 있습니다. 다른 후보들은 \"20화\"(에피소드) 또는 \"wiki\"(위키 문서)와 같이 이벤트와 관련 없는 맥락을 명확히 나타내므로, 후보 1이 가장 적합한 홍보 이미지로 판단됩니다.",
+      "searchQuery": "소나기 Project 20주년 기념 공연 <The Origin Of Sonagi> 포스터",
+      "candidateCount": 4,
+      "candidates": [
+        {
+          "title": "SONAGI 소나기 | PDF SONAGI 소나기",
+          "link": "https://image.slidesharecdn.com/2b207-231229041436-64593521/75/SONAGI-1-2048.jpg",
+          "domain": "image.slidesharecdn.com"
+        },
+        {
+          "title": "20화 소나기",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fwebp/?fname=http://t1.daumcdn.net/brunch/service/user/2OYE/image/5yaZxFhhM0xPx5aMdqpS0ntM-SI",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "소나기 (ソ・ナギ / So Nagi) - にじさんじ Wiki*",
+          "link": "https://cdn.wikiwiki.jp/proxy-image/w/nijisanji?url=https%3A%2F%2Fpbs.twimg.com%2Fmedia%2FFE5Ch5XagAA5ibA.png",
+          "domain": "cdn.wikiwiki.jp"
+        },
+        {
+          "title": "소나기 (ソ・ナギ / So Nagi) - にじさんじ Wiki*",
+          "link": "https://cdn.wikiwiki.jp/proxy-image/w/nijisanji?url=https%3A%2F%2Fpbs.twimg.com%2Fmedia%2FFBLW-5VUcAsMgJW.jpg",
+          "domain": "cdn.wikiwiki.jp"
+        }
+      ],
+      "status": "different"
+    },
+    {
+      "id": 8630,
+      "name": "오감폭발 봄 숲놀이 1회 숲체험",
+      "venue": "올림픽공원",
+      "source": "exhibition_extraction",
+      "currentPoster": null,
+      "llmPoster": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/1WRz/image/ju2UMENiVcXBeX_UeDCK26x4i2A.jpg",
+      "llmReason": "이벤트명 '오감폭발 봄 숲놀이 1회 숲체험'의 핵심 키워드인 '오감'과 '숲'이 이미지 제목 '오감五感의 숲'에 직접적으로 포함되어 있어, 이벤트의 성격을 잘 나타내는 대표 이미지로 적합합니다.",
+      "searchQuery": "오감폭발 봄 숲놀이 1회 숲체험 포스터",
+      "candidateCount": 1,
+      "candidates": [
+        {
+          "title": "오감五感의 숲",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/1WRz/image/ju2UMENiVcXBeX_UeDCK26x4i2A.jpg",
+          "domain": "img1.daumcdn.net"
+        }
+      ],
+      "status": "new_poster"
+    },
+    {
+      "id": 8663,
+      "name": "음식 체험",
+      "venue": "외할머니의 부엌",
+      "source": "exhibition_extraction",
+      "currentPoster": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/2hny/image/mVFMGNovon6GjeGJZ5Ko_53r3w0.jpg",
+      "llmPoster": null,
+      "llmReason": "no candidates after filter",
+      "searchQuery": "음식 체험 포스터",
+      "candidateCount": 0,
+      "candidates": [],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8673,
+      "name": "이태호 매화전",
+      "venue": "가회민화박물관",
+      "source": "exhibition_extraction",
+      "currentPoster": "https://sema.seoul.go.kr/semaaa/data/upload/attach/20000/21765/thumbnail/1000_20190416171356348.jpg",
+      "llmPoster": null,
+      "llmReason": "제시된 이미지 후보들의 제목에 이벤트명 '이태호 매화전' 또는 핵심 키워드인 '이태호'와 '전(展)'이 포함된 공식 포스터나 홍보 이미지가 없습니다. 모든 후보 이미지는 '드라마' 또는 '엔터테인먼트' 관련 내용으로 판단됩니다.",
+      "searchQuery": "이태호 매화전 포스터",
+      "candidateCount": 15,
+      "candidates": [
+        {
+          "title": "더쿠 - 2화 매화나무 밑 이태유정.gif",
+          "link": "https://blog.kakaocdn.net/dn/GYDI3/btrBawpWt09/ot5kSUDK8TpvkSwm09c7f0/img.gif",
+          "domain": "blog.kakaocdn.net"
+        },
+        {
+          "title": "더쿠 - 2화 매화나무 밑 이태유정.gif",
+          "link": "https://blog.kakaocdn.net/dn/cEVHI4/btrBajj2ktj/MxhbIg0llJfTxBFT9kfOLk/img.gif",
+          "domain": "blog.kakaocdn.net"
+        },
+        {
+          "title": "이번주에 매화 못봄? - 드영배 카테고리",
+          "link": "https://thumbs.gfycat.com/RashRepentantGermanspaniel-size_restricted.gif",
+          "domain": "thumbs.gfycat.com"
+        },
+        {
+          "title": "매화 레전드 갱신중인 드라마 - ★ ··· 하프타임 - 樂soccer 매화 레전드 갱신중인 드라마",
+          "link": "https://t1.daumcdn.net/cafeattach/1YmK3/675c9a38385672a06d88f73551bd0ddd172f4830",
+          "domain": "t1.daumcdn.net"
+        },
+        {
+          "title": "매화 레전드 갱신중인 드라마 - ★ ··· 하프타임 - 樂soccer 매화 레전드 갱신중인 드라마",
+          "link": "https://t1.daumcdn.net/cafeattach/1YmK3/ae092ce56c7150fd61e204e872cfadd3ffabd887",
+          "domain": "t1.daumcdn.net"
+        },
+        {
+          "title": "매화 레전드 갱신중인 드라마 - ★ ··· 하프타임 - 樂soccer 매화 레전드 갱신중인 드라마",
+          "link": "https://t1.daumcdn.net/cafeattach/1YmK3/ca9e87f314a72e7121125f7a1c2223267d168bf8",
+          "domain": "t1.daumcdn.net"
+        },
+        {
+          "title": "매화 레전드 갱신중인 드라마 - ★ ··· 하프타임 - 樂soccer 매화 레전드 갱신중인 드라마",
+          "link": "https://t1.daumcdn.net/cafeattach/1YmK3/386b020d1233790c5dc8d58704d3dd7f375084ac",
+          "domain": "t1.daumcdn.net"
+        },
+        {
+          "title": "매화 레전드 갱신중인 드라마 - ★ ··· 하프타임 - 樂soccer 매화 레전드 갱신중인 드라마",
+          "link": "https://t1.daumcdn.net/cafeattach/1YmK3/b0e5143b48295d0f10057512cfb0b2c528d5e0b1",
+          "domain": "t1.daumcdn.net"
+        },
+        {
+          "title": "매화 레전드 갱신중인 드라마 - ★ ··· 하프타임 - 樂soccer 매화 레전드 갱신중인 드라마",
+          "link": "https://t1.daumcdn.net/cafeattach/1YmK3/67d36ccdba88c072ead537a1855d9c921d63c050",
+          "domain": "t1.daumcdn.net"
+        },
+        {
+          "title": "매화 레전드 갱신중인 드라마 - ★ ··· 하프타임 - 樂soccer 매화 레전드 갱신중인 드라마",
+          "link": "https://t1.daumcdn.net/cafeattach/1YmK3/06f2404bb4c9fb045398e5cacb7f54041cace3db",
+          "domain": "t1.daumcdn.net"
+        },
+        {
+          "title": "매화 레전드 갱신중인 드라마 - ★ ··· 하프타임 - 樂soccer 매화 레전드 갱신중인 드라마",
+          "link": "https://t1.daumcdn.net/cafeattach/1YmK3/224eeab6af5869623f67fa5d06db490a3a9ad7a2",
+          "domain": "t1.daumcdn.net"
+        },
+        {
+          "title": "매화 레전드 갱신중인 드라마 - ★ ··· 하프타임 - 樂soccer 매화 레전드 갱신중인 드라마",
+          "link": "https://t1.daumcdn.net/cafeattach/1YmK3/66faf99a7733e082ea083a704539d716eb907cd4",
+          "domain": "t1.daumcdn.net"
+        },
+        {
+          "title": "매화 레전드 갱신중인 드라마 - ★ ··· 하프타임 - 樂soccer 매화 레전드 갱신중인 드라마",
+          "link": "https://t1.daumcdn.net/cafeattach/1YmK3/ab18611b34d79e59a2c894757b23a8d507666ab4",
+          "domain": "t1.daumcdn.net"
+        },
+        {
+          "title": "매화 레전드 갱신중인 드라마 - ★ ··· 하프타임 - 樂soccer 매화 레전드 갱신중인 드라마",
+          "link": "https://t1.daumcdn.net/cafeattach/1YmK3/135cdc0a8b626f21c2d558d7485eb8e79eed68da",
+          "domain": "t1.daumcdn.net"
+        },
+        {
+          "title": "매화 레전드 갱신중인 드라마 - ★ ··· 하프타임 - 樂soccer 매화 레전드 갱신중인 드라마",
+          "link": "https://t1.daumcdn.net/cafeattach/1YmK3/cb65c39a4c6d0e3ff0fea05f0a6016b8dd09488f",
+          "domain": "t1.daumcdn.net"
+        }
+      ],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8638,
+      "name": "인상주의에서 초기 모더니즘까지",
+      "venue": "국립중앙박물관",
+      "source": "exhibition_extraction",
+      "currentPoster": "https://img1.daumcdn.net/thumb/R1280x0.fwebp/?fname=https://t1.daumcdn.net/brunch/service/user/hwrQ/image/9mM9_VtBoM9XRZ__-5bRbiSAnVc",
+      "llmPoster": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/bKpd/image/cwwno_qULfmbVEFEfOHW4vbH-TA.jpg",
+      "llmReason": "이미지 제목이 이벤트명인 \"인상주의에서 초기 모더니즘까지\"와 정확히 일치하며, 포스터로 보이는 적절한 이미지 크기를 가지고 있습니다. 다른 후보들은 이벤트명과 불일치하거나, '감상리뷰'와 같이 공식 홍보 이미지가 아닌 후기성 이미지로 판단됩니다.",
+      "searchQuery": "인상주의에서 초기 모더니즘까지 포스터",
+      "candidateCount": 11,
+      "candidates": [
+        {
+          "title": "다시 불붙은 인상주의에 대한 논란",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/bjcZ/image/E-E1BUwWYIB7_mYF38y4x6HOEYE.jpg",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "인상주의에서 초기모더니즘까지",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/bKpd/image/cwwno_qULfmbVEFEfOHW4vbH-TA.jpg",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "[미술의 맛] 인상주의는 어떻게 탄생했는가? [미술의 맛] 인상주의는 어떻게 탄생했는가?",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=https://t1.daumcdn.net/brunch/service/user/csab/image/j8MGFceXxBz8zbowykC5hmHcuew.jpg",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "탈인상주의 - 나무위키 탈인상주의",
+          "link": "https://i.namu.wiki/i/H-BrQlufKKxcHaXnEsUtfsXf1NIEo_URM-wRqJ6liCXeOzP_iyAnK2hQHCx-qFl0_-XHEkqpBg15Cshc7vDd4A.webp",
+          "domain": "i.namu.wiki"
+        },
+        {
+          "title": "06화 인상주의자가 담은 ‘현실’",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fwebp/?fname=http://t1.daumcdn.net/brunch/service/user/cNjL/image/oakwb2N0W-wN-IdFr3u8lEkG5ys.PNG",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "『모더니즘』",
+          "link": "https://sema.seoul.go.kr/semaaa/data/upload/attach/2020_upload/23358/23358_001_thumb_1000.jpg",
+          "domain": "sema.seoul.go.kr"
+        },
+        {
+          "title": "인상주의와 후기인상주의의 향연",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/hqUZ/image/8-FEu7sCcogv5LeK3pjfmB4HTfg.jpg",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "02화 해체와 미완의 인상주의자",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fwebp/?fname=http://t1.daumcdn.net/brunch/service/user/1WXp/image/Z-1ve9uHauJ_VjzsaDrJ_7navhU.jpeg",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "14화 모더니즘을 지났더니...",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fwebp/?fname=http://t1.daumcdn.net/brunch/service/user/gjei/image/l0TpbYZVI2EU3nVV1d7C9zoJx50",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "인상주의에서 초기 모더니즘까지 - 감상리뷰",
+          "link": "https://velog.velcdn.com/images/bokko7711/post/0254939e-608c-4d45-94df-12d6b3cb6ffe/image.jpeg",
+          "domain": "velog.velcdn.com"
+        },
+        {
+          "title": "튜브 물감, 인상주의를 탄생시킨 혁신 기술",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fpng/?fname=http://t1.daumcdn.net/brunch/service/user/hPlA/image/9-naBPwpDuODgV9H7cG2HwjIGiE.png",
+          "domain": "img1.daumcdn.net"
+        }
+      ],
+      "status": "different"
+    },
+    {
+      "id": 8654,
+      "name": "제9회 노작홍사용창작단막극제",
+      "venue": "노작홍사용문학관",
+      "source": "exhibition_extraction",
+      "currentPoster": "http://imgnews.naver.net/image/5281/2026/02/01/0000618032_001_20260201125810522.jpg",
+      "llmPoster": "http://imgnews.naver.net/image/5281/2026/02/01/0000618032_001_20260201125810522.jpg",
+      "llmReason": "이미지 제목에 이벤트명인 '제9회 노작홍사용창작단막극제'가 직접적으로 포함되어 있으며, '참가팀 모집'이라는 문구를 통해 공식 홍보 이미지 또는 관련 뉴스 이미지임을 알 수 있습니다. 이는 선택 기준 1과 4에 부합합니다.",
+      "searchQuery": "제9회 노작홍사용창작단막극제 포스터",
+      "candidateCount": 1,
+      "candidates": [
+        {
+          "title": "화성 노작홍사용문학관, 제9회 노작홍사용창작단막극제 참가팀 모집",
+          "link": "http://imgnews.naver.net/image/5281/2026/02/01/0000618032_001_20260201125810522.jpg",
+          "domain": "imgnews.naver.net"
+        }
+      ],
+      "status": "match"
+    }
+  ]
+}

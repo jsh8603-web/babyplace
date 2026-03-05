@@ -1,0 +1,1359 @@
+{
+  "round": 21,
+  "timestamp": "2026-03-05T08:31:14.035Z",
+  "results": [
+    {
+      "id": 8649,
+      "name": "1+1 이벤트",
+      "venue": "앤드엣 터프팅공방",
+      "source": "exhibition_extraction",
+      "sourceUrl": "https://and-et.com/",
+      "currentPoster": "https://cdn.class101.net/images/ede51717-df00-43ff-b88e-54c17ac3cfc4/3840xauto.webp",
+      "llmPoster": "https://gi.esmplus.com/moymart081/images/double.jpg",
+      "llmReason": "후보 6번의 제목에 '1+1행사'가 명시되어 있어, 이벤트명 '1+1 이벤트'와 가장 직접적으로 일치합니다. '행사'는 '이벤트'와 동일한 의미로 사용됩니다.",
+      "imageSources": [
+        "naver_img:1+1"
+      ],
+      "candidateCount": 6,
+      "candidates": [
+        {
+          "title": "Digital Key for Polestar 1 - Google Play 앱",
+          "link": "https://play-lh.googleusercontent.com/Pa0z8w-uyCEMapP1E1Khd7rr65aucqz5BgS45WRKXUIk9bMBRi0FBv37Hr2LGACeus8",
+          "domain": "play-lh.googleusercontent.com",
+          "source": "naver_image"
+        },
+        {
+          "title": "\"Number “1”\" Sticker for Sale by m------ | Redbubble \"Number “1”\" Sticker for Sale by m------",
+          "link": "https://ih1.redbubble.net/image.2751114479.4842/st,small,507x507-pad,600x600,f8f8f8.jpg",
+          "domain": "ih1.redbubble.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "Practical numbers 1-40 – LINE Emoji | LINE STORE",
+          "link": "https://stickershop.line-scdn.net/sticonshop/v1/product/61387240db3e59473266f2cd/iPhone/main.png?v=2",
+          "domain": "stickershop.line-scdn.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "An Elegant Proof That 1 + 1 = 2. And 2 + 2 = 4 and so on | by BL | Intuition | Medium An Elegant Proof That 1 + 1 = 2",
+          "link": "https://miro.medium.com/v2/resize:fit:1200/1*9x52Yva4fbP9D7hF2vP5zA@2x.jpeg",
+          "domain": "miro.medium.com",
+          "source": "naver_image"
+        },
+        {
+          "title": "2\" Diameter Number 1 Circle Labels (500 per Roll) - Newegg.com",
+          "link": "https://c1.neweggimages.com/ProductImage/V0TG_1_2019120666000173.jpg",
+          "domain": "c1.neweggimages.com",
+          "source": "naver_image"
+        },
+        {
+          "title": "테트라 1+1행사 크덕이 빡덕이 S24 S23 Z6 Z5 Z4 Z3 I16 I15 훈민정음덕이 프리즘 폰 케이스 HMJ001-TE",
+          "link": "https://gi.esmplus.com/moymart081/images/double.jpg",
+          "domain": "gi.esmplus.com",
+          "source": "naver_image"
+        }
+      ],
+      "status": "different"
+    },
+    {
+      "id": 8632,
+      "name": "LEE YOUNGJI 2.0",
+      "venue": "올림픽공원",
+      "source": "exhibition_extraction",
+      "sourceUrl": "https://tickets.interpark.com/contents/notice/detail/12748",
+      "currentPoster": null,
+      "llmPoster": "http://imgnews.naver.net/image/468/2026/02/08/0001215697_002_20260208131215865.png",
+      "llmReason": "후보 1번은 뉴스 기사 제목에 이벤트명 '이영지 2.0'의 핵심 키워드인 '이영지 2.0'과 '무대 약속'이 직접적으로 포함되어 있어, 해당 이벤트의 공식 포스터 또는 대표 홍보 이미지일 가능성이 가장 높습니다. 후보 2번도 관련성이 높지만, 이벤트명에 포함된 '2.0' 키워드가 직접적으로 언급되지는 않았습니다.",
+      "imageSources": [
+        "naver_img:LEE YOUNGJI 2.0 포스터",
+        "naver_img:LEE YOUNGJI 2.0 올림픽공원"
+      ],
+      "candidateCount": 11,
+      "candidates": [
+        {
+          "title": "“와주세요X35” 이영지, 절박함 섞인 외침… 이영지 ‘2.0’ 무대 약속",
+          "link": "http://imgnews.naver.net/image/468/2026/02/08/0001215697_002_20260208131215865.png",
+          "domain": "imgnews.naver.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "이영지, 팬들에 '와달라' 35번 호소…3월 올림픽홀 접수한다",
+          "link": "http://imgnews.naver.net/image/117/2026/02/07/0004033683_002_20260207223710153.png",
+          "domain": "imgnews.naver.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "영지네 한정식 - 서울, 강동구, 둔촌동 | 맛집검색 식신",
+          "link": "https://img.siksinhot.com/place/1527138382434071.jpg",
+          "domain": "img.siksinhot.com",
+          "source": "naver_image"
+        },
+        {
+          "title": "디너의여왕 - 갤러리 | 영지네 한정식 - 강동구 둔촌동 한식 한정식 추천맛집",
+          "link": "https://ssproxy.ucloudbiz.olleh.com/v1/AUTH_e59809eb-bdc9-44d7-9d8f-2e7f0e47ba91/lunchbus_image/556214_2.jpg",
+          "domain": "ssproxy.ucloudbiz.olleh.com",
+          "source": "naver_image"
+        },
+        {
+          "title": "디너의여왕 - 갤러리 | 영지네 한정식 - 강동구 둔촌동 한식 한정식 추천맛집",
+          "link": "https://ssproxy.ucloudbiz.olleh.com/v1/AUTH_e59809eb-bdc9-44d7-9d8f-2e7f0e47ba91/lunchbus_image/556214_1.jpg",
+          "domain": "ssproxy.ucloudbiz.olleh.com",
+          "source": "naver_image"
+        },
+        {
+          "title": "난지 뜻: 난초와 영지처럼 상서롭고 아름다운 풀이라는 뜻으로, 현인과 미인을 비유적으로 이르는 말.",
+          "link": "https://thx2.sfo2.cdn.digitaloceanspaces.com/detail_meaning/%EB%82%9C%EC%A7%80_3.webp",
+          "domain": "thx2.sfo2.cdn.digitaloceanspaces.com",
+          "source": "naver_image"
+        },
+        {
+          "title": "네이버 인플루언서: 도현ss의 홈 [네이버 인플루언서] 도현ss",
+          "link": "https://dthumb-phinf.pstatic.net/?src=%22https://mblogthumb-phinf.pstatic.net/MjAyNjAyMDlfMTA3/MDAxNzcwNjQ4MjA4NTI2.zYINVD5CsGo-Jd8HU2MZ2Fb3GZDfS8GB3M0_iS58oG0g.uCwk4KxBsHV0mMQA6KtquyrqBL_zzYgA9NNrjO_JT00g.JPEG/20260209_013344.jpg?type=w800%22&type=w1200&service=homebuilder",
+          "domain": "dthumb-phinf.pstatic.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "난지 뜻: 따뜻한 지방이나 장소., 난초와 영지(靈芝)를 아울러 이르는 말., 난초와 영지처럼 상서롭 [국어 사전]",
+          "link": "https://thx.sfo2.cdn.digitaloceanspaces.com/wr/coverimages/m_11/%EB%82%9C%EC%A7%80_11.jpg",
+          "domain": "thx.sfo2.cdn.digitaloceanspaces.com",
+          "source": "naver_image"
+        },
+        {
+          "title": "이영지, 월두투어 앞두고 암표상에 분노... \"절대 안 돼, 암표상 내가 다 척결\"",
+          "link": "http://imgnews.naver.net/image/5486/2026/02/11/0000332871_003_20260211172811912.jpg",
+          "domain": "imgnews.naver.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "이영지, 역대급 '경도'→3억 기부 성료에도…23명 노쇼로 아쉬움↑ [RE:뷰]",
+          "link": "http://imgnews.naver.net/image/213/2026/02/09/0001373347_003_20260209181708533.jpg",
+          "domain": "imgnews.naver.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "네이버 인플루언서 [네이버 인플루언서] 2024 Theatre 이문세콘서트 일정",
+          "link": "https://dthumb-phinf.pstatic.net/?src=%22https://mblogthumb-phinf.pstatic.net/MjAyMjA5MTZfNjEg/MDAxNjYzMjg1MzUzMTM0.ZwR5REyxBnUeK6SiOnOsdFWTNwvh-q0m_v4iVFOfP5Ug.bnMLq8QvodxCo1Mnxi0yPb8q5SYMn2ohY8xhoR7rypwg.JPEG.653864/GHYTFG005.jpg?type=w800%22&opts=2&twidth=700&theight=700",
+          "domain": "dthumb-phinf.pstatic.net",
+          "source": "naver_image"
+        }
+      ],
+      "status": "new_poster"
+    },
+    {
+      "id": 8674,
+      "name": "가회만사성 (嘉會萬師成)",
+      "venue": "가회민화박물관",
+      "source": "exhibition_extraction",
+      "sourceUrl": null,
+      "currentPoster": "https://image.yes24.com/goods/125270831/XL",
+      "llmPoster": null,
+      "llmReason": "제시된 후보 중 이벤트명 '가회만사성 (嘉會萬師成)'과 일치하거나 해당 이벤트의 공식 포스터로 판단할 수 있는 이미지가 없습니다. 대부분 다른 전시회 포스터, 박물관 앱 아이콘, 박물관 일반 홍보 이미지 또는 도서 표지입니다.",
+      "imageSources": [
+        "naver_img:가회만사성 포스터",
+        "naver_img:가회만사성 가회민화박물관"
+      ],
+      "candidateCount": 7,
+      "candidates": [
+        {
+          "title": "포스터 하나로 몇가지 버전이 나오는거얔ㅋㅋㅋㅋㅋㅋㅋㅋ - 드영배 카테고리",
+          "link": "https://blog.kakaocdn.net/dn/wth2f/btqHR6dht2D/8BWLxRwCrZ8bsTMikcEf6K/img.png",
+          "domain": "blog.kakaocdn.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "가회민화박물관 - Google Play 앱",
+          "link": "https://play-lh.googleusercontent.com/dW0oNwA6bY-dz1VFzdn8aZXXqW7Wxjju38rCX5I-Sj9bBn339I08C5XVJAHKkavP2-8",
+          "domain": "play-lh.googleusercontent.com",
+          "source": "naver_image"
+        },
+        {
+          "title": "난솔 이정옥 가회민화박물관 초대전",
+          "link": "http://imgnews.naver.net/image/5364/2026/01/11/0001146193_001_20260111210614980.jpg",
+          "domain": "imgnews.naver.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "가회박물관 - 민화와 다도를 배울 수 있는 곳 - 사회과학 가회박물관 - 민화와 다도를 배울 수 있는 곳 대학레포트 사회과학",
+          "link": "https://image.reportshop.co.kr/newprimg/943/942089-0002.gif",
+          "domain": "image.reportshop.co.kr",
+          "source": "naver_image"
+        },
+        {
+          "title": "Gahoe Museum (가회민화박물관) - Culture - Korea travel and tourism information",
+          "link": "http://tong.visitkorea.or.kr/cms/resource/83/2550583_image2_1.jpg",
+          "domain": "tong.visitkorea.or.kr",
+          "source": "naver_image"
+        },
+        {
+          "title": "가회민화박물관 제7회 현대민화 공모전 | 공모전 대외활동-링커리어",
+          "link": "https://s3.ap-northeast-2.amazonaws.com/media.linkareer.com/activity_manager/thumbnail/2019-11-261142026583560_30239_thumbnail.jpeg",
+          "domain": "s3.ap-northeast-2.amazonaws.com",
+          "source": "naver_image"
+        },
+        {
+          "title": "[중고샵] 익살과 재치 -꿈꾸는 우리민화-가회박물관 초청 민화특별전-248/250/18, 237쪽- - 예스24 [중고샵]익살과 재치 -꿈꾸는 우리민화...",
+          "link": "https://image.yes24.com/goods/125270831/XL",
+          "domain": "image.yes24.com",
+          "source": "naver_image"
+        }
+      ],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8662,
+      "name": "건강한 집밥의 회복 쿠킹 클래스",
+      "venue": "외할머니의 부엌",
+      "source": "exhibition_extraction",
+      "sourceUrl": "https://blog.naver.com/lovegabi/223878421673",
+      "currentPoster": "http://t1.daumcdn.net/tvpot/thumb/s6756j3MQMbHrQbHI3bjLto/thumb.png?ts=1541778474",
+      "llmPoster": "https://semie.cooking/image/board/cooking/mq/js/pdorgqdu/186065376vfve.jpg",
+      "llmReason": "이벤트명 '건강한 집밥의 회복 쿠킹 클래스'의 핵심 키워드인 '집밥'이 이미지 제목에 포함되어 있으며, '새미네부엌 플랫폼'은 쿠킹 클래스와 연관성이 높은 요리 관련 플랫폼입니다. 다른 후보들은 개인 블로그 후기, 상품 이미지, 여행 관련 이미지, 또는 영상 썸네일로 이벤트 포스터로 부적합하거나 금지 항목에 해당합니다.",
+      "imageSources": [
+        "naver_img:건강한 집밥의 회복 쿠킹 클래스 포스터",
+        "naver_img:건강한 집밥의 회복 쿠킹 클래스 외할머니의 부엌"
+      ],
+      "candidateCount": 15,
+      "candidates": [
+        {
+          "title": "건강한 집밥의 조건! - kakaoTV 건강한 집밥의 조건!",
+          "link": "http://t1.daumcdn.net/tvpot/thumb/s6756j3MQMbHrQbHI3bjLto/thumb.png?ts=1541778474",
+          "domain": "t1.daumcdn.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "건강한 집밥의 안식처 | 세상의 모든 여행, 위시빈",
+          "link": "https://thumb-wishbeen.akamaized.net/8Ifm8t1G4HQuQP8w5X__8fLccpU=/880x/smart/filters:no_upscale()/img-wishbeen.akamaized.net/post/1463979399314_%EC%9D%B5%EC%84%A0%EB%8F%99121_02.jpg",
+          "domain": "thumb-wishbeen.akamaized.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "현성맘네 건강한 집밥 상품 : 윙잇 - No.1 간편식 마켓",
+          "link": "https://image.wingeat.com/item/images/5a7ee275-a908-46f2-8c2b-b0c340bc3f49-w600.jpg",
+          "domain": "image.wingeat.com",
+          "source": "naver_image"
+        },
+        {
+          "title": "현성맘네 건강한 집밥 상품 : 윙잇 - No.1 간편식 마켓",
+          "link": "https://image.wingeat.com/item/images/3bb867cb-24be-4925-84c0-71f5d032a52b-w600.jpg",
+          "domain": "image.wingeat.com",
+          "source": "naver_image"
+        },
+        {
+          "title": "건강식 | 새미네부엌 플랫폼",
+          "link": "https://semie.cooking/image/board/cooking/ay/ny/saxfalke/136547207ipnu.jpg",
+          "domain": "semie.cooking",
+          "source": "naver_image"
+        },
+        {
+          "title": "집밥해먹었어요 | 새미네부엌 플랫폼 집밥해먹었어요",
+          "link": "https://semie.cooking/image/board/cooking/zy/vu/xerrjupm/126154597ywnb.jpg",
+          "domain": "semie.cooking",
+          "source": "naver_image"
+        },
+        {
+          "title": "건강한 집밥^^* | 네이트 판",
+          "link": "https://fimg4.pann.com/new/download.jsp?FileID=48231928",
+          "domain": "fimg4.pann.com",
+          "source": "naver_image"
+        },
+        {
+          "title": "건강한 집밥^^* | 네이트 판",
+          "link": "https://fimg4.pann.com/new/download.jsp?FileID=48231927",
+          "domain": "fimg4.pann.com",
+          "source": "naver_image"
+        },
+        {
+          "title": "건강한 집밥^^* | 네이트 판",
+          "link": "https://fimg4.pann.com/new/download.jsp?FileID=48231922",
+          "domain": "fimg4.pann.com",
+          "source": "naver_image"
+        },
+        {
+          "title": "건강한 집밥^^* | 네이트 판",
+          "link": "https://fimg4.pann.com/new/download.jsp?FileID=48231924",
+          "domain": "fimg4.pann.com",
+          "source": "naver_image"
+        },
+        {
+          "title": "건강한 집밥^^* | 네이트 판",
+          "link": "https://fimg4.pann.com/new/download.jsp?FileID=48231921",
+          "domain": "fimg4.pann.com",
+          "source": "naver_image"
+        },
+        {
+          "title": "건강한 집밥^^* | 네이트 판",
+          "link": "https://fimg4.pann.com/new/download.jsp?FileID=48231926",
+          "domain": "fimg4.pann.com",
+          "source": "naver_image"
+        },
+        {
+          "title": "건강한 집밥^^* | 네이트 판",
+          "link": "https://fimg4.pann.com/new/download.jsp?FileID=48231920",
+          "domain": "fimg4.pann.com",
+          "source": "naver_image"
+        },
+        {
+          "title": "건강한 집밥^^* | 네이트 판",
+          "link": "https://fimg4.pann.com/new/download.jsp?FileID=48231930",
+          "domain": "fimg4.pann.com",
+          "source": "naver_image"
+        },
+        {
+          "title": "집밥 | 새미네부엌 플랫폼",
+          "link": "https://semie.cooking/image/board/cooking/mq/js/pdorgqdu/186065376vfve.jpg",
+          "domain": "semie.cooking",
+          "source": "naver_image"
+        }
+      ],
+      "status": "different"
+    },
+    {
+      "id": 8661,
+      "name": "관악구 국제 스페셜 뮤직&아트 페스티벌",
+      "venue": "관악산 호수공원",
+      "source": "exhibition_extraction",
+      "sourceUrl": "https://sokorea.or.kr",
+      "currentPoster": null,
+      "llmPoster": "http://tong.visitkorea.or.kr/cms/resource/47/3504947_image2_1.jpg",
+      "llmReason": "[신뢰] 표시 후보이며, 이미지 제목이 \"국제 스페셜 뮤직&아트 페스티벌\"로 이벤트명과 정확히 일치합니다. 한국관광공사(visitkorea.or.kr)는 신뢰할 수 있는 공식 정보 출처입니다.",
+      "imageSources": [
+        "naver_img:관악구 국제 스페셜",
+        "naver_img:관악산 호수공원 관악구 국제 스페셜"
+      ],
+      "candidateCount": 15,
+      "candidates": [
+        {
+          "title": "서울특별시 관악구 신림동 국제산장 아파트 시세 정보 - 부동산114  내집마련을 넘어 투자까지 부동산114",
+          "link": "http://image.r114.co.kr/imgdata/planemap/01/05/a0105151010000700032B.gif",
+          "domain": "image.r114.co.kr",
+          "source": "naver_image"
+        },
+        {
+          "title": "서울특별시 관악구 신림동 국제산장 | 부동산뱅크 단지뱅크",
+          "link": "https://www.neonet.co.kr/novo-rebank/view/plugin/convImg.neo?src=http://photo.neonet.co.kr/0905/10/1241966415.JPG",
+          "domain": "www.neonet.co.kr",
+          "source": "naver_image"
+        },
+        {
+          "title": "서울시 관악구 신림동 국제산장 아파트 76㎡ 20평형대",
+          "link": "https://landthumb-phinf.pstatic.net/20120124_28/land_system_1327394950959IzKEM_JPEG/116_50_1_82_GA1_1280725799797.jpg",
+          "domain": "landthumb-phinf.pstatic.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "서울시 관악구 신림동 국제산장 아파트",
+          "link": "https://landthumb-phinf.pstatic.net/20110421_287/land_system_1303389080763nGqsv_JPEG/jw_2005103113922_dan2.jpg",
+          "domain": "landthumb-phinf.pstatic.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "서울시 관악구 신림동 국제산장 아파트",
+          "link": "https://landthumb-phinf.pstatic.net/20110421_74/land_system_13033797763171YTu2_JPEG/detail_50_5.jpg",
+          "domain": "landthumb-phinf.pstatic.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "서울시 관악구 신림동 국제산장 아파트",
+          "link": "https://landthumb-phinf.pstatic.net/20110421_296/land_system_1303389081395ri4Ef_JPEG/jw_2005103113922_dan4.jpg",
+          "domain": "landthumb-phinf.pstatic.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "서울시 관악구 신림동 국제산장 아파트",
+          "link": "https://landthumb-phinf.pstatic.net/20110421_266/land_system_1303389081116bfo1Y_JPEG/jw_2005103113922_dan3.jpg",
+          "domain": "landthumb-phinf.pstatic.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "서울시 관악구 신림동 국제산장 아파트",
+          "link": "https://landthumb-phinf.pstatic.net/20110421_268/land_system_1303379776585AUvLf_JPEG/detail_50_6.jpg",
+          "domain": "landthumb-phinf.pstatic.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "서울시 관악구 신림동 국제산장 아파트",
+          "link": "https://landthumb-phinf.pstatic.net/20110421_177/land_system_13033926132682SlaF_JPEG/shillim20104.jpg",
+          "domain": "landthumb-phinf.pstatic.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "서울시 관악구 신림동 국제산장 아파트",
+          "link": "https://landthumb-phinf.pstatic.net/20110421_114/land_system_1303379775412DWMUF_JPEG/detail_50_2.jpg",
+          "domain": "landthumb-phinf.pstatic.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "국제 스페셜 뮤직&아트 페스티벌 최신 축제 공연 행사 정보와 주변 관광 명소 및 근처 맛집 여행 정보",
+          "link": "http://tong.visitkorea.or.kr/cms/resource/47/3504947_image2_1.jpg",
+          "domain": "tong.visitkorea.or.kr",
+          "source": "naver_image"
+        },
+        {
+          "title": "서울시 관악구 신림동 국제산장 아파트",
+          "link": "https://landthumb-phinf.pstatic.net/20110421_211/land_system_1303392613504xmOnd_JPEG/shillim20105.jpg",
+          "domain": "landthumb-phinf.pstatic.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "관악구 신림동 국제산장108동 베란다 전경_2005년 가을,겨울 | 부동산뱅크 커뮤니티",
+          "link": "https://www.neonet.co.kr/novo-rebank/view/plugin/convImg.neo?src=http://photo.neonet.co.kr/0605/17/neonet173802.JPG~~~~.zip",
+          "domain": "www.neonet.co.kr",
+          "source": "naver_image"
+        },
+        {
+          "title": "'신림동 관악국제산장'의 실거래가, 시세, 매물, 주변정보 | 아파트는 호갱노노",
+          "link": "https://upload.hogangnono.com/image/resize/apt/1y70e/21255/20190314200522_7AnnEroOUof6Xd34KV-mid",
+          "domain": "upload.hogangnono.com",
+          "source": "naver_image"
+        },
+        {
+          "title": "서울시 관악구 신림동 국제산장 아파트",
+          "link": "https://landthumb-phinf.pstatic.net/20110421_77/land_system_1303377159673E48fn_JPEG/shillim20098.jpg",
+          "domain": "landthumb-phinf.pstatic.net",
+          "source": "naver_image"
+        }
+      ],
+      "status": "new_poster"
+    },
+    {
+      "id": 8660,
+      "name": "관악산공원 신림계곡 물놀이장",
+      "venue": "관악산 호수공원",
+      "source": "exhibition_extraction",
+      "sourceUrl": "https://www.gwanak.go.kr/site/gwanak/08/10803030101002025090909.jsp",
+      "currentPoster": "https://t1.daumcdn.net/cafeattach/1Bswa/ca5b7361b609817ccf0f2986147da738fba65a69",
+      "llmPoster": "https://www.gwanak.go.kr/images/og_img.png",
+      "llmReason": "후보 1은 [공식] 표시가 있으며, 관악구청 공식 웹사이트(www.gwanak.go.kr)에서 제공된 이미지입니다. 제목 또한 '관악산공원 물놀이장'으로 이벤트명과 직접적으로 일치하여 공식 포스터 또는 대표 홍보 이미지로 가장 적합합니다.",
+      "imageSources": [
+        "source_url_og",
+        "naver_img:관악산공원 신림계곡 물놀이장"
+      ],
+      "candidateCount": 3,
+      "candidates": [
+        {
+          "title": "관악산공원 물놀이장 : 관악구청",
+          "link": "https://www.gwanak.go.kr/images/og_img.png",
+          "domain": "www.gwanak.go.kr",
+          "source": "og:image"
+        },
+        {
+          "title": "[서울구경] 물놀이·캠핑 즐기는, 관악산 신림계곡",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/3jwj/image/x4J7p_Jbe2L8Eo0qvpWKyUpbfss.jpg",
+          "domain": "img1.daumcdn.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "서울시 관악구 신림동 관악산휴먼시아2단지 아파트",
+          "link": "https://landthumb-phinf.pstatic.net/20110421_241/land_system_1303377828073LDq8b_JPEG/204B5BFBED520C6F8C6F7.jpg",
+          "domain": "landthumb-phinf.pstatic.net",
+          "source": "naver_image"
+        }
+      ],
+      "status": "different"
+    },
+    {
+      "id": 8639,
+      "name": "국중박 X 블랙핑크 프로젝트",
+      "venue": "국립중앙박물관",
+      "source": "exhibition_extraction",
+      "sourceUrl": "https://www.lecturernews.com/news/articleView.html?idxno=196949",
+      "currentPoster": "http://imgnews.naver.net/image/003/2026/02/27/NISI20260227_0021189324_web_20260227085419_20260227085516838.jpg",
+      "llmPoster": "https://cdn.lecturernews.com/news/thumbnail/202602/196949_461821_534_v150.jpg",
+      "llmReason": "[공식] 표시가 있으며, 이벤트명 '국중박 X 블랙핑크 프로젝트'와 장소 '국립중앙박물관'이 명확히 언급되어 최우선으로 선택합니다.",
+      "imageSources": [
+        "source_url_og",
+        "naver_img:국중박 X 블랙핑크 프로젝트 포스터",
+        "naver_img:국중박 X 블랙핑크 프로젝트 국립중앙박물관"
+      ],
+      "candidateCount": 15,
+      "candidates": [
+        {
+          "title": "‘국중박 X 블랙핑크, 글로벌 협업’ 2026년 새 봄, 국립중앙박물관이 핑크빛으로 물든다.",
+          "link": "https://cdn.lecturernews.com/news/thumbnail/202602/196949_461821_534_v150.jpg",
+          "domain": "cdn.lecturernews.com",
+          "source": "og:image"
+        },
+        {
+          "title": "국중박 X 블랙핑크 프로젝트",
+          "link": "http://imgnews.naver.net/image/421/2026/02/27/0008798106_001_20260227150714759.jpg",
+          "domain": "imgnews.naver.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "국중박 X 블랙핑크 프로젝트",
+          "link": "http://imgnews.naver.net/image/421/2026/02/27/0008798113_001_20260227150735401.jpg",
+          "domain": "imgnews.naver.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "국중박 X 블랙핑크 프로젝트 기다리는 관람객들",
+          "link": "http://imgnews.naver.net/image/421/2026/02/27/0008798109_001_20260227150723113.jpg",
+          "domain": "imgnews.naver.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "국중박 X 블랙핑크 프로젝트 기다리는 관람객들",
+          "link": "http://imgnews.naver.net/image/421/2026/02/27/0008798108_001_20260227150720388.jpg",
+          "domain": "imgnews.naver.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "[포토] 국중박 X 블랙핑크 프로젝트 현장",
+          "link": "http://imgnews.naver.net/image/408/2026/02/27/0000299899_007_20260227200014718.jpg",
+          "domain": "imgnews.naver.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "[포토] 국중박 X 블랙핑크 프로젝트 현장",
+          "link": "http://imgnews.naver.net/image/408/2026/02/27/0000299899_006_20260227200014709.jpg",
+          "domain": "imgnews.naver.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "[포토] 국중박 X 블랙핑크 프로젝트 현장",
+          "link": "http://imgnews.naver.net/image/408/2026/02/27/0000299899_008_20260227200014730.jpg",
+          "domain": "imgnews.naver.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "'국중박 X 블랙핑크' 프로젝트",
+          "link": "http://imgnews.naver.net/image/003/2026/02/27/NISI20260227_0021189323_web_20260227085419_20260227085514294.jpg",
+          "domain": "imgnews.naver.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "'국중박 X 블랙핑크' 프로젝트",
+          "link": "http://imgnews.naver.net/image/003/2026/02/27/NISI20260227_0021189326_web_20260227085419_20260227085519515.jpg",
+          "domain": "imgnews.naver.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "'국중박 X 블랙핑크' 프로젝트",
+          "link": "http://imgnews.naver.net/image/003/2026/02/27/NISI20260227_0021189325_web_20260227085419_20260227085521886.jpg",
+          "domain": "imgnews.naver.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "'국중박 X 블랙핑크' 프로젝트",
+          "link": "http://imgnews.naver.net/image/003/2026/02/27/NISI20260227_0021189322_web_20260227085419_20260227085511817.jpg",
+          "domain": "imgnews.naver.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "'국중박 X 블랙핑크' 프로젝트",
+          "link": "http://imgnews.naver.net/image/421/2026/02/26/0008796605_001_20260226200009272.jpg",
+          "domain": "imgnews.naver.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "국립중앙박물관에서 열리는 '국중박X블랙핑크' 프로젝트",
+          "link": "http://imgnews.naver.net/image/421/2026/02/26/0008796675_001_20260226202712380.jpg",
+          "domain": "imgnews.naver.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "국립중앙박물관에서 열리는 '국중박X블랙핑크' 프로젝트",
+          "link": "http://imgnews.naver.net/image/421/2026/02/26/0008796666_001_20260226202433717.jpg",
+          "domain": "imgnews.naver.net",
+          "source": "naver_image"
+        }
+      ],
+      "status": "different"
+    },
+    {
+      "id": 8665,
+      "name": "도파민 하이프",
+      "venue": "김희수아트센터",
+      "source": "exhibition_extraction",
+      "sourceUrl": "https://artlamp.org/exhibitions/?bmode=view&idx=168973977",
+      "currentPoster": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/bLhF/image/bFh_S_uzjq8N7mLpFUgOfJ2TR3I.jpg",
+      "llmPoster": null,
+      "llmReason": "제시된 후보 이미지들의 제목이 모두 '도파민 하이프' 이벤트명과 직접적으로 일치하지 않으며, 대부분 '도파민 중독' 또는 일반적인 '도파민' 관련 콘텐츠(기사, 팟캐스트 등)의 표지로 추정됩니다. 이벤트명 핵심 키워드인 '하이프'가 포함된 후보가 없어, 해당 이벤트의 공식 포스터 또는 대표 홍보 이미지로 볼 수 있는 후보가 없습니다.",
+      "imageSources": [
+        "naver_img:도파민 하이프 포스터",
+        "naver_img:도파민 하이프 김희수아트센터"
+      ],
+      "candidateCount": 15,
+      "candidates": [
+        {
+          "title": "생산적인 도파민 중독자가 되자",
+          "link": "https://cdn.maily.so/yoj1e6ya53czrpjycuk3a0bs3cip",
+          "domain": "cdn.maily.so",
+          "source": "naver_image"
+        },
+        {
+          "title": "도파민과 맞바꾼 수면건강..",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fpng/?fname=http://t1.daumcdn.net/brunch/service/user/9kxx/image/Gl2WTK2_UQBrn4NdnvSa7m9HlW4.png",
+          "domain": "img1.daumcdn.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "이게 바로 도파민?",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fpng/?fname=http://t1.daumcdn.net/brunch/service/user/dvXo/image/8Bn3EgykxdoMSMcArl8PW3mATWM.png",
+          "domain": "img1.daumcdn.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "도파민 중독 (Dopamin Addiction)",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fpng/?fname=http://t1.daumcdn.net/brunch/service/user/5a2M/image/8gTk4_ORGcvxvZvY1gJY8z1Ee-g.png",
+          "domain": "img1.daumcdn.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "도파민 과잉 시대에 성공의 열쇠는?",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fwebp/?fname=http://t1.daumcdn.net/brunch/service/user/3A6V/image/sh5uJwqK8imqGAQGuq8wHwElTEQ",
+          "domain": "img1.daumcdn.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "에피소드 #10. 도파민 중독자",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fpng/?fname=http://t1.kakaocdn.net/brunch/service/user/ikSk/image/dvBty8WYzSJ5xAr3jcnKig9eCoQ.png",
+          "domain": "img1.daumcdn.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "도파민 중독자는 광고대행사로 오세요.",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/2fCF/image/09eTysrQSC-SYPXh1NZ3Si6AFRY.jpg",
+          "domain": "img1.daumcdn.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "[98호] 도파민에 중독된 사람들",
+          "link": "https://cdn.maily.so/202309/consalad/1694003148290489.png",
+          "domain": "cdn.maily.so",
+          "source": "naver_image"
+        },
+        {
+          "title": "도파민",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/8IRm/image/4LFc42Vt0O4ApxgzeMGmok8jFVU.jpg",
+          "domain": "img1.daumcdn.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "[98호] 도파민에 중독된 사람들",
+          "link": "https://cdn.maily.so/202309/consalad/1694097380023429.png",
+          "domain": "cdn.maily.so",
+          "source": "naver_image"
+        },
+        {
+          "title": "도파민 중심의 자극중독 사회가 가져오는 위험",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/5bNS/image/6E24V41_MLLPVa8Ld389C5QX_WM.jpg",
+          "domain": "img1.daumcdn.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "도파민, 늘 날 도와주는 내 친구",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fpng/?fname=http://t1.daumcdn.net/brunch/service/user/cLxD/image/vNi4tdZToHP-g-qGN4IoOWbcWyk.png",
+          "domain": "img1.daumcdn.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "네이버 인플루언서 [네이버 인플루언서] 늘 시간에 쫓기고, 또 새로운 걸 사고 싶다면 — 도파민 뇌의 신호?",
+          "link": "https://dthumb-phinf.pstatic.net/?src=%22https://mblogthumb-phinf.pstatic.net/MjAyNTExMDNfMjA1/MDAxNzYyMTUwNDE4Mjk0.7FOequJBcTPilsrk9Uj8N31Mk91r3QvmRna_aKnhlf8g.X16H7G-iDr5prKTQxrPLDMxz6mf43h9cQrjeZ9NxNI4g.PNG/%25C1%25A6%25B8%25F1%25C0%25BB-%25C0%25D4%25B7%25C2%25C7%25D8%25C1%25D6%25BC%25BC%25BF%25E4_-001_-_2025-11-03T151330.571.png?type=w800%22&opts=2&twidth=700&theight=700",
+          "domain": "dthumb-phinf.pstatic.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "05화 도파민 중독에서 벗어나기 5일 차",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fgif/?fname=http://t1.daumcdn.net/brunch/service/user/11mu/image/bsucfaQrbPR5NhGZfOrkYwkn4T4.gif",
+          "domain": "img1.daumcdn.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "13화 도파민 중독",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/hCyK/image/VgMOwVr6jUDieXheL59Pa6oxR4g.jpg",
+          "domain": "img1.daumcdn.net",
+          "source": "naver_image"
+        }
+      ],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8636,
+      "name": "머그컵 만들기 체험",
+      "venue": "잔아문학박물관",
+      "source": "exhibition_extraction",
+      "sourceUrl": "http://janamuseum.com/%EB%A8%B8%EA%B7%B8%EC%BB%B5-%EA%B7%B8%EB%A6%BC%EA%B7%B8%EB%A6%AC%EA%B7%B8%EC%9D%B4%EA%B8%B0/",
+      "currentPoster": "http://imgnews.naver.net/image/5693/2026/01/08/0000100589_001_20260108170415467.jpg",
+      "llmPoster": null,
+      "llmReason": "제시된 모든 후보 이미지는 이벤트명 '머그컵 만들기 체험'과 직접적인 관련이 없거나, 이벤트 장소인 '잔아문학박물관'에서 진행되는 해당 이벤트의 포스터가 아닙니다. 1번 후보는 '머그컵 만들기 체험'을 언급하지만, 주최 기관이 '배화여대 메이커 스페이스 사업단'으로 명시되어 있어 잔아문학박물관의 행사가 아닙니다. 나머지 후보들은 잔아문학박물관의 일반적인 풍경 사진이거나 여행 정보 이미지로, 특정 이벤트의 포스터로 볼 수 없습니다.",
+      "imageSources": [
+        "naver_img:머그컵 만들기 체험 포스터",
+        "naver_img:머그컵 만들기 체험 잔아문학박물관"
+      ],
+      "candidateCount": 15,
+      "candidates": [
+        {
+          "title": "배화여대 메이커 스페이스 사업단, 승화전사 기술로 완성하는 '나만의 머그컵 만들기' 체험 운영",
+          "link": "http://imgnews.naver.net/image/5693/2026/01/08/0000100589_001_20260108170415467.jpg",
+          "domain": "imgnews.naver.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "잔아문학박물관> 여행지 :대한민국 구석구석 잔아문학박물관> 여행지 :대한민국 구석구석",
+          "link": "https://cdn.visitkorea.or.kr/img/call?cmd=VIEW&id=e3aaec1c-682b-4080-9402-d6720fcbb057",
+          "domain": "cdn.visitkorea.or.kr",
+          "source": "naver_image"
+        },
+        {
+          "title": "잔아문학박물관> 여행지 :대한민국 구석구석 잔아문학박물관> 여행지 :대한민국 구석구석",
+          "link": "https://cdn.visitkorea.or.kr/img/call?cmd=VIEW&id=35cd7054-8cf1-49f6-8994-6c72839407c7",
+          "domain": "cdn.visitkorea.or.kr",
+          "source": "naver_image"
+        },
+        {
+          "title": "잔아문학박물관> 여행지 :대한민국 구석구석 잔아문학박물관> 여행지 :대한민국 구석구석",
+          "link": "https://cdn.visitkorea.or.kr/img/call?cmd=VIEW&id=b9132753-d2b7-4b87-bb94-db9c65a1e58e",
+          "domain": "cdn.visitkorea.or.kr",
+          "source": "naver_image"
+        },
+        {
+          "title": "경기도 양평 잔아문학박물관 | 두피디아 여행기 두피디아 여행기-경기도 양평 잔아문학박물관",
+          "link": "https://storage.doopedia.co.kr/upload/_upload/jwupload/image/201504/21/20150421142435727/20150421142435727_thumb_1024.jpg",
+          "domain": "storage.doopedia.co.kr",
+          "source": "naver_image"
+        },
+        {
+          "title": "경기도 양평 잔아문학박물관 | 두피디아 여행기 두피디아 여행기-경기도 양평 잔아문학박물관",
+          "link": "https://storage.doopedia.co.kr/upload/_upload/jwupload/image/201504/21/20150421141207382/20150421141207382_thumb_1024.jpg",
+          "domain": "storage.doopedia.co.kr",
+          "source": "naver_image"
+        },
+        {
+          "title": "경기도 양평 잔아문학박물관 | 두피디아 여행기 두피디아 여행기-경기도 양평 잔아문학박물관",
+          "link": "https://storage.doopedia.co.kr/upload/_upload/jwupload/image/201504/21/20150421141223836/20150421141223836_thumb_1024.jpg",
+          "domain": "storage.doopedia.co.kr",
+          "source": "naver_image"
+        },
+        {
+          "title": "경기도 양평 잔아문학박물관 | 두피디아 여행기 두피디아 여행기-경기도 양평 잔아문학박물관",
+          "link": "https://storage.doopedia.co.kr/upload/_upload/jwupload/image/201504/21/20150421141118143/20150421141118143_thumb_1024.jpg",
+          "domain": "storage.doopedia.co.kr",
+          "source": "naver_image"
+        },
+        {
+          "title": "경기도 양평 잔아문학박물관 | 두피디아 여행기 두피디아 여행기-경기도 양평 잔아문학박물관",
+          "link": "https://storage.doopedia.co.kr/upload/_upload/jwupload/image/201504/21/20150421141215273/20150421141215273_thumb_1024.jpg",
+          "domain": "storage.doopedia.co.kr",
+          "source": "naver_image"
+        },
+        {
+          "title": "양평 문호리의 \"잔아문학박물관\" - 소설가 김용만의 집념과 열정이 담긴 문학천국 - Dr. Spark's Columns",
+          "link": "https://img.drspark.net/files/attach/images/275/636/132/005/60533e886879ccc06436747ce130c26e.jpg",
+          "domain": "img.drspark.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "양평 문호리의 \"잔아문학박물관\" - 소설가 김용만의 집념과 열정이 담긴 문학천국 - Dr. Spark's Columns",
+          "link": "https://img.drspark.net/files/attach/images/275/636/132/005/96d7fa702e5bbe2015fd5050c0f8c5ea.jpg",
+          "domain": "img.drspark.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "양평 문호리의 \"잔아문학박물관\" - 소설가 김용만의 집념과 열정이 담긴 문학천국 - Dr. Spark's Columns",
+          "link": "https://img.drspark.net/files/attach/images/275/636/132/005/34ca7bf74ac8135dabe57dacfcaf0a6b.jpg",
+          "domain": "img.drspark.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "양평 문호리의 \"잔아문학박물관\" - 소설가 김용만의 집념과 열정이 담긴 문학천국 - Dr. Spark's Columns",
+          "link": "https://img.drspark.net/files/attach/images/275/636/132/005/c585bbc55907d99cb7ad51c756f52352.jpg",
+          "domain": "img.drspark.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "양평 문호리의 \"잔아문학박물관\" - 소설가 김용만의 집념과 열정이 담긴 문학천국 - Dr. Spark's Columns",
+          "link": "https://img.drspark.net/files/attach/images/275/636/132/005/282509bffba35f4924c6cc444f4b49b6.jpg",
+          "domain": "img.drspark.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "양평 문호리의 \"잔아문학박물관\" - 소설가 김용만의 집념과 열정이 담긴 문학천국 - Dr. Spark's Columns",
+          "link": "https://img.drspark.net/files/attach/images/275/636/132/005/628684c0d0a707dc861349725ae017fa.jpg",
+          "domain": "img.drspark.net",
+          "source": "naver_image"
+        }
+      ],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8628,
+      "name": "버틴스키 - 추출/추상전",
+      "venue": "서울역사박물관",
+      "source": "exhibition_extraction",
+      "sourceUrl": "https://museum.seoul.go.kr/www/board/NR_boardView.do?bbsCd=1002&q_exhSttus=next&seq=20251117091555682&sso=ok",
+      "currentPoster": "http://imgnews.naver.net/image/5851/2026/01/10/0000019378_016_20260110090011432.jpg",
+      "llmPoster": "http://imgnews.naver.net/image/5851/2026/01/10/0000019378_001_20260110090010499.jpg",
+      "llmReason": "후보 1번은 뉴스 보도 이미지로, 제목에 이벤트명 '버틴스키: 추출/추상'과 장소 '서울역사박물관'이 명확히 포함되어 있어 이벤트의 공식 포스터 또는 대표 홍보 이미지로 적합합니다. 이는 판단 순서 3번에 해당합니다.",
+      "imageSources": [
+        "naver_img:버틴스키 추출 추상전 포스터",
+        "naver_img:버틴스키 추출 추상전 서울역사박물관"
+      ],
+      "candidateCount": 15,
+      "candidates": [
+        {
+          "title": "[현장스케치] 산업적 '추출'이 '추상'의 미학으로 바뀌다, 서울역사박물관 사진전 《버틴스키: 추출/추상》",
+          "link": "http://imgnews.naver.net/image/5851/2026/01/10/0000019378_001_20260110090010499.jpg",
+          "domain": "imgnews.naver.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "[현장스케치] 산업적 '추출'이 '추상'의 미학으로 바뀌다, 서울역사박물관 사진전 《버틴스키: 추출/추상》",
+          "link": "http://imgnews.naver.net/image/5851/2026/01/10/0000019378_007_20260110090010932.jpg",
+          "domain": "imgnews.naver.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "[현장스케치] 산업적 '추출'이 '추상'의 미학으로 바뀌다, 서울역사박물관 사진전 《버틴스키: 추출/추상》",
+          "link": "http://imgnews.naver.net/image/5851/2026/01/10/0000019378_016_20260110090011432.jpg",
+          "domain": "imgnews.naver.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "[현장스케치] 산업적 '추출'이 '추상'의 미학으로 바뀌다, 서울역사박물관 사진전 《버틴스키: 추출/추상》",
+          "link": "http://imgnews.naver.net/image/5851/2026/01/10/0000019378_004_20260110090010722.jpg",
+          "domain": "imgnews.naver.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "[현장스케치] 산업적 '추출'이 '추상'의 미학으로 바뀌다, 서울역사박물관 사진전 《버틴스키: 추출/추상》",
+          "link": "http://imgnews.naver.net/image/5851/2026/01/10/0000019378_012_20260110090011175.jpg",
+          "domain": "imgnews.naver.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "[현장스케치] 산업적 '추출'이 '추상'의 미학으로 바뀌다, 서울역사박물관 사진전 《버틴스키: 추출/추상》",
+          "link": "http://imgnews.naver.net/image/5851/2026/01/10/0000019378_011_20260110090011132.jpg",
+          "domain": "imgnews.naver.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "[현장스케치] 산업적 '추출'이 '추상'의 미학으로 바뀌다, 서울역사박물관 사진전 《버틴스키: 추출/추상》",
+          "link": "http://imgnews.naver.net/image/5851/2026/01/10/0000019378_014_20260110090011334.jpg",
+          "domain": "imgnews.naver.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "[현장스케치] 산업적 '추출'이 '추상'의 미학으로 바뀌다, 서울역사박물관 사진전 《버틴스키: 추출/추상》",
+          "link": "http://imgnews.naver.net/image/5851/2026/01/10/0000019378_013_20260110090011271.jpg",
+          "domain": "imgnews.naver.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "서울 사진전  감상. 이번주가 마지막 기회(탐론 17-70mm F2.8 Di III-A VC RXD)",
+          "link": "https://blog.kakaocdn.net/dna/b1qcrY/dJMcahQZyZ3/AAAAAAAAAAAAAAAAAAAAABXHb3TKbOnoSzYvNdGdSDAz04KB-yqzVF1XSxar0bbR/img.jpg?credential=yqXZFxpELC7KVnFOS48ylbz2pIh7yKj8&expires=1772290799&allow_ip=&allow_referer=&signature=G%2F1gDHZ2fcytiobethSYNw3tmdY%3D",
+          "domain": "blog.kakaocdn.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "서울 사진전  감상. 이번주가 마지막 기회(탐론 17-70mm F2.8 Di III-A VC RXD)",
+          "link": "https://blog.kakaocdn.net/dna/dBgdw3/dJMcaaqN7XP/AAAAAAAAAAAAAAAAAAAAANnKNy5ckEXLT9h5biD0bXgg_qSoBs5Evno3QAvxm6Ma/img.jpg?credential=yqXZFxpELC7KVnFOS48ylbz2pIh7yKj8&expires=1772290799&allow_ip=&allow_referer=&signature=vWI73%2FKehnk1N%2BhPiN9fsJKQYKQ%3D",
+          "domain": "blog.kakaocdn.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "서울 사진전  감상. 이번주가 마지막 기회(탐론 17-70mm F2.8 Di III-A VC RXD)",
+          "link": "https://blog.kakaocdn.net/dna/btGHMR/dJMcahQZyPl/AAAAAAAAAAAAAAAAAAAAAOcu7tlg3aCzLvSC9eVFVxYlIJR_4OoioDRL2sE3MiEt/img.jpg?credential=yqXZFxpELC7KVnFOS48ylbz2pIh7yKj8&expires=1772290799&allow_ip=&allow_referer=&signature=kSDdF20ooo9YJtpzpf1yKoQISiU%3D",
+          "domain": "blog.kakaocdn.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "서울 사진전  감상. 이번주가 마지막 기회(탐론 17-70mm F2.8 Di III-A VC RXD)",
+          "link": "https://blog.kakaocdn.net/dna/dhmOAh/dJMcaiClkwm/AAAAAAAAAAAAAAAAAAAAAMNjKHnLFq1K77n3GLbxBdxvaVKe2R8HaGrunm24IUWL/img.jpg?credential=yqXZFxpELC7KVnFOS48ylbz2pIh7yKj8&expires=1772290799&allow_ip=&allow_referer=&signature=8Mwb5soBbFfP04JUsfywfNvaKZI%3D",
+          "domain": "blog.kakaocdn.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "[현장스케치] 산업적 '추출'이 '추상'의 미학으로 바뀌다, 서울역사박물관 사진전 《버틴스키: 추출/추상》",
+          "link": "http://imgnews.naver.net/image/5851/2026/01/10/0000019378_010_20260110090011079.jpg",
+          "domain": "imgnews.naver.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "[현장스케치] 산업적 '추출'이 '추상'의 미학으로 바뀌다, 서울역사박물관 사진전 《버틴스키: 추출/추상》",
+          "link": "http://imgnews.naver.net/image/5851/2026/01/10/0000019378_006_20260110090010877.jpg",
+          "domain": "imgnews.naver.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "[현장스케치] 산업적 '추출'이 '추상'의 미학으로 바뀌다, 서울역사박물관 사진전 《버틴스키: 추출/추상》",
+          "link": "http://imgnews.naver.net/image/5851/2026/01/10/0000019378_008_20260110090010985.jpg",
+          "domain": "imgnews.naver.net",
+          "source": "naver_image"
+        }
+      ],
+      "status": "different"
+    },
+    {
+      "id": 8635,
+      "name": "산딸기 체험",
+      "venue": "소담산딸기",
+      "source": "exhibition_extraction",
+      "sourceUrl": "https://blog.naver.com/sodamraspberry",
+      "currentPoster": "https://www.hanwharesort.co.kr/download.do?path=6C9E3EF5F800A24FEED4BB7D1D2D292B&oriName=0319AFFF5624FFA4348F7E049FD27C233562DAC86F8361ABAE2249485D19AEEF&svrName=0319AFFF5624FFA4348F7E049FD27C233562DAC86F8361ABAE2249485D19AEEF",
+      "llmPoster": "https://cdn.visitkorea.or.kr/img/call?cmd=VIEW&id=a5d46c66-8719-4493-a983-a36dd9fd8980",
+      "llmReason": "후보 3은 [신뢰] 표시가 있으며, 이벤트 장소인 '소담산딸기'가 제목에 명시되어 있고 대한민국 구석구석(visitkorea.or.kr)과 같은 신뢰할 수 있는 출처에서 제공된 이미지입니다. 이는 해당 장소의 공식 또는 대표 홍보 이미지일 가능성이 가장 높습니다.",
+      "imageSources": [
+        "naver_img:산딸기 체험 포스터",
+        "naver_img:산딸기 체험 소담산딸기"
+      ],
+      "candidateCount": 4,
+      "candidates": [
+        {
+          "title": "이벤트&패키지 | Hanwha Resorts 상큼하게 즐기는 산딸기 체험",
+          "link": "https://www.hanwharesort.co.kr/download.do?path=6C9E3EF5F800A24FEED4BB7D1D2D292B&oriName=0319AFFF5624FFA4348F7E049FD27C233562DAC86F8361ABAE2249485D19AEEF&svrName=0319AFFF5624FFA4348F7E049FD27C233562DAC86F8361ABAE2249485D19AEEF",
+          "domain": "www.hanwharesort.co.kr",
+          "source": "naver_image"
+        },
+        {
+          "title": "설향 딸기 기획 | 딸기 | 산딸기 | 바나나 / 토마토 / 딸기 | 과일 / 견과 | 과일 / 채소 / 쌀 | 신선식품 | megamart | 메가마트몰 메가마트몰",
+          "link": "http://www.megamart.com/attach/product_images/pro_ed_images/8807673/IMG_8157%5B0%5D.jpg",
+          "domain": "www.megamart.com",
+          "source": "naver_image"
+        },
+        {
+          "title": "소담산딸기> 여행지 :대한민국 구석구석 소담산딸기> 여행지 :대한민국 구석구석",
+          "link": "https://cdn.visitkorea.or.kr/img/call?cmd=VIEW&id=a5d46c66-8719-4493-a983-a36dd9fd8980",
+          "domain": "cdn.visitkorea.or.kr",
+          "source": "naver_image"
+        },
+        {
+          "title": "산딸기 | 김해분야포털",
+          "link": "https://www.gimhae.go.kr/_res/depart/img/sub/p01984_img01.jpg",
+          "domain": "www.gimhae.go.kr",
+          "source": "naver_image"
+        }
+      ],
+      "status": "different"
+    },
+    {
+      "id": 8629,
+      "name": "상하이 역사박물관 소장품 특별전 _ 찬란한 은빛 보물",
+      "venue": "서울역사박물관",
+      "source": "exhibition_extraction",
+      "sourceUrl": "https://museum.seoul.go.kr/www/board/NR_boardView.do?bbsCd=1002&q_exhSttus=next&seq=20230517095018382&sso=ok",
+      "currentPoster": null,
+      "llmPoster": null,
+      "llmReason": "no candidates after filter",
+      "imageSources": [],
+      "candidateCount": 0,
+      "candidates": [],
+      "status": "both_empty"
+    },
+    {
+      "id": 8627,
+      "name": "서울역사박물관 어린이박물관",
+      "venue": "서울역사박물관",
+      "source": "exhibition_extraction",
+      "sourceUrl": "https://museum.seoul.go.kr/chd/index.do",
+      "currentPoster": "https://www.all-con.co.kr/data/poster/2310/505956.jpg?v=1698035790",
+      "llmPoster": "https://museum.seoul.go.kr/chd/share/images/layout/chd_popup_251222_2.jpg",
+      "llmReason": "[신뢰] 표시 후보이며, 공식 웹사이트(museum.seoul.go.kr)에서 제공된 이미지로 이벤트명 \"서울역사 어린이박물관\"과 정확히 일치합니다.",
+      "imageSources": [
+        "naver_img:서울역사박물관 어린이박물관 포스터",
+        "naver_img:서울역사박물관 어린이박물관 서울역사박물관"
+      ],
+      "candidateCount": 7,
+      "candidates": [
+        {
+          "title": "서울역사 어린이박물관",
+          "link": "https://museum.seoul.go.kr/chd/share/images/layout/chd_popup_251222_2.jpg",
+          "domain": "museum.seoul.go.kr",
+          "source": "naver_image"
+        },
+        {
+          "title": "어린이박물관>자료>연구자료>목록 Home",
+          "link": "https://hfahwqczalka895040.cdn.gov-ntruss.com/op/2026/01/02/e9b8030bdbb54d0fb451bb3ee85cbec1.png",
+          "domain": "hfahwqczalka895040.cdn.gov-ntruss.com",
+          "source": "naver_image"
+        },
+        {
+          "title": "서울역사박물관 \"전쟁을 겪은 어린이들의 이야기\" 기획전시",
+          "link": "https://museum.seoul.go.kr:8088/ARCHIVE_DATA/vr/CHILDHOOD_UNDER_THE_SIEGE/vtour/custom/assets/video/video_02_thumb.jpg",
+          "domain": "museum.seoul.go.kr",
+          "source": "naver_image"
+        },
+        {
+          "title": "상상력이 도시를 만나다…서울역사박물관, 세계 어린이 전시와 글로벌 연대",
+          "link": "http://imgnews.naver.net/image/5692/2026/02/10/0000043739_002_20260210133012410.jpg",
+          "domain": "imgnews.naver.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "대한민국 역사박물관 다녀왔어요 > 내 손안에 서울 > 서울이야기 > 시민소통 > 정보소통광장 드디어 개방! 대한민국 역사박물관 다녀왔어요",
+          "link": "https://mediahub.seoul.go.kr/wp-content/uploads/editor/images/000401/KakaoTalk_20200725_153225736_05.jpg",
+          "domain": "mediahub.seoul.go.kr",
+          "source": "naver_image"
+        },
+        {
+          "title": "경찰의 꿈을 꾸고 있는 아이들을 위해, 경찰박물관 여행 (아이들과 가볼만한 박물관)",
+          "link": "http://cfile2.uf.tistory.com/image/251998415235C2EB0B17CC",
+          "domain": "cfile2.uf.tistory.com",
+          "source": "naver_image"
+        },
+        {
+          "title": "서울역사 어린이박물관",
+          "link": "https://museum.seoul.go.kr/chd/share/images/sub/6.%ED%98%9C%EB%AF%BC%EC%84%9C_2.jpg",
+          "domain": "museum.seoul.go.kr",
+          "source": "naver_image"
+        }
+      ],
+      "status": "different"
+    },
+    {
+      "id": 8668,
+      "name": "소나기 Project 20주년 기념 공연 <The Origin Of Sonagi>",
+      "venue": "김희수아트센터",
+      "source": "exhibition_extraction",
+      "sourceUrl": null,
+      "currentPoster": null,
+      "llmPoster": "https://www.haman.go.kr/board/image.do?idx=12332501&name=0824+%ED%95%98%EC%9A%B0%EC%8A%A4%EC%BD%98%EC%84%9C%ED%8A%B81.jpg&gcode=32&s=",
+      "llmReason": "후보 2는 뉴스 보도 자료로, 이벤트명에 포함된 핵심 키워드인 '소나기 프로젝트'와 '공연'이 제목에 명확히 포함되어 있어 이벤트의 공식 홍보 이미지로 가장 적합합니다.",
+      "imageSources": [
+        "naver_img:소나기 Project 20주년 기념 공연 포스터",
+        "naver_img:소나기 Project 20주년 기념 공연 김희수아트센터"
+      ],
+      "candidateCount": 5,
+      "candidates": [
+        {
+          "title": "20화 소나기",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fwebp/?fname=http://t1.daumcdn.net/brunch/service/user/2OYE/image/5yaZxFhhM0xPx5aMdqpS0ntM-SI",
+          "domain": "img1.daumcdn.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "HOME > 군정뉴스 > 보도자료 > 한국의 전통감성을 노래하다…‘소나기 프로젝트’ 공연 뉴스포털",
+          "link": "https://www.haman.go.kr/board/image.do?idx=12332501&name=0824+%ED%95%98%EC%9A%B0%EC%8A%A4%EC%BD%98%EC%84%9C%ED%8A%B81.jpg&gcode=32&s=",
+          "domain": "www.haman.go.kr",
+          "source": "naver_image"
+        },
+        {
+          "title": "지보이스 20주년 기념 공연 노래 노래 노래, 마포아트센터, Seoul, 8 October 2023 | AllEvents.in 지보이스 20주년 기념 공연 노래 노래...",
+          "link": "https://cdn-az.allevents.in/events10/banners/d3b9de8f748809fac1225b8749872abc7b4586fb4396222cd030ceb81f68bfec-rimg-w614-h960-gmir.jpg?v=1696249900",
+          "domain": "cdn-az.allevents.in",
+          "source": "naver_image"
+        },
+        {
+          "title": "문화예술공연 - 충무아트센터 개관 20주년 기념, 킬 미 나우 특별공연 | 문화체육관광부",
+          "link": "https://www.mcst.go.kr/attachFiles/cultureInfoCourt/monthServ/1750811420864.jpg",
+          "domain": "www.mcst.go.kr",
+          "source": "naver_image"
+        },
+        {
+          "title": "20화 소나기",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fwebp/?fname=http://t1.daumcdn.net/brunch/service/user/3vII/image/P-jtWiQvFMjcuIdYkq8U13sIfvA",
+          "domain": "img1.daumcdn.net",
+          "source": "naver_image"
+        }
+      ],
+      "status": "new_poster"
+    },
+    {
+      "id": 8630,
+      "name": "오감폭발 봄 숲놀이 1회 숲체험",
+      "venue": "올림픽공원",
+      "source": "exhibition_extraction",
+      "sourceUrl": "https://naver.me/GuCQ23Uw",
+      "currentPoster": null,
+      "llmPoster": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/1WRz/image/ju2UMENiVcXBeX_UeDCK26x4i2A.jpg",
+      "llmReason": "후보 이미지의 제목 '오감五感의 숲'이 이벤트명 '오감폭발 봄 숲놀이 1회 숲체험'의 핵심 키워드인 '오감'과 '숲'을 포함하고 있어, 이벤트의 주제와 높은 연관성을 가집니다.",
+      "imageSources": [
+        "naver_img:오감폭발 봄 숲놀이 1회 숲체험 포스터",
+        "naver_img:오감폭발 봄 숲놀이 1회 숲체험 올림픽공원"
+      ],
+      "candidateCount": 1,
+      "candidates": [
+        {
+          "title": "오감五感의 숲",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/1WRz/image/ju2UMENiVcXBeX_UeDCK26x4i2A.jpg",
+          "domain": "img1.daumcdn.net",
+          "source": "naver_image"
+        }
+      ],
+      "status": "new_poster"
+    },
+    {
+      "id": 8663,
+      "name": "음식 체험",
+      "venue": "외할머니의 부엌",
+      "source": "exhibition_extraction",
+      "sourceUrl": "https://www.ggtour.or.kr/travel-info/tourism-info/72559dc7-746a-11ee-b910-0242ac120002",
+      "currentPoster": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/2hny/image/mVFMGNovon6GjeGJZ5Ko_53r3w0.jpg",
+      "llmPoster": "https://ggtour.or.kr/data/ggtour/place/김포/외할머니의 부엌 1.png",
+      "llmReason": "이벤트 장소인 '외할머니의 부엌'에 대한 [공식] 표시 후보이며, 경기관광플랫폼(ggtour.or.kr)은 해당 장소의 공식 정보를 제공하는 신뢰할 수 있는 출처입니다. '공식' 표시 후보는 최우선으로 선택됩니다.",
+      "imageSources": [
+        "source_url_og",
+        "naver_img:음식 체험 외할머니의 부엌",
+        "naver_img:음식"
+      ],
+      "candidateCount": 15,
+      "candidates": [
+        {
+          "title": "외할머니의부엌 | 관광지 | 여행정보 | 경기관광플랫폼",
+          "link": "https://ggtour.or.kr/data/ggtour/place/김포/외할머니의 부엌 1.png",
+          "domain": "ggtour.or.kr",
+          "source": "og:image"
+        },
+        {
+          "title": "'외할머니의 부엌'에 할아버지? 김포 생활사박물관",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/5SXp/image/IMpBK00YmHkR15wYPGTe_JzXVt4.jpg",
+          "domain": "img1.daumcdn.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "'외할머니의 부엌'에 할아버지? 김포 생활사박물관",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/5SXp/image/d5myEKuvQutnwzslJQTkq7wJ5BY.jpg",
+          "domain": "img1.daumcdn.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "'외할머니의 부엌'에 할아버지? 김포 생활사박물관",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/5SXp/image/TeCAImSZ-3FHFZaY0O0gs5ZRqLs.jpg",
+          "domain": "img1.daumcdn.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "외할머니의 부엌 - 주변 여행 및 근처 관광 명소 - 국내 여행 정보와 관광 명소 정보",
+          "link": "http://tong.visitkorea.or.kr/cms/resource/30/2872830_image2_1.jpg",
+          "domain": "tong.visitkorea.or.kr",
+          "source": "naver_image"
+        },
+        {
+          "title": "외할머니의 부엌 문화 정보와 주변 관광 명소 및 근처 맛집 여행 정보",
+          "link": "http://tong.visitkorea.or.kr/cms/resource/60/3527760_image2_1.jpg",
+          "domain": "tong.visitkorea.or.kr",
+          "source": "naver_image"
+        },
+        {
+          "title": "외할머니의 부엌 문화 정보와 주변 관광 명소 및 근처 맛집 여행 정보",
+          "link": "http://tong.visitkorea.or.kr/cms/resource/62/3527762_image2_1.jpg",
+          "domain": "tong.visitkorea.or.kr",
+          "source": "naver_image"
+        },
+        {
+          "title": "오래전 부엌세간들의 옛이야기를 들어요. 외할머니의 부엌",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/2hny/image/mVFMGNovon6GjeGJZ5Ko_53r3w0.jpg",
+          "domain": "img1.daumcdn.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "오래전 부엌세간들의 옛이야기를 들어요. 외할머니의 부엌",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/2hny/image/2fm3qiHCh3AKuQd8reXwy8cQR3s.jpg",
+          "domain": "img1.daumcdn.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "향토음식 서울지역 주식류, 반찬류, 떡류, 후식류 소개 및 대표음식 갤러리 - 램프쿡",
+          "link": "https://www.lampcook.com/wi_files/food_city_img/p1_8.jpg",
+          "domain": "www.lampcook.com",
+          "source": "naver_image"
+        },
+        {
+          "title": "네이버 인플루언서 [네이버 인플루언서] 의사들이 고지혈증 환자에게 먹지 말라고 강조하는 의외의 음식 5가지",
+          "link": "https://dthumb-phinf.pstatic.net/?src=%22https://mblogthumb-phinf.pstatic.net/MjAyNTAyMTZfMTA1/MDAxNzM5NjQ1NzEwNjcx.Z2FJIRSrfGo1Mm4mCwwKbp-x5t9CDYxBmiO0qAgcdHYg.mCLGjXRbscvV-xDQ9iLH1vCXIi2SYc2rjI3kuTlRjfsg.JPEG/image_fx__-_2025-02-16T011619.293.jpg?type=w800%22&opts=2&twidth=700&theight=700",
+          "domain": "dthumb-phinf.pstatic.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "호불호 나뉘는 음식 50개 - 에누리 쇼핑지식 자유게시판",
+          "link": "https://storage.enuri.info/pic_upload/knowbox2/202509/06161525720250927c7e9a0f1-705d-463e-9549-3d660198d16e.jpg",
+          "domain": "storage.enuri.info",
+          "source": "naver_image"
+        },
+        {
+          "title": "네이버 인플루언서 [네이버 인플루언서] 빈혈에 좋은 음식, 빈혈에 좋은 영양소, 빈혈주사 총정리",
+          "link": "https://blogthumb.pstatic.net/MjAyNTAzMDVfMTkg/MDAxNzQxMTUxMTA0MTg0.Fgh3cUBMkGy5-g66NAadgEtvT_Q_zb4mJ_h3KMz4yMQg.zNwWajsKkbz57An-_GOGSX4p6TJdHd3XigB1KFK_pLkg.JPEG/%BA%F3%C7%F7%C0%BD%BD%C4-1.jpg?type=w2",
+          "domain": "blogthumb.pstatic.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "네이버 인플루언서 [네이버 인플루언서] 당신이 꼭 알아야 할 당뇨에좋은음식과 저속노화 식단",
+          "link": "https://dthumb-phinf.pstatic.net/?src=%22https://mblogthumb-phinf.pstatic.net/MjAyNTA0MjRfMTAx/MDAxNzQ1NDMxODk0MjEw.k6BcyBkXrGJmN6YnJdO8gF2-uCdHb3r1GntRuyKzLWcg.MZ8cLwNjDhhTw8w6wLx0TIHbMUNwkVW7vhxWj0bvsAYg.PNG/image.png?type=w800%22&opts=2&twidth=700&theight=700",
+          "domain": "dthumb-phinf.pstatic.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "네이버 인플루언서 [네이버 인플루언서] 식이섬유의 모든 것! 효능부터 종류, 풍부한 음식까지 한눈에",
+          "link": "https://dthumb-phinf.pstatic.net/?src=%22https://mblogthumb-phinf.pstatic.net/MjAyNTAyMDdfMTY5/MDAxNzM4OTEzODAyMjY1.qIyeFBv1I7hNTezV89sC6s_DkabJNsi-fo0DagDTuwsg.w2TXiGVj6M-Zfg5mRzrNrbAqGlS2UMgXd6jhBxw_ehgg.JPEG/DALL%2526middot%253BE_2025-02-07_16.36.31_-_A_high-quality_flat-lay_image_of_fiber-rich_foo.jpg?type=w800%22&opts=2&twidth=700&theight=700",
+          "domain": "dthumb-phinf.pstatic.net",
+          "source": "naver_image"
+        }
+      ],
+      "status": "different"
+    },
+    {
+      "id": 8673,
+      "name": "이태호 매화전",
+      "venue": "가회민화박물관",
+      "source": "exhibition_extraction",
+      "sourceUrl": null,
+      "currentPoster": "https://sema.seoul.go.kr/semaaa/data/upload/attach/20000/21765/thumbnail/1000_20190416171356348.jpg",
+      "llmPoster": null,
+      "llmReason": "제시된 후보 중 '이태호 매화전' 전시회의 공식 포스터 또는 대표 홍보 이미지로 적합한 것이 없습니다. 1, 2, 3번 후보는 드라마/엔터테인먼트 관련 GIF 이미지로 이벤트와 무관합니다. 4, 5, 6번 후보는 '이태호'라는 인물과 관련이 있으나, 모두 '이태호 매화전' 전시 포스터가 아닌 다른 도서의 표지 또는 관련 기사 이미지입니다. 특히 4번 후보는 [신뢰] 표시가 있으나, 도서 표지이므로 전시 포스터로 허용되지 않습니다.",
+      "imageSources": [
+        "naver_img:이태호 매화전 포스터",
+        "naver_img:이태호 매화전 가회민화박물관"
+      ],
+      "candidateCount": 6,
+      "candidates": [
+        {
+          "title": "더쿠 - 2화 매화나무 밑 이태유정.gif",
+          "link": "https://blog.kakaocdn.net/dn/cEVHI4/btrBajj2ktj/MxhbIg0llJfTxBFT9kfOLk/img.gif",
+          "domain": "blog.kakaocdn.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "더쿠 - 2화 매화나무 밑 이태유정.gif",
+          "link": "https://blog.kakaocdn.net/dn/GYDI3/btrBawpWt09/ot5kSUDK8TpvkSwm09c7f0/img.gif",
+          "domain": "blog.kakaocdn.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "이번주에 매화 못봄? - 드영배 카테고리",
+          "link": "https://thumbs.gfycat.com/RashRepentantGermanspaniel-size_restricted.gif",
+          "domain": "thumbs.gfycat.com",
+          "source": "naver_image"
+        },
+        {
+          "title": "『우리시대 우리미술 이태호 미술평론집』",
+          "link": "https://sema.seoul.go.kr/semaaa/data/upload/attach/20000/21765/thumbnail/1000_20190416171356348.jpg",
+          "domain": "sema.seoul.go.kr",
+          "source": "naver_image"
+        },
+        {
+          "title": "대한민국 국회도서관 | 정보검색 > 소장정보 검색 > 금강산을 그리다 : 옛 화가들의 발길 따라 금강산을 그리다 : 옛 화가들의 발길 따라 / 이태호...",
+          "link": "https://dl.nanet.go.kr/storage/repo-svc/extra/cov001/MONO/12024/000/000948/CN_MONO12024000000948_MONO.jpg",
+          "domain": "dl.nanet.go.kr",
+          "source": "naver_image"
+        },
+        {
+          "title": "한국미술사학자 이태호 교수가 본『빈센트 반 고흐 』",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fpng/?fname=http://t1.daumcdn.net/brunch/service/user/asrF/image/9J2rMWZs3lx9b8_A0BWtYZ7WY4Q.png",
+          "domain": "img1.daumcdn.net",
+          "source": "naver_image"
+        }
+      ],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8638,
+      "name": "인상주의에서 초기 모더니즘까지",
+      "venue": "국립중앙박물관",
+      "source": "exhibition_extraction",
+      "sourceUrl": "https://culture.seoul.go.kr/culture/culture/cultureEvent/view.do?cultcode=156366&menuNo=200008",
+      "currentPoster": "https://img1.daumcdn.net/thumb/R1280x0.fwebp/?fname=https://t1.daumcdn.net/brunch/service/user/hwrQ/image/9mM9_VtBoM9XRZ__-5bRbiSAnVc",
+      "llmPoster": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/bKpd/image/cwwno_qULfmbVEFEfOHW4vbH-TA.jpg",
+      "llmReason": "후보 2번의 제목이 이벤트명 '인상주의에서 초기 모더니즘까지'와 정확히 일치하여 해당 이벤트의 공식 포스터 또는 대표 홍보 이미지일 가능성이 가장 높습니다. 후보 5번은 [신뢰] 표시가 있지만, 제목이 '모더니즘'으로 이벤트명과 완전히 일치하지 않으며, 출처(sema.seoul.go.kr)가 국립중앙박물관이 아닌 서울시립미술관이므로 다른 행사일 가능성이 있어 제외했습니다.",
+      "imageSources": [
+        "naver_img:인상주의에서 초기 모더니즘까지 포스터",
+        "naver_img:인상주의에서 초기 모더니즘까지 국립중앙박물관"
+      ],
+      "candidateCount": 11,
+      "candidates": [
+        {
+          "title": "다시 불붙은 인상주의에 대한 논란",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/bjcZ/image/E-E1BUwWYIB7_mYF38y4x6HOEYE.jpg",
+          "domain": "img1.daumcdn.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "인상주의에서 초기모더니즘까지",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/bKpd/image/cwwno_qULfmbVEFEfOHW4vbH-TA.jpg",
+          "domain": "img1.daumcdn.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "[미술의 맛] 인상주의는 어떻게 탄생했는가? [미술의 맛] 인상주의는 어떻게 탄생했는가?",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=https://t1.daumcdn.net/brunch/service/user/csab/image/j8MGFceXxBz8zbowykC5hmHcuew.jpg",
+          "domain": "img1.daumcdn.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "06화 인상주의자가 담은 ‘현실’",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fwebp/?fname=http://t1.daumcdn.net/brunch/service/user/cNjL/image/oakwb2N0W-wN-IdFr3u8lEkG5ys.PNG",
+          "domain": "img1.daumcdn.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "『모더니즘』",
+          "link": "https://sema.seoul.go.kr/semaaa/data/upload/attach/2020_upload/23358/23358_001_thumb_1000.jpg",
+          "domain": "sema.seoul.go.kr",
+          "source": "naver_image"
+        },
+        {
+          "title": "인상주의와 후기인상주의의 향연",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/hqUZ/image/8-FEu7sCcogv5LeK3pjfmB4HTfg.jpg",
+          "domain": "img1.daumcdn.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "02화 해체와 미완의 인상주의자",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fwebp/?fname=http://t1.daumcdn.net/brunch/service/user/1WXp/image/Z-1ve9uHauJ_VjzsaDrJ_7navhU.jpeg",
+          "domain": "img1.daumcdn.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "14화 모더니즘을 지났더니...",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fwebp/?fname=http://t1.daumcdn.net/brunch/service/user/gjei/image/l0TpbYZVI2EU3nVV1d7C9zoJx50",
+          "domain": "img1.daumcdn.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "인상주의에서 초기 모더니즘까지 - 감상리뷰",
+          "link": "https://velog.velcdn.com/images/bokko7711/post/0254939e-608c-4d45-94df-12d6b3cb6ffe/image.jpeg",
+          "domain": "velog.velcdn.com",
+          "source": "naver_image"
+        },
+        {
+          "title": "튜브 물감, 인상주의를 탄생시킨 혁신 기술",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fpng/?fname=http://t1.daumcdn.net/brunch/service/user/hPlA/image/9-naBPwpDuODgV9H7cG2HwjIGiE.png",
+          "domain": "img1.daumcdn.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "인상주의에서 초기모더니즘까지",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/bKpd/image/JvVydxv5MNVWG0GcpWw151EbnMo.jpg",
+          "domain": "img1.daumcdn.net",
+          "source": "naver_image"
+        }
+      ],
+      "status": "different"
+    },
+    {
+      "id": 8654,
+      "name": "제9회 노작홍사용창작단막극제",
+      "venue": "노작홍사용문학관",
+      "source": "exhibition_extraction",
+      "sourceUrl": "https://www.nojak.or.kr/services/front/community/notice/view?U_CD=COMMUNITY&BBS_SEQ=1998",
+      "currentPoster": "http://imgnews.naver.net/image/5281/2026/02/01/0000618032_001_20260201125810522.jpg",
+      "llmPoster": "http://imgnews.naver.net/image/5281/2026/02/01/0000618032_001_20260201125810522.jpg",
+      "llmReason": "후보 1의 제목에 이벤트명인 '제9회 노작홍사용창작단막극제'와 장소인 '노작홍사용문학관'이 모두 명확하게 포함되어 있어 해당 이벤트의 포스터로 가장 적합합니다. 다른 후보들은 '창작산실'이라는 다른 행사의 이미지입니다.",
+      "imageSources": [
+        "naver_img:제9회 노작홍사용창작단막극제 포스터",
+        "naver_img:제9회 노작홍사용창작단막극제 노작홍사용문학관"
+      ],
+      "candidateCount": 3,
+      "candidates": [
+        {
+          "title": "화성 노작홍사용문학관, 제9회 노작홍사용창작단막극제 참가팀 모집",
+          "link": "http://imgnews.naver.net/image/5281/2026/02/01/0000618032_001_20260201125810522.jpg",
+          "domain": "imgnews.naver.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "18회 창작산실, 5차 라인업 발표…3개월간의 34편 여정 '피날레'",
+          "link": "http://imgnews.naver.net/image/421/2026/03/03/0008803777_002_20260303162219903.jpg",
+          "domain": "imgnews.naver.net",
+          "source": "naver_image"
+        },
+        {
+          "title": "익숙한 고전, 뒤집힌 시선…창작산실 4차 라인업",
+          "link": "http://imgnews.naver.net/image/003/2026/02/24/NISI20260224_0002069363_web_20260224170004_20260224173818346.jpg",
+          "domain": "imgnews.naver.net",
+          "source": "naver_image"
+        }
+      ],
+      "status": "match"
+    }
+  ]
+}

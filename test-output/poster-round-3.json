@@ -1,0 +1,3011 @@
+{
+  "round": 3,
+  "timestamp": "2026-03-05T03:27:35.594Z",
+  "results": [
+    {
+      "id": 8699,
+      "name": "[월간톡톡 공연놀이터] 늑대야 친구하자",
+      "venue": "용인시평생학습관 큰어울마당",
+      "source": "blog_discovery",
+      "currentPoster": null,
+      "llmPoster": null,
+      "llmReason": "제시된 이미지 후보의 제목이 이벤트명 \"[월간톡톡 공연놀이터] 늑대야 친구하자\"와 일치하지 않습니다. 후보 이미지는 \"경기도어린이박물관, 어린이 공연 시즌 개막\"에 대한 내용으로, 이벤트명 및 장소(용인시평생학습관)와 관련이 없습니다.",
+      "searchQuery": "[월간톡톡 공연놀이터] 늑대야 친구하자 포스터",
+      "candidateCount": 1,
+      "candidates": [
+        {
+          "title": "경기도어린이박물관, 어린이 공연 시즌 개막… 9월까지 상설 무대 운영... 경기도어린이박물관, 어린이 공연 시즌 개막… 9월까지 상설 무대 운영",
+          "link": "https://www.jeonmae.co.kr/news/photo/202504/1136105_841680_1028.jpeg",
+          "domain": "www.jeonmae.co.kr"
+        }
+      ],
+      "status": "both_empty"
+    },
+    {
+      "id": 8587,
+      "name": "「대작전」 원내초청 인형극",
+      "venue": "화곡본동어린이집",
+      "source": "blog_discovery",
+      "currentPoster": "https://t1.daumcdn.net/cafeattach/15cn6/3cd97b7ce14a44000626e085d83861a591afb3e3_re_1710602771134",
+      "llmPoster": null,
+      "llmReason": "no candidates after filter",
+      "searchQuery": "「대작전」 원내초청 인형극 포스터",
+      "candidateCount": 0,
+      "candidates": [],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8543,
+      "name": "2026 남산골 한옥마을 설축제",
+      "venue": "남산골 한옥마을",
+      "source": "blog_discovery",
+      "currentPoster": "http://imgnews.naver.net/image/5736/2026/02/27/202602270759570803892e75d13a349254178125_20260227080217277.jpg",
+      "llmPoster": "http://imgnews.naver.net/image/5736/2026/02/27/202602270755430139492e75d13a349254178125_20260227080217275.jpg",
+      "llmReason": "이벤트명 \"2026 남산골 한옥마을 설축제\"와 이미지 제목 \"2만 7천 명 몰린 '2026 남산골 설축제' 성료…외국인도 반한 K-명절\"이 가장 정확하게 일치합니다. 뉴스 이미지라도 제목에 이벤트명이 포함되면 허용된다는 기준에 부합합니다.",
+      "searchQuery": "2026 남산골 한옥마을 설축제 포스터",
+      "candidateCount": 4,
+      "candidates": [
+        {
+          "title": "[포토] 남산골한옥마을 찾아 설 연휴 마지막 보내는 시민들",
+          "link": "http://imgnews.naver.net/image/029/2026/02/18/0003011372_002_20260218155110596.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "남산골한옥마을 찾아 설 연휴 마지막 보내는 시민들",
+          "link": "http://imgnews.naver.net/image/003/2026/02/18/NISI20260218_0021171691_web_20260218144358_20260218144511988.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "2만 7천 명 몰린 '2026 남산골 설축제' 성료…외국인도 반한 K-명절",
+          "link": "http://imgnews.naver.net/image/5736/2026/02/27/202602270755430139492e75d13a349254178125_20260227080217275.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "남산한옥마을 설축제",
+          "link": "http://imgnews.naver.net/image/001/2026/02/17/PYH2026021702950001300_P4_20260217155918278.jpg",
+          "domain": "imgnews.naver.net"
+        }
+      ],
+      "status": "different"
+    },
+    {
+      "id": 8551,
+      "name": "2026 서울스프링페스티벌",
+      "venue": "한강공원 일대",
+      "source": "blog_discovery",
+      "currentPoster": "http://imgnews.naver.net/image/5643/2026/02/25/0000052049_003_20260225162212480.jpg",
+      "llmPoster": "http://imgnews.naver.net/image/5643/2026/02/25/0000052049_003_20260225162212480.jpg",
+      "llmReason": "이벤트명 '2026 서울스프링페스티벌'이 이미지 제목에 직접적으로 완벽하게 포함되어 일치도가 가장 높습니다.",
+      "searchQuery": "2026 서울스프링페스티벌 포스터",
+      "candidateCount": 12,
+      "candidates": [
+        {
+          "title": "서울 대표 봄축제 '2026 서울스프링페스티벌' 올해는 26일로 대폭 확대",
+          "link": "http://imgnews.naver.net/image/5643/2026/02/25/0000052049_003_20260225162212480.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "한강서 열리는 서울스프링페스티벌, 4월 10일 개막",
+          "link": "http://imgnews.naver.net/image/008/2026/02/25/0005321975_001_20260225111614762.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "서울스프링페스티벌 | 지역축제 | 대한민국 구석구석 축제",
+          "link": "https://kfescdn.visitkorea.or.kr/kfes/upload/contents/db/a962b6e4-9f5d-489d-88ed-a93ce7ddc476_44.jpg",
+          "domain": "kfescdn.visitkorea.or.kr"
+        },
+        {
+          "title": "예술이 피어나는 봄…대구문예회관 '2026 아츠스프링 대구 페스티벌' 개최",
+          "link": "http://imgnews.naver.net/image/088/2026/01/21/0000993080_007_20260122171622584.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "\"허비 행콕→자넬 모네·엘라 마이\"…'서울재즈페스티벌 2026', 2차 라인업 30팀 공개",
+          "link": "http://imgnews.naver.net/image/5353/2026/02/24/0001202598_001_20260224170808280.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "네이버 인플루언서 [네이버 인플루언서] 2026 월드디제이페스티벌, 2026서울재즈페스티벌 라인업!",
+          "link": "https://dthumb-phinf.pstatic.net/?src=%22https://mblogthumb-phinf.pstatic.net/MjAyNjAxMTZfMTk4/MDAxNzY4NTI4MjAzOTg3.ZMwilHa89kIZJAO954DIZ0ovYVVXiGZCQUNJt5uuKjcg.hU35HyDqJj6lmqf8J19Q49yjh5N-Tt6-i2IHE9T6QW8g.PNG/%25BF%25F9%25B5%25F0%25C6%25E41.png?type=w800%22&opts=2&twidth=700&theight=700",
+          "domain": "dthumb-phinf.pstatic.net"
+        },
+        {
+          "title": "2026 서울히어로락페스티벌 1차 라인업 공개… 크라잉넛부터 QWER까지",
+          "link": "http://imgnews.naver.net/image/5356/2026/02/21/0000778741_002_20260221143011343.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "'2026서울히어로락페스티벌X 트리헌드레드' 인기 증명! 티켓 초고속 매진",
+          "link": "http://imgnews.naver.net/image/5400/2026/02/24/0000249160_001_20260224141214961.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "‘2026 서울히어로락페스티벌 X 트리헌드레드’, 1차 라인업 17팀 공개",
+          "link": "http://imgnews.naver.net/image/009/2026/02/13/0005637229_001_20260213141515444.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "'2026 서울드럼페스티벌' 공연·기획 참여할 '드럼팬' 모집",
+          "link": "http://imgnews.naver.net/image/001/2026/01/13/AKR20260112112100004_02_i_P4_20260113060113836.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "타블로, 서울재즈페스티벌 2026 에픽하이 무대 예고",
+          "link": "http://imgnews.naver.net/image/5353/2026/02/24/0001202374_001_20260224122409892.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "삼일로창고극장, '2026 서울 국제 모노드라마 페스티벌' 개최",
+          "link": "http://imgnews.naver.net/image/003/2026/02/13/NISI20260213_0002063388_web_20260213092951_20260213102122290.jpg",
+          "domain": "imgnews.naver.net"
+        }
+      ],
+      "status": "match"
+    },
+    {
+      "id": 8592,
+      "name": "2026 인형극 페스티벌: 달, 여행",
+      "venue": "이천아트홀",
+      "source": "blog_discovery",
+      "currentPoster": "https://dthumb-phinf.pstatic.net/?src=%22https://mblogthumb-phinf.pstatic.net/MjAyNDEwMDhfMjk1/MDAxNzI4MzcxNzkxNzU3.2StuOCfgcBTaxm1aQ0j1hXZf1RGL9SaRB0OffXWZhp0g.ZQ_tsBDH_8C---v4DXpD43MN3QPvU19YI68a19wFyJQg.PNG/%25B4%25F6%25C0%25AF%25BB%25EA_%25C7%25E2%25C0%25FB%25BA%25C0_%25B0%25EF%25B5%25B9%25B6%25F3_%25C5%25B8%25B0%25ED_30%25BA%25D0_%25B8%25B8%25BF%25A1_%25B0%25A1%25B1%25E2.png?type=w800%22&opts=2&twidth=700&theight=700",
+      "llmPoster": null,
+      "llmReason": "제시된 이미지 후보들의 제목이 '광주프린지페스티벌'을 언급하고 있어, 요청된 이벤트 '2026 인형극 페스티벌: 달, 여행'과 이벤트명이 일치하지 않습니다. 관련 없는 다른 이벤트의 포스터이므로 선택 기준에 부합하지 않습니다.",
+      "searchQuery": "2026 인형극 페스티벌: 달, 여행 포스터",
+      "candidateCount": 2,
+      "candidates": [
+        {
+          "title": "네이버 인플루언서 [네이버 인플루언서] 여행하는 고랑이의 광주프린지페스티벌",
+          "link": "https://dthumb-phinf.pstatic.net/?src=%22https://mblogthumb-phinf.pstatic.net/MjAyNTA3MjlfMTgw/MDAxNzUzNzY3MDk1NDU2.cVoHx8-3rMLqKzf-BrjQEybBx8kcNTqD86E4IHWTeqMg.ruDvZ7VOCKZK4-Dqm_hkZcbvsW6pIgEcwYx2HFGh2eEg.PNG/%25C1%25A6%25B8%25F1_%25BE%25F8%25C0%25BD_%25A3%25A81080_x_1080_px%25A3%25A9.png?type=w800%22&opts=2&twidth=700&theight=700",
+          "domain": "dthumb-phinf.pstatic.net"
+        },
+        {
+          "title": "네이버 인플루언서 [네이버 인플루언서] 여행하는 고랑이의 광주프린지페스티벌",
+          "link": "https://dthumb-phinf.pstatic.net/?src=%22https://mblogthumb-phinf.pstatic.net/MjAyNDEwMDhfMjk1/MDAxNzI4MzcxNzkxNzU3.2StuOCfgcBTaxm1aQ0j1hXZf1RGL9SaRB0OffXWZhp0g.ZQ_tsBDH_8C---v4DXpD43MN3QPvU19YI68a19wFyJQg.PNG/%25B4%25F6%25C0%25AF%25BB%25EA_%25C7%25E2%25C0%25FB%25BA%25C0_%25B0%25EF%25B5%25B9%25B6%25F3_%25C5%25B8%25B0%25ED_30%25BA%25D0_%25B8%25B8%25BF%25A1_%25B0%25A1%25B1%25E2.png?type=w800%22&opts=2&twidth=700&theight=700",
+          "domain": "dthumb-phinf.pstatic.net"
+        }
+      ],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8528,
+      "name": "2026 포켓몬런 서울",
+      "venue": "뚝섬 한강공원",
+      "source": "blog_discovery",
+      "currentPoster": "https://img1.daumcdn.net/thumb/R1280x0.fpng/?fname=http://t1.kakaocdn.net/brunch/service/user/ilOJ/image/vkClL7tyPZ_YZFG6bObc-ubBtaI.png",
+      "llmPoster": "https://img1.daumcdn.net/thumb/R1280x0.fpng/?fname=http://t1.kakaocdn.net/brunch/service/user/ilOJ/image/vkClL7tyPZ_YZFG6bObc-ubBtaI.png",
+      "llmReason": "이미지 제목 \"포켓몬런 서울 2026 신청 방법 일정 코스 알아보기\"가 이벤트명 \"2026 포켓몬런 서울\"을 완벽하게 포함하고 있으며, '신청 방법', '일정', '코스' 등의 키워드를 통해 이벤트의 공식 홍보 또는 정보성 이미지임을 명확히 알 수 있습니다. 이는 '이벤트명이 이미지 제목에 직접 포함된 홍보 포스터/배너' 기준에 가장 부합합니다.",
+      "searchQuery": "2026 포켓몬런 서울 포스터",
+      "candidateCount": 14,
+      "candidates": [
+        {
+          "title": "포켓몬런 서울 2026 신청 방법 일정 코스 알아보기",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fpng/?fname=http://t1.kakaocdn.net/brunch/service/user/ilOJ/image/vkClL7tyPZ_YZFG6bObc-ubBtaI.png",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "포켓몬런 서울 2026 일정과 신청 방법 총정리 SK 러닝 이벤트",
+          "link": "https://scs-phinf.pstatic.net/MjAyNjAyMjRfMTEz/MDAxNzcxODYwMzQ1OTI0.QSa5nAz7kW9fqrRKozkvT-GpGS7LliPedAowhDVnA9wg.Obh2c_COztVF2vLHus1tG8to-h0uSND_iOOXqbwXLPog.PNG/%EC%A0%9C%EB%AA%A9%EC%9D%84_%EC%9E%85%EB%A0%A5%ED%95%B4%EC%A3%BC%EC%84%B8%EC%9A%94._(3).png?type=w800",
+          "domain": "scs-phinf.pstatic.net"
+        },
+        {
+          "title": "어린이날엔 러닝이지! '포켓몬 런 2026 in 서울'",
+          "link": "http://imgnews.naver.net/image/442/2026/02/13/0000189762_001_20260213161513509.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "5,000명의 잉어킹이 한강을 달린다… 포켓몬 런 2026이 보여준 러닝 산업의 진화 < 트렌드 인사이트 < INSIGHT < 기사본문 - 소비자평가 5...",
+          "link": "https://cdn.iconsumer.or.kr/news/photo/202602/30276_40596_2830.png",
+          "domain": "cdn.iconsumer.or.kr"
+        },
+        {
+          "title": "‘2026 서울 팀 K리그 런' 3월 28일 상암서 열린다",
+          "link": "http://imgnews.naver.net/image/353/2026/02/24/0000054659_001_20260224160108576.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "Pokemon Marathon! | 게임 추천 목록 Pokemon Marathon! | 게임 컬렉션 | 미니맵",
+          "link": "https://djf7qc4xvps5h.cloudfront.net/user/collection/og/e89a6ea9-9cc6-4a61-be76-8d778e91b87a.jpg",
+          "domain": "djf7qc4xvps5h.cloudfront.net"
+        },
+        {
+          "title": "포켓몬 30주년기념 포켓몬런 2026 마라톤 개최 > 인기 게시물 | 시보드 포켓몬 30주년기념 포켓몬런 2026 마라톤 개최",
+          "link": "https://cbimg.xyz/data/file/c18/17725039874589.jpg",
+          "domain": "cbimg.xyz"
+        },
+        {
+          "title": "미국제 데일리런 떳다... 8월10일 판 ㅇㅇ - 포켓로그 마이너 갤러리",
+          "link": "https://lh7-us.googleusercontent.com/docs/AHkbwyIqiPKK_WCcuYyXEd0jpWsqiEvJui2LsDaHt9ruARknK9EoXcDbQmm83cHYPsJDM7Eydd6hZzPTCpSBpnb21GyK9TKiOBJGwZ3vuQhPFqxZt0NaiHrT=w1200-h630-p",
+          "domain": "lh7-us.googleusercontent.com"
+        },
+        {
+          "title": "코오롱스포츠, '코오롱 트레일 런 2026' 개최…\"레이스는 결승선에서 끝나지 않는다\"",
+          "link": "http://imgnews.naver.net/image/5863/2026/02/04/0000054673_001_20260204092811552.png",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "모두투어, '2026 인사이더런W' 참가… 마라톤 마니아를 위한 맞춤형 기획전 오픈",
+          "link": "http://imgnews.naver.net/image/5818/2026/01/26/0000215810_002_20260126095224548.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "2026 HEAT&RUN: 야구 팬 위한 이색 마라톤",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.kakaocdn.net/brunch/service/user/i2LY/image/a_-NWpcDPSPqy4EovV0FYHJXUFE.jpg",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "카스 라이트,국내 최초 실내 마라톤 '2026 인사이더런 W' 메인 스폰서 참여",
+          "link": "http://imgnews.naver.net/image/5141/2026/02/05/0000170278_001_20260205115616351.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "2026 무해런 - 이벤터스",
+          "link": "https://eventusstorage.blob.core.windows.net/evs/Image/wiperth/121590/ProjectInfo/1a7b9624c9fe462ebf46ed796773e6c7.png",
+          "domain": "eventusstorage.blob.core.windows.net"
+        },
+        {
+          "title": "게임으로 희망 전하다…'2026 슈퍼 스피드런 마라톤' 성황",
+          "link": "http://imgnews.naver.net/image/031/2026/01/08/0000995239_001_20260108100210185.jpg",
+          "domain": "imgnews.naver.net"
+        }
+      ],
+      "status": "match"
+    },
+    {
+      "id": 8560,
+      "name": "2월 예술융합특강 변주곡 달력 만들기",
+      "venue": "귤현음악학원",
+      "source": "blog_discovery",
+      "currentPoster": null,
+      "llmPoster": null,
+      "llmReason": "no candidates after filter",
+      "searchQuery": "2월 예술융합특강 변주곡 달력 만들기 포스터",
+      "candidateCount": 0,
+      "candidates": [],
+      "status": "both_empty"
+    },
+    {
+      "id": 8624,
+      "name": "Cleared for Take-off: 비행을",
+      "venue": "국립항공박물관",
+      "source": "blog_discovery",
+      "currentPoster": "https://www.forest.go.kr/kfsweb/cmm/fms/getImage.do?atchFileId=FILE_000000010011824&fileSn=0",
+      "llmPoster": "https://www.forest.go.kr/kfsweb/cmm/fms/getImage.do?atchFileId=FILE_000000010011824&fileSn=0",
+      "llmReason": "이벤트명 'Cleared for Take-off: 비행을'의 핵심 키워드인 'TAKE OFF'와 '비행'이 이미지 제목 '산림청헬기와 꿈을 향한 안전비행 TAKE OFF !'에 직접 포함되어 일치도가 높습니다. 또한, forest.go.kr 도메인은 공식적인 정보를 제공하는 신뢰할 수 있는 도메인이며, 스톡 이미지나 현장 사진이 아닌 홍보 이미지로 판단됩니다. 다른 후보들은 모두 스톡 이미지 사이트(gettyimagesbank.com)의 이미지로, 선택 기준의 '제외 대상'에 해당합니다.",
+      "searchQuery": "Cleared for Take-off: 비행을 포스터",
+      "candidateCount": 5,
+      "candidates": [
+        {
+          "title": "산림청 - 행정정보 > 산림행정미디어센터 > 보도자료 > 산림청헬기와 꿈을 향한 안전비행 TAKE OFF ! 산림청 - 행정정보 > 산림행정미디어센터...",
+          "link": "https://www.forest.go.kr/kfsweb/cmm/fms/getImage.do?atchFileId=FILE_000000010011824&fileSn=0",
+          "domain": "www.forest.go.kr"
+        },
+        {
+          "title": "Floatplane ready to take-off 이미지 (91043433) - 게티이미지뱅크 Floatplane ready to take-off",
+          "link": "http://imagescdn.gettyimagesbank.com/500/06/483/097/6/91043433.jpg",
+          "domain": "imagescdn.gettyimagesbank.com"
+        },
+        {
+          "title": "Plane take off - sunset background 이미지 (476612544) - 게티이미지뱅크 Plane take off - sunset background",
+          "link": "http://imagescdn.gettyimagesbank.com/500/15/859/899/0/476612544.jpg",
+          "domain": "imagescdn.gettyimagesbank.com"
+        },
+        {
+          "title": "plane take off 이미지 (94308212) - 게티이미지뱅크 plane take off",
+          "link": "http://imagescdn.gettyimagesbank.com/500/08/912/055/0/94308212.jpg",
+          "domain": "imagescdn.gettyimagesbank.com"
+        },
+        {
+          "title": "airplane take off 이미지 (156260842) - 게티이미지뱅크 airplane take off",
+          "link": "http://imagescdn.gettyimagesbank.com/500/12/695/939/0/156260842.jpg",
+          "domain": "imagescdn.gettyimagesbank.com"
+        }
+      ],
+      "status": "match"
+    },
+    {
+      "id": 8611,
+      "name": "FC서울 유소년 축구교실 모집",
+      "venue": "동작키즈아레나, GS챔피언스파크",
+      "source": "blog_discovery",
+      "currentPoster": "https://assets.goal.com/images/v3/blta02f59934b3f36e9/%5B%E1%84%87%E1%85%A9%E1%84%83%E1%85%A9%E1%84%8C%E1%85%A1%E1%84%85%E1%85%AD%5D_FC%E1%84%89%E1%85%A5%E1%84%8B%E1%85%AE%E1%86%AF_2024%E1%84%89%E1%85%B5%E1%84%8C%E1%85%B3%E1%86%AB_%E1%84%83%E1%85%A1%E1%84%86%E1%85%AE%E1%86%AB%E1%84%92%E1%85%AA_%E1%84%8E%E1%85%AE%E1%86%A8%E1%84%80%E1%85%AE%E1%84%80%E1%85%AD%E1%84%89%E1%85%B5%E1%86%AF_%E1%84%8E%E1%85%A1%E1%86%B7%E1%84%80%E1%85%A1%E1%84%8C%E1%85%A1_%E1%84%86%E1%85%A9%E1%84%8C%E1%85%B5%E1%86%B8.jpg",
+      "llmPoster": "https://assets.goal.com/images/v3/blta02f59934b3f36e9/%5B%E1%84%87%E1%85%A9%E1%84%83%E1%85%A9%E1%84%8C%E1%85%A1%E1%84%85%E1%85%AD%5D_FC%E1%84%89%E1%85%A5%E1%84%8B%E1%85%AE%E1%86%AF_2024%E1%84%89%E1%85%B5%E1%84%8C%E1%85%B3%E1%86%AB_%E1%84%83%E1%85%A1%E1%84%86%E1%85%AE%E1%86%AB%E1%84%92%E1%85%AA_%E1%84%8E%E1%85%AE%E1%86%A8%E1%84%80%E1%85%AE%E1%84%80%E1%85%AD%E1%84%89%E1%85%B5%E1%86%AF_%E1%84%8E%E1%85%A1%E1%86%B7%E1%84%80%E1%85%A1%E1%84%8C%E1%85%A1_%E1%84%86%E1%85%A9%E1%84%8C%E1%85%B5%E1%86%B8.jpg",
+      "llmReason": "이벤트명 'FC서울 유소년 축구교실 모집'의 핵심 키워드인 'FC서울', '축구교실', '모집'이 후보 1번 이미지 제목('FC서울, 2024시즌 다문화 축구교실 참가자 모집')에 모두 포함됩니다. '유소년'과 '다문화'에서 차이가 있으나, 'FC서울' 주최의 '축구교실 모집'이라는 점에서 가장 높은 일치도를 보이며, Goal.com은 신뢰할 수 있는 스포츠 뉴스 도메인입니다. 후보 2번은 '마포구 어린이 축구교실'로 주최 기관이 달라 관련 없는 이벤트로 판단됩니다.",
+      "searchQuery": "FC서울 유소년 축구교실 모집 포스터",
+      "candidateCount": 2,
+      "candidates": [
+        {
+          "title": "FC서울, 2024시즌 다문화 축구교실 참가자 모집 | Goal.com 한국어",
+          "link": "https://assets.goal.com/images/v3/blta02f59934b3f36e9/%5B%E1%84%87%E1%85%A9%E1%84%83%E1%85%A9%E1%84%8C%E1%85%A1%E1%84%85%E1%85%AD%5D_FC%E1%84%89%E1%85%A5%E1%84%8B%E1%85%AE%E1%86%AF_2024%E1%84%89%E1%85%B5%E1%84%8C%E1%85%B3%E1%86%AB_%E1%84%83%E1%85%A1%E1%84%86%E1%85%AE%E1%86%AB%E1%84%92%E1%85%AA_%E1%84%8E%E1%85%AE%E1%86%A8%E1%84%80%E1%85%AE%E1%84%80%E1%85%AD%E1%84%89%E1%85%B5%E1%86%AF_%E1%84%8E%E1%85%A1%E1%86%B7%E1%84%80%E1%85%A1%E1%84%8C%E1%85%A1_%E1%84%86%E1%85%A9%E1%84%8C%E1%85%B5%E1%86%B8.jpg",
+          "domain": "assets.goal.com"
+        },
+        {
+          "title": "2024 마포구 어린이 축구교실 선수 모집 안내 :: 공지사항 :: 서울서교초등학교 서울서교초등학교 :: 공지사항 :: 2024 마포구 어린이 축구교실...",
+          "link": "https://image.toast.com/aaaaayz/prod/article/142467417/1_1699489226.png",
+          "domain": "image.toast.com"
+        }
+      ],
+      "status": "match"
+    },
+    {
+      "id": 8603,
+      "name": "Still, Tasha Tudor : 행복의 아이콘, 타샤 튜더의 삶",
+      "venue": "롯데뮤지엄",
+      "source": "blog_discovery",
+      "currentPoster": "https://og-data.s3.amazonaws.com/media/exhibitions/image/14621/ei_14621.png",
+      "llmPoster": "https://og-data.s3.amazonaws.com/media/exhibitions/image/14621/ei_14621.png",
+      "llmReason": "이벤트명 'Still, Tasha Tudor : 행복의 아이콘, 타샤 튜더의 삶'이 이미지 제목에 직접, 그리고 완벽하게 포함되어 있어 선택 기준 1순위를 가장 잘 충족합니다.",
+      "searchQuery": "Still, Tasha Tudor : 행복의 아이콘, 타샤 튜더의 삶 포스터",
+      "candidateCount": 10,
+      "candidates": [
+        {
+          "title": "'Still, Tasha Tudor : 행복의 아이콘, 타샤 튜더의 삶 ' 전시 정보 :: 오픈갤러리 Still, Tasha Tudor : 행복의 아이콘, 타샤 튜더의 삶",
+          "link": "https://og-data.s3.amazonaws.com/media/exhibitions/image/14621/ei_14621.png",
+          "domain": "og-data.s3.amazonaws.com"
+        },
+        {
+          "title": "행복의 아이콘_타샤튜더의 삶",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fwebp/?fname=http://t1.daumcdn.net/brunch/service/user/eTLS/image/5aIOk_uGsbHSk2IF4gRJ-C1c5pk",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "행복의 아이콘_타샤튜더의 삶",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fwebp/?fname=https://t1.daumcdn.net/brunch/service/user/eTLS/image/j7UvHAUV_YHoHpqBZVKFOZwq1cw",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "행복의 아이콘_타샤튜더의 삶",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fwebp/?fname=https://t1.daumcdn.net/brunch/service/user/eTLS/image/NpUJDzbousXMiICLV4WSowvkPrk",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "행복의 아이콘_타샤튜더의 삶",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fwebp/?fname=https://t1.daumcdn.net/brunch/service/user/eTLS/image/XFGwiFN5SHkaRRiFWgN1IKbiRug",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "행복의 아이콘_타샤튜더의 삶",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fwebp/?fname=https://t1.daumcdn.net/brunch/service/user/eTLS/image/WEjvSGMkLIYneQ9PdmwM8ndX4wQ",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "행복의 아이콘_타샤튜더의 삶",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fwebp/?fname=https://t1.daumcdn.net/brunch/service/user/eTLS/image/d2YjC2B0uNXRGWfkjXynxeRPixM",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "네이버 인플루언서 [네이버 인플루언서] 서울 전시회로 만나는 행복의 아이콘! 타샤 튜더의 삶",
+          "link": "https://influencer-phinf.pstatic.net/MjAyNTEyMjVfMTM4/MDAxNzY2NjU3NzIzNjgw.G-11F27Z0nl475VQwvPFyabQti5oCDOFaWUNgWq5XLog.536XbaBRu52_6UQCNXZdtA1ovUcEJFQycW0tmOyAF2og.JPEG/image.jpg?type=w700",
+          "domain": "influencer-phinf.pstatic.net"
+        },
+        {
+          "title": "행복의 아이콘_타샤튜더의 삶",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fwebp/?fname=https://t1.daumcdn.net/brunch/service/user/eTLS/image/YL4v_V8vwuL1Snv0dfvbQcukhz8",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "행복의 아이콘_타샤튜더의 삶",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fwebp/?fname=https://t1.daumcdn.net/brunch/service/user/eTLS/image/URCWRWulbXUI8eQFFymRgha5yqk",
+          "domain": "img1.daumcdn.net"
+        }
+      ],
+      "status": "match"
+    },
+    {
+      "id": 8691,
+      "name": "가족뮤지컬 슈퍼거북",
+      "venue": "서울숲",
+      "source": "blog_discovery",
+      "currentPoster": "https://www.gwanak.go.kr/Synapeditor/fileDownload.do?file_type=img&file_name=b49461a8-88ec-4316-9607-d15ccd25d81f.jpg",
+      "llmPoster": "https://www.gwanak.go.kr/Synapeditor/fileDownload.do?file_type=img&file_name=b49461a8-88ec-4316-9607-d15ccd25d81f.jpg",
+      "llmReason": "이벤트명 '가족뮤지컬 슈퍼거북'의 핵심 키워드가 이미지 제목 '가족 뮤지컬 '슈퍼거북, 슈퍼토끼' 관람'에 포함되어 일치도가 높습니다. 또한, '교육 및 행사정보_상세보기' 페이지의 이미지로, 공식 홍보 포스터일 가능성이 가장 높습니다. 후보 2는 '관람 후기' 이미지로 제외 대상이며, 후보 3은 'SPOT'으로 영상 썸네일일 가능성이 있어, 공식 행사 정보 페이지의 이미지가 더 적합합니다.",
+      "searchQuery": "가족뮤지컬 슈퍼거북 포스터",
+      "candidateCount": 3,
+      "candidates": [
+        {
+          "title": "교육 및 행사정보_상세보기 : 관악구 육아종합지원센터 [가족참여프로그램]가족과 행복UP! 가족 뮤지컬 '슈퍼거북, 슈퍼토끼' 관람",
+          "link": "https://www.gwanak.go.kr/Synapeditor/fileDownload.do?file_type=img&file_name=b49461a8-88ec-4316-9607-d15ccd25d81f.jpg",
+          "domain": "www.gwanak.go.kr"
+        },
+        {
+          "title": "공지사항 : 관악구 육아종합지원센터 [놀이체험실-꿈자람터] 가족과 행복UP! 가족 뮤지컬 '슈퍼거북, 슈퍼토끼' 관람 후기",
+          "link": "https://www.gwanak.go.kr/Synapeditor/fileDownload.do?file_type=img&file_name=c06d8f69-51da-420d-bf8b-e70223b0719c.jpg",
+          "domain": "www.gwanak.go.kr"
+        },
+        {
+          "title": "뮤지컬 〈슈퍼거북 슈퍼토끼〉 SPOT - kakaoTV 뮤지컬 〈슈퍼거북 슈퍼토끼〉 SPOT",
+          "link": "http://img1.kakaocdn.net/kakaotv/KAKAOACCOUNT/2092804594/thumb/20241211091806",
+          "domain": "img1.kakaocdn.net"
+        }
+      ],
+      "status": "match"
+    },
+    {
+      "id": 8579,
+      "name": "개구쟁이특공대 뮤지컬",
+      "venue": "나루아트센터",
+      "source": "blog_discovery",
+      "currentPoster": "https://dthumb-phinf.pstatic.net/?src=%22https://mblogthumb-phinf.pstatic.net/MjAyNjAxMTlfMjg4/MDAxNzY4ODI3ODk0Mjgy.niawdF0zC29t47J9C2BfMQHDa_6jOzwI3G6ryU2_nOQg.pRX--WZHC6lunwbSbg0fP_yZ7ERPkI-yYqM1h8c-TrQg.JPEG/%25B0%25B3%25B1%25B8%25C0%25EF%25C0%25CC_%25C6%25AF%25B0%25F8%25B4%25EB_%25C6%25F7%25BD%25BA%25C5%25CD_%25BC%25AD%25BF%25EF_%25C3%25D6%25C1%25BE.jpg?type=w800%22&opts=2&twidth=700&theight=700",
+      "llmPoster": "https://image.yes24.com/goods/104197962/XL",
+      "llmReason": "이벤트명 '개구쟁이특공대 뮤지컬'의 핵심 키워드인 '개구쟁이 특공대'가 이미지 제목에 포함되어 있으며, 예매사이트인 'yes24.com'의 신뢰할 수 있는 도메인에서 제공되는 이미지입니다. 다른 후보들은 이벤트명과 일치하지 않거나, 신뢰할 수 없는 도메인에서 제공되거나, 책 표지 등 관련 없는 이미지입니다.",
+      "searchQuery": "개구쟁이특공대 뮤지컬 포스터",
+      "candidateCount": 11,
+      "candidates": [
+        {
+          "title": "네이버 인플루언서 [네이버 인플루언서] 도마뱀의 유아뮤지컬",
+          "link": "https://dthumb-phinf.pstatic.net/?src=%22https://mblogthumb-phinf.pstatic.net/MjAyNjAxMTlfMjg4/MDAxNzY4ODI3ODk0Mjgy.niawdF0zC29t47J9C2BfMQHDa_6jOzwI3G6ryU2_nOQg.pRX--WZHC6lunwbSbg0fP_yZ7ERPkI-yYqM1h8c-TrQg.JPEG/%25B0%25B3%25B1%25B8%25C0%25EF%25C0%25CC_%25C6%25AF%25B0%25F8%25B4%25EB_%25C6%25F7%25BD%25BA%25C5%25CD_%25BC%25AD%25BF%25EF_%25C3%25D6%25C1%25BE.jpg?type=w800%22&opts=2&twidth=700&theight=700",
+          "domain": "dthumb-phinf.pstatic.net"
+        },
+        {
+          "title": "네이버 인플루언서 [네이버 인플루언서] 아직 못 봤다면? 지방 공연으로 만나는 어린이 뮤지컬 2편!",
+          "link": "https://dthumb-phinf.pstatic.net/?src=%22https://phinf.pstatic.net/tvcast/20250806_74/04shake_1754461135745XJe5F_JPEG/D00BAC8D-2C86-468E-9EC7-B1353926265E.jpg%22&opts=2&twidth=700&theight=700",
+          "domain": "dthumb-phinf.pstatic.net"
+        },
+        {
+          "title": "네이버 인플루언서 [네이버 인플루언서] 아이들과 볼만한 유아 뮤지컬 BEST5",
+          "link": "https://dthumb-phinf.pstatic.net/?src=%22https://mblogthumb-phinf.pstatic.net/MjAyNDExMDNfOTAg/MDAxNzMwNjM0ODM2MTAw.CovpZ8phjHPQN8w3ziAEj4OLaUZ8JWrE2j_2K9vS4bAg.kJ73ixGDcqAzqUrXdsUWGROcfQrV65E6eJsrOQdZ02Qg.PNG/image.png?type=w800%22&opts=2&twidth=700&theight=700",
+          "domain": "dthumb-phinf.pstatic.net"
+        },
+        {
+          "title": "네이버 인플루언서 [네이버 인플루언서] 겨울방학에 볼만한 어린이 가족 뮤지컬 추천 3",
+          "link": "https://dthumb-phinf.pstatic.net/?src=%22https://mblogthumb-phinf.pstatic.net/MjAyNTEyMzFfMTA3/MDAxNzY3MTM1MTI4NzQy.XUhuBiC7Fo_1eKx87qScNp8vupEbWfW9b7qvhdpltEcg._qGYHlxO-5cHIQSChdzOSWmoWQVzPX76phkmwP-vq0Ig.PNG/%25BE%25CB%25BB%25E7%25C5%25C16.png?type=w800%22&opts=2&twidth=700&theight=700",
+          "domain": "dthumb-phinf.pstatic.net"
+        },
+        {
+          "title": "01화 등장인물 & 무대",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/7yqA/image/lZXuTEFHvZCRMO2LZQNAsUMiIcY.jpg",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "네이버 인플루언서 [네이버 인플루언서] 아이가 좋아하는 어린이뮤지컬 best4",
+          "link": "https://dthumb-phinf.pstatic.net/?src=%22https://mblogthumb-phinf.pstatic.net/MjAyMzAzMThfNDIg/MDAxNjc5MTEzNzE0NTg3.sD_DTx82qODIMm7agUWb-vSQ8mFaYASu6PK82S5kqGMg.biuU9h08fzVEVMeGqBvyut5x40Im1oxUWEeo2r3X47gg.JPEG.rmagml04/output_1694946948.jpg?type=w800%22&opts=2&twidth=700&theight=700",
+          "domain": "dthumb-phinf.pstatic.net"
+        },
+        {
+          "title": "개구쟁이 특공대 - 예스24",
+          "link": "https://image.yes24.com/goods/104197962/XL",
+          "domain": "image.yes24.com"
+        },
+        {
+          "title": "20화 개구쟁이",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fwebp/?fname=http://t1.daumcdn.net/brunch/service/user/hXi0/image/yKCUvXQ1KyzX6Yt7VCIx9UDqB-Q.JPG",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "네이버 인플루언서 [네이버 인플루언서] 어린이뮤지컬 대표 3 작품 후기!",
+          "link": "https://dthumb-phinf.pstatic.net/?src=%22https://mblogthumb-phinf.pstatic.net/MjAyNDA0MjdfMTE1/MDAxNzE0MTczMzQzODIx.H8pP0BGcOg10csxmiz2k56GSeNUIdjOtrHzJCq3pFI0g.V_wxlYPX6SD76DvfwLPJIJ6wD9HEKdSPd1BeWlz4Y9Ag.PNG/%25C1%25A6%25B8%25F1%25C0%25BB-%25C0%25D4%25B7%25C2%25C7%25D8%25C1%25D6%25BC%25BC%25BF%25E4_-001_%252812%2529.png?type=w800%22&opts=2&twidth=700&theight=700",
+          "domain": "dthumb-phinf.pstatic.net"
+        },
+        {
+          "title": "꼬마대통령 개구쟁이 특공대 전13권/ 개구장이특공대 | 유키노 유미코 | 주식회사 앙팡몽드 - 예스24",
+          "link": "https://image.yes24.com/goods/71745335/XL",
+          "domain": "image.yes24.com"
+        },
+        {
+          "title": "꼬마대통령 개구쟁이 특공대 1-13권 세트 개구장이특공대 | 유키노 유미코 | 주식회사 앙팡몽드 - 예스24",
+          "link": "https://image.yes24.com/goods/66874631/XL",
+          "domain": "image.yes24.com"
+        }
+      ],
+      "status": "different"
+    },
+    {
+      "id": 8556,
+      "name": "고양국제꽃박람회",
+      "venue": "고양국제꽃박람회",
+      "source": "blog_discovery",
+      "currentPoster": "https://www.archives.go.kr/theme/next/stampposter/poster/DH50003661/DH50003661.jpg",
+      "llmPoster": null,
+      "llmReason": "제시된 이미지 후보의 제목(\"우표와 포스터\")에 이벤트명(\"고양국제꽃박람회\")이 직접 포함되어 있지 않아, 해당 이벤트의 공식 포스터 또는 대표 홍보 이미지로 판단하기 어렵습니다. 이벤트명과 이미지 제목의 일치도가 가장 중요하며, 현재 후보는 이 기준을 충족하지 못합니다.",
+      "searchQuery": "고양국제꽃박람회 포스터",
+      "candidateCount": 1,
+      "candidates": [
+        {
+          "title": "우표와 포스터",
+          "link": "https://www.archives.go.kr/theme/next/stampposter/poster/DH50003661/DH50003661.jpg",
+          "domain": "www.archives.go.kr"
+        }
+      ],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8577,
+      "name": "공주 드레스 섬유 아트 · 스폰지 아트",
+      "venue": "갤러리몸",
+      "source": "blog_discovery",
+      "currentPoster": "http://imgnews.naver.net/image/016/2026/02/23/0002603532_001_20260223110209725.jpeg",
+      "llmPoster": null,
+      "llmReason": "후보 이미지의 제목 \"'원령공주' 아트포스터\"는 이벤트명 \"공주 드레스 섬유 아트 · 스폰지 아트\"와 일치하지 않습니다. '원령공주'는 특정 영화를 지칭하며, '드레스 섬유 아트'나 '스폰지 아트'와는 관련이 없어 해당 이벤트의 공식 포스터로 적합하지 않습니다.",
+      "searchQuery": "공주 드레스 섬유 아트 · 스폰지 아트 포스터",
+      "candidateCount": 1,
+      "candidates": [
+        {
+          "title": "익스트림무비 - '원령공주' 아트포스터",
+          "link": "https://extmovie.maxmovie.com/xe/files/attach/images/135/522/578/026/f593c39b25325ab2405cf19d57dbd026.jpg",
+          "domain": "extmovie.maxmovie.com"
+        }
+      ],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8617,
+      "name": "광명초등학교 찾아가는 문화예술공연",
+      "venue": "광명초등학교",
+      "source": "blog_discovery",
+      "currentPoster": "https://www.idfac.or.kr/data/editor/2405/8a19d825be112f07aa694a1d5c858a83_1716522077_3169.png",
+      "llmPoster": null,
+      "llmReason": "제시된 이미지 후보 중 이벤트명 '광명초등학교 찾아가는 문화예술공연'과 일치하는 제목을 가진 포스터가 없습니다. 모든 후보는 다른 이벤트, 다른 학교, 또는 출판물과 관련된 제목을 가지고 있습니다.",
+      "searchQuery": "광명초등학교 찾아가는 문화예술공연 포스터",
+      "candidateCount": 4,
+      "candidates": [
+        {
+          "title": "광명시 광명7동, 주민을 위한 찾아가는 음악회 성황리에 열려:경인투데이뉴스 ≪경인투데이뉴스≫ 광명시 광명7동, 주민을 위한 찾아가는...",
+          "link": "http://tr.xza.kr/imgdata/tr_xza_kr/202406/20240624184733-90942.jpg",
+          "domain": "tr.xza.kr"
+        },
+        {
+          "title": "시즌 :: 공지사항 :: 안현초등학교 안현초등학교 :: 공지사항 :: 광명문화재단 기획공연 <Ballet Triple-Bill Season2(발레 트리플빌 시즌",
+          "link": "https://image.toast.com/aaaaayz/prod/article/139190688/1_1685693771.jpeg",
+          "domain": "image.toast.com"
+        },
+        {
+          "title": "POINT 정책정보포털 | 상세정보 광명문화저널 : 지역주민의 문화마당. 제20호(2007년) | 정책정보포털",
+          "link": "https://policy.nl.go.kr/cmmn/displayCoverImg.do?contentsId=CNTS-00133951316",
+          "domain": "policy.nl.go.kr"
+        },
+        {
+          "title": "POINT 정책정보포털 | 상세정보 광명문화저널 : 지역주민의 문화마당. 제21호(2007년) | 정책정보포털",
+          "link": "https://policy.nl.go.kr/cmmn/displayCoverImg.do?contentsId=CNTS-00133951317",
+          "domain": "policy.nl.go.kr"
+        }
+      ],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8605,
+      "name": "국립어린이과학관 우주프로그램",
+      "venue": "국립어린이과학관",
+      "source": "blog_discovery",
+      "currentPoster": null,
+      "llmPoster": null,
+      "llmReason": "no candidates after filter",
+      "searchQuery": "국립어린이과학관 우주프로그램 포스터",
+      "candidateCount": 0,
+      "candidates": [],
+      "status": "both_empty"
+    },
+    {
+      "id": 8593,
+      "name": "내맘쏙 모두의천자문",
+      "venue": "예술의전당",
+      "source": "blog_discovery",
+      "currentPoster": "https://center.sac.or.kr/SAC/File/RentConfirm/editor/fe52ea53-9ebb-48d8-8e4c-f472a481ae2d.jpg",
+      "llmPoster": "https://center.sac.or.kr/SAC/File/RentConfirm/editor/fe52ea53-9ebb-48d8-8e4c-f472a481ae2d.jpg",
+      "llmReason": "후보 1은 예술의전당 공식 도메인(center.sac.or.kr)에서 제공되며, 이미지 제목에 이벤트명 '예술의전당 내맘쏙 : 모두의 천자문 전'이 직접적이고 완전하게 포함되어 있어 가장 적합한 공식 포스터입니다.",
+      "searchQuery": "내맘쏙 모두의천자문 포스터",
+      "candidateCount": 3,
+      "candidates": [
+        {
+          "title": "알립니다 | 상세 정보 | 공연·전시 | 예술의전당 내맘쏙 : 모두의 천자문 전",
+          "link": "https://center.sac.or.kr/SAC/File/RentConfirm/editor/fe52ea53-9ebb-48d8-8e4c-f472a481ae2d.jpg",
+          "domain": "center.sac.or.kr"
+        },
+        {
+          "title": "예술의전당 Home | 예술의전당",
+          "link": "https://www.sac.or.kr/upfile/uploadfile/asa/banner/banner/kor/2026/02/f5bb49453baa190c558afd8a3c5a138d.webp",
+          "domain": "www.sac.or.kr"
+        },
+        {
+          "title": "아이와 가기좋은 전시",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fpng/?fname=http://t1.daumcdn.net/brunch/service/user/cKmg/image/8hwaPHgI8tdSSJEDmh4_L8tSst4.png",
+          "domain": "img1.daumcdn.net"
+        }
+      ],
+      "status": "match"
+    },
+    {
+      "id": 8608,
+      "name": "농도원목장 낙농체험",
+      "venue": "농도원목장",
+      "source": "blog_discovery",
+      "currentPoster": "http://tong.visitkorea.or.kr/cms/resource/13/3396513_image2_1.JPG",
+      "llmPoster": null,
+      "llmReason": "no candidates after filter",
+      "searchQuery": "농도원목장 낙농체험 포스터",
+      "candidateCount": 0,
+      "candidates": [],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8535,
+      "name": "달빛천사 팝업스토어",
+      "venue": "AK플라자",
+      "source": "blog_discovery",
+      "currentPoster": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.kakaocdn.net/brunch/service/user/i2LY/image/mTulG7n42JJqMn-wvbyHp4QAU6c.jpg",
+      "llmPoster": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.kakaocdn.net/brunch/service/user/i2LY/image/mTulG7n42JJqMn-wvbyHp4QAU6c.jpg",
+      "llmReason": "이미지 제목에 이벤트명 '달빛천사 팝업스토어'가 직접적으로 포함되어 있어, 이벤트의 공식 홍보 이미지로 가장 적합합니다.",
+      "searchQuery": "달빛천사 팝업스토어 포스터",
+      "candidateCount": 5,
+      "candidates": [
+        {
+          "title": "홍대 달빛천사 팝업스토어 한정 오픈 소식",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.kakaocdn.net/brunch/service/user/i2LY/image/mTulG7n42JJqMn-wvbyHp4QAU6c.jpg",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "[25년 08월 발매][특전] 살육의 천사 팝업 스토어 공식 천 포스터 (살육의 천사 애니 공굿 공식 굿즈) ~25/04/13 - 도키도키굿즈 [25년 08월...",
+          "link": "https://cafe24.poxo.com/ec01/reptily/0jJurf5+JqL2mXn6P+LWO3UGMoOm5m4YyLRx1bBKjJO9F6lFYQ51MQX/ay0KiQ1S0aVW67t5lwlPHk3O07JkKA==/_/web/product/big/202502/0929a7200ad2a4a1defe8a805f5616ca.png",
+          "domain": "cafe24.poxo.com"
+        },
+        {
+          "title": "관악S밸리 팝업 스토어 & 네트워킹 포스터, 전단지·포스터·인쇄물 포트폴리오 - 크몽",
+          "link": "https://d2v80xjmx68n4w.cloudfront.net/members/portfolios/QzrYf1707882765.jpg?w=718",
+          "domain": "d2v80xjmx68n4w.cloudfront.net"
+        },
+        {
+          "title": "더쿠 - 에스파 팝업스토어 개인 포스터.jpg",
+          "link": "https://pbs.twimg.com/media/FpeYQx2akAIC2TI?format=jpg&name=4096x4096",
+          "domain": "pbs.twimg.com"
+        },
+        {
+          "title": "네이버 인플루언서 [네이버 인플루언서] 괌 쇼핑 리스트 쇼핑몰추천 BEST 5",
+          "link": "https://influencer-phinf.pstatic.net/MjAyNjAyMjJfNTIg/MDAxNzcxNzYxNTQyODQ5.ZiPN_2Aafb5rjuhxUQoxzXmQUGad_DNXtYc1zFhznVEg.Sspocat1H5zDIa4YBdeINvTsKpEx_sC0_-NzS17JbScg.PNG/4eb1.png?type=w500",
+          "domain": "influencer-phinf.pstatic.net"
+        }
+      ],
+      "status": "match"
+    },
+    {
+      "id": 8571,
+      "name": "도쿄 장난감 미술관 팝업",
+      "venue": "천호 현백 13층",
+      "source": "blog_discovery",
+      "currentPoster": "https://media.triple.guide/triple-cms/c_limit,f_auto,h_1024,w_1024/cad30706-848c-4a36-99c3-c1e7d2eddaa9.jpeg",
+      "llmPoster": "https://imgprism.ehyundai.com/derivedImage/fileValue/202408/08/fe139323-909f-4449-a8c2-2a70451a7e66_01.jpg",
+      "llmReason": "이미지 도메인(ehyundai.com)이 이벤트 장소인 현대백화점의 공식 도메인이며, 이미지 제목에 이벤트명인 '도쿄 장난감 미술관'이 직접 포함되어 있어 공식 홍보 이미지로 가장 적합합니다.",
+      "searchQuery": "도쿄 장난감 미술관 팝업 포스터",
+      "candidateCount": 11,
+      "candidates": [
+        {
+          "title": "도쿄 장난감 미술관 9/7 ② (어린이) | 강좌 상세 | 현대백화점",
+          "link": "https://imgprism.ehyundai.com/derivedImage/fileValue/202408/08/fe139323-909f-4449-a8c2-2a70451a7e66_01.jpg",
+          "domain": "imgprism.ehyundai.com"
+        },
+        {
+          "title": "도쿄 장난감 미술관 9/6 ② (어린이추가) | 강좌 상세 | 현대백화점",
+          "link": "https://imgprism.ehyundai.com/derivedImage/fileValue/202408/08/34700839-c98e-4f88-8d13-8f1f23cb784a_01.jpg",
+          "domain": "imgprism.ehyundai.com"
+        },
+        {
+          "title": "도쿄 장난감 미술관 9/9 ④ (어린이) | 강좌 상세 | 현대백화점",
+          "link": "https://imgprism.ehyundai.com/derivedImage/fileValue/202408/08/cb235383-74de-46a3-9353-7d69c08fb218_01.jpg",
+          "domain": "imgprism.ehyundai.com"
+        },
+        {
+          "title": "도쿄 장난감 미술관 9/11 ① (성인추가) | 강좌 상세 | 현대백화점",
+          "link": "https://imgprism.ehyundai.com/derivedImage/fileValue/202408/08/1d7e0439-ec59-4770-b172-df5f8406ef8b_01.jpg",
+          "domain": "imgprism.ehyundai.com"
+        },
+        {
+          "title": "도쿄 장난감 미술관 9/13 ① (어린이추가) | 강좌 상세 | 현대백화점",
+          "link": "https://imgprism.ehyundai.com/derivedImage/fileValue/202408/07/6c72d04b-a38d-4aa2-879b-689215eff161_01.jpg",
+          "domain": "imgprism.ehyundai.com"
+        },
+        {
+          "title": "★앱회원할인(성인1+아이1)도쿄 장난감미술관 9/14 ③ | 강좌 상세 | 현대백화점",
+          "link": "https://imgprism.ehyundai.com/derivedImage/fileValue/202408/07/8e8e0332-4561-47c9-99a1-e798efc9f1dd_01.jpg",
+          "domain": "imgprism.ehyundai.com"
+        },
+        {
+          "title": "★앱회원할인(성인1+아이1)도쿄 장난감미술관 9/13 ④ | 강좌 상세 | 현대백화점",
+          "link": "https://imgprism.ehyundai.com/derivedImage/fileValue/202408/07/08e90459-0320-4621-96f3-efcbb74cd8fb_01.jpg",
+          "domain": "imgprism.ehyundai.com"
+        },
+        {
+          "title": "도쿄 장난감 미술관 9/11 ① (어린이) | 강좌 상세 | 현대백화점",
+          "link": "https://imgprism.ehyundai.com/derivedImage/fileValue/202408/07/7244ba45-4fb2-456b-9bb1-62fe74de186a_01.jpg",
+          "domain": "imgprism.ehyundai.com"
+        },
+        {
+          "title": "도쿄 장난감 미술관 9/12 ① (어린이) | 강좌 상세 | 현대백화점",
+          "link": "https://imgprism.ehyundai.com/derivedImage/fileValue/202408/07/8fa97e44-412b-41b0-8ac4-1109c70ea530_01.jpg",
+          "domain": "imgprism.ehyundai.com"
+        },
+        {
+          "title": "도쿄 장난감 미술관 9/7 ② (성인) | 강좌 상세 | 현대백화점",
+          "link": "https://imgprism.ehyundai.com/derivedImage/fileValue/202408/08/e8d1a67b-8634-4647-b056-483cd5a242e3_01.jpg",
+          "domain": "imgprism.ehyundai.com"
+        },
+        {
+          "title": "현직 도쿄 '어른들을 위한 장난감' 백화점입니다.(19) : 클리앙",
+          "link": "https://cdn.clien.net/web/api/file/F01/3434303/dd45f8073cf849b18b7.JPG?w=780&h=30000",
+          "domain": "cdn.clien.net"
+        }
+      ],
+      "status": "different"
+    },
+    {
+      "id": 8531,
+      "name": "동화의 시간, 이야기의 빛깔",
+      "venue": "송파책박물관",
+      "source": "blog_discovery",
+      "currentPoster": "http://imgnews.naver.net/image/421/2026/01/27/0008737743_001_20260127164420489.jpg",
+      "llmPoster": "http://imgnews.naver.net/image/421/2026/01/27/0008737743_001_20260127164420489.jpg",
+      "llmReason": "이미지 제목에 이벤트명인 '동화의 시간, 이야기의 빛깔'이 직접 포함되어 있으며, '기획특별전'이라는 문구를 통해 공식 홍보 포스터임을 알 수 있습니다. 뉴스 이미지 도메인(imgnews.naver.net)은 제목 일치 시 허용됩니다.",
+      "searchQuery": "동화의 시간, 이야기의 빛깔 포스터",
+      "candidateCount": 6,
+      "candidates": [
+        {
+          "title": "동화의 시간, 이야기의 빛깔 기획특별전",
+          "link": "http://imgnews.naver.net/image/421/2026/01/27/0008737743_001_20260127164420489.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "한국동화 100년의 발자취…송파책박물관 기획특별전 개막",
+          "link": "http://imgnews.naver.net/image/001/2026/01/28/AKR20260128024300004_06_i_P4_20260128082913699.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "[중고샵] 펭귄 이야기의 이야기들 (풀빛동화의아이들) - 예스24 [중고샵]펭귄 이야기의 이야기들 (풀빛동화의아이들) - 예스24",
+          "link": "https://image.yes24.com/goods/134642617/XL",
+          "domain": "image.yes24.com"
+        },
+        {
+          "title": "동화의 시간, 이야기의 빛깔 기획특별전",
+          "link": "http://imgnews.naver.net/image/001/2026/01/27/PYH2026012715960001300_P4_20260127162512612.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "이야기가 열리는 나무(보랏빛소 그림동화 38) | 영풍문고",
+          "link": "https://cdn.ypbooks.co.kr/image/product/202405/410ae362-327c-4006-aa2f-9924334644bc_512.jpg",
+          "domain": "cdn.ypbooks.co.kr"
+        },
+        {
+          "title": "판타지 이야기 그림 또는 포스터 녹색 공간과 시계 로열티 무료 사진, 그림, 이미지 그리고 스톡포토그래피. Image 61697531 판타지 이야기...",
+          "link": "https://previews.123rf.com/images/annmei/annmei1607/annmei160700047/61697531-%ED%8C%90%ED%83%80%EC%A7%80-%EC%9D%B4%EC%95%BC%EA%B8%B0-%EA%B7%B8%EB%A6%BC-%EB%98%90%EB%8A%94-%ED%8F%AC%EC%8A%A4%ED%84%B0-%EB%85%B9%EC%83%89-%EA%B3%B5%EA%B0%84%EA%B3%BC-%EC%8B%9C%EA%B3%84.jpg",
+          "domain": "previews.123rf.com"
+        }
+      ],
+      "status": "match"
+    },
+    {
+      "id": 8538,
+      "name": "디즈니 공돌이 푸 100주년 팝업스토어",
+      "venue": "코엑스",
+      "source": "blog_discovery",
+      "currentPoster": "http://imgnews.naver.net/image/5484/2026/02/24/0000192362_001_20260224133018900.jpg",
+      "llmPoster": "http://imgnews.naver.net/image/5272/2026/02/24/0000074412_001_20260224093210061.png",
+      "llmReason": "이벤트명 '디즈니 공돌이 푸 100주년 팝업스토어'의 핵심 키워드인 '디즈니', '곰돌이 푸', '100주년', '팝업스토어'가 이미지 제목 '디즈니코리아, 100살 '곰돌이 푸' 스페셜 팝업 연다'에 가장 직접적이고 명확하게 포함되어 있습니다. '100살'은 '100주년'을, '스페셜 팝업'은 '팝업스토어'를 의미하며, '디즈니코리아'는 '디즈니'를 나타냅니다. 뉴스 이미지 도메인(imgnews.naver.net)은 허용됩니다. 다른 후보들은 관련 없는 이벤트이거나, 책/상품 이미지이거나, 이벤트명 일치도가 떨어집니다.",
+      "searchQuery": "디즈니 공돌이 푸 100주년 팝업스토어 포스터",
+      "candidateCount": 7,
+      "candidates": [
+        {
+          "title": "고스티, 서울리빙디자인페어서 디즈니코리아 '곰돌이 푸 100주년 기념 스페셜 팝업' 참여",
+          "link": "http://imgnews.naver.net/image/5484/2026/02/24/0000192362_001_20260224133018900.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "“세대 초월” 동심에 푹…‘곰돌이 푸 100주년 파티’ 서울 상륙",
+          "link": "http://imgnews.naver.net/image/020/2026/02/28/0003700418_001_20260228070111707.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "디즈니코리아, 100살 '곰돌이 푸' 스페셜 팝업 연다",
+          "link": "http://imgnews.naver.net/image/5272/2026/02/24/0000074412_001_20260224093210061.png",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "동방북스 - Pop-Up Peekaboo! Disney Winnie the Pooh",
+          "link": "http://tongbang.godohosting.com/data/img/main_31/240902/9780241647004_d.jpg",
+          "domain": "tongbang.godohosting.com"
+        },
+        {
+          "title": "이니스프리X곰돌이 푸 디아일 성수 팝업스토어 [코스모닝] 이니스프리X곰돌이 푸 디아일 성수 팝업스토어",
+          "link": "https://www.cosmorning.com/data/photos/20250835/art_17561685340738_6d4e79.jpg?iqs=0.21370136132966033",
+          "domain": "www.cosmorning.com"
+        },
+        {
+          "title": "곰돌이 푸(100년 후에도 꼭 읽어야 할 세계명작2) | 영풍문고",
+          "link": "https://cdn.ypbooks.co.kr/admin/image/product/202309/8fada789-d0de-402f-890b-7b72d2b8b7fe.jpg",
+          "domain": "cdn.ypbooks.co.kr"
+        },
+        {
+          "title": "안다즈 서울 강남, 곰돌이 푸우 100주년 기념 ‘허니풀 스테이 with 디즈니스토어’ 선봬",
+          "link": "http://imgnews.naver.net/image/5736/2026/03/05/2026030508542600819d3244b4fed58141237106_20260305090209433.jpg",
+          "domain": "imgnews.naver.net"
+        }
+      ],
+      "status": "different"
+    },
+    {
+      "id": 8594,
+      "name": "딸기 따기 체험",
+      "venue": "재인팜",
+      "source": "blog_discovery",
+      "currentPoster": "https://cdn.crowdpic.net/detail-thumb/thumb_d_59317F5D4214DFE022D17D49BC4F8A26.jpg",
+      "llmPoster": null,
+      "llmReason": "후보 이미지의 제목 '딸기 체험 라벨'은 이벤트명 '딸기 따기 체험'의 핵심 키워드를 포함하고 있으나, '라벨'이라는 단어는 공식 포스터나 대표 홍보 이미지보다는 상품 관련 그래픽 또는 작은 디자인 요소를 의미합니다. 또한, 해당 이미지가 호스팅된 도메인(scs-phinf.pstatic.net)은 주로 쇼핑몰/상품 이미지와 연관되어 있어, '쇼핑몰/상품 이미지'를 제외하는 기준에 부합하지 않습니다. 따라서, 이 이벤트의 공식 포스터 또는 대표 홍보 이미지로 적합하지 않습니다.",
+      "searchQuery": "딸기 따기 체험 포스터",
+      "candidateCount": 1,
+      "candidates": [
+        {
+          "title": "딸기 체험 라벨",
+          "link": "https://scs-phinf.pstatic.net/MjAyNTA0MDNfMjgg/MDAxNzQzNjUwMjk2Mzg3.p2XTyc7qiM00UqLjs-TLHgsfqZWEhcOaaw1YczxU4Cwg.RpJnrLdC_byF4rQT7DE3N1d9i7w46Zs4CxuxKKwE7Asg.JPEG/210_8%EB%B9%84%ED%8A%B8%EC%9D%98_%EC%82%AC%EB%B3%B8%EC%9D%98_%EC%82%AC%EB%B3%B8.jpg?type=w800",
+          "domain": "scs-phinf.pstatic.net"
+        }
+      ],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8688,
+      "name": "뚱랑이네 집들이 팝업",
+      "venue": "이구홈성수",
+      "source": "blog_discovery",
+      "currentPoster": null,
+      "llmPoster": null,
+      "llmReason": "제시된 이미지는 '무직타이거 공기정화 포스터'라는 상품의 이미지로 판단됩니다. 이벤트명 '뚱랑이네 집들이 팝업'과 직접적으로 관련된 공식 홍보 포스터나 대표 이미지가 아니므로 선택 기준에 부합하지 않습니다.",
+      "searchQuery": "뚱랑이네 집들이 팝업 포스터",
+      "candidateCount": 1,
+      "candidates": [
+        {
+          "title": "그림·사진 > 무직타이거 공기정화 포스터 에어월 / 12 무직타이거 밤 뚱랑이 카키 | 오늘의집 쇼핑 무직타이거 공기정화 포스터 에어월 / 12...",
+          "link": "https://image.ohousecdn.com/i/bucketplace-v2-development/uploads/productions/164213878569281774.jpg?w=720&h=480&c=c",
+          "domain": "image.ohousecdn.com"
+        }
+      ],
+      "status": "both_empty"
+    },
+    {
+      "id": 8597,
+      "name": "로봇공연",
+      "venue": "경기도교육청미래과학교육원",
+      "source": "blog_discovery",
+      "currentPoster": "http://www.sejongpac.or.kr/cmmn/file/imageSrc.do?fileStreCours=faec0c25744c22e99776405c0fa7280256f764645cf642c3f24535e60eb5c8da&streFileNm=6ed36a5f7b5c9846c2ce87e401c6c4c84200ca52209836814279c2c87fbc6042",
+      "llmPoster": "https://www.insiseol.or.kr/images/editor/oldimage/icsmuseum/%EB%A1%9C%EB%B4%87%EA%B3%B5%EC%97%B0%20%ED%8F%AC%EC%8A%A4%ED%84%B0(6).jpg",
+      "llmReason": "이벤트명 '로봇공연'의 핵심 키워드인 '로봇 공연'이 이미지 제목 '춤추는 로봇 공연'에 직접 포함되어 일치도가 높습니다. 또한, '인천시설공단'이라는 공식 기관의 도메인에서 제공하는 '행사' 관련 이미지로 신뢰할 수 있습니다.",
+      "searchQuery": "로봇공연 포스터",
+      "candidateCount": 3,
+      "candidates": [
+        {
+          "title": "월간공연일정 | 문화예술회관",
+          "link": "https://www.haman.go.kr/ImagePrint.do?key=art.performance&name=%EC%9B%B9%EC%9A%A91.jpg",
+          "domain": "www.haman.go.kr"
+        },
+        {
+          "title": "새소식-[행사] 춤추는 로봇 공연 내용 | 인천시설공단>알림마당 [행사] 춤추는 로봇 공연",
+          "link": "https://www.insiseol.or.kr/images/editor/oldimage/icsmuseum/%EB%A1%9C%EB%B4%87%EA%B3%B5%EC%97%B0%20%ED%8F%AC%EC%8A%A4%ED%84%B0(6).jpg",
+          "domain": "www.insiseol.or.kr"
+        },
+        {
+          "title": "공연일정 | 공연 | 프로그램 | 로봇 아트 팩토리 (Robot Art Factory)",
+          "link": "http://www.sejongpac.or.kr/cmmn/file/imageSrc.do?fileStreCours=faec0c25744c22e99776405c0fa7280256f764645cf642c3f24535e60eb5c8da&streFileNm=6ed36a5f7b5c9846c2ce87e401c6c4c84200ca52209836814279c2c87fbc6042",
+          "domain": "www.sejongpac.or.kr"
+        }
+      ],
+      "status": "different"
+    },
+    {
+      "id": 8540,
+      "name": "로코유 팝업스토어",
+      "venue": "신세계백화점 강남점",
+      "source": "blog_discovery",
+      "currentPoster": null,
+      "llmPoster": null,
+      "llmReason": "no candidates after filter",
+      "searchQuery": "로코유 팝업스토어 포스터",
+      "candidateCount": 0,
+      "candidates": [],
+      "status": "both_empty"
+    },
+    {
+      "id": 8684,
+      "name": "롯데월드 아쿠아리움 3월 연간권 특가",
+      "venue": "롯데월드 아쿠아리움",
+      "source": "blog_discovery",
+      "currentPoster": "https://d2ur7st6jjikze.cloudfront.net/offer_descriptive_images/98958/134697_medium_1614657746.jpg?1614657746",
+      "llmPoster": null,
+      "llmReason": "제시된 모든 이미지 후보의 제목에 이벤트명 '롯데월드 아쿠아리움 3월 연간권 특가'의 핵심 키워드인 '연간권'이 포함되어 있지 않습니다. 특히 1, 2, 3번 후보는 '입장권'으로 명시되어 있어 '연간권'과 다릅니다. 4번 후보는 '3월'과 '롯데월드 아쿠아리움'을 포함하지만, '연간권 특가'가 아닌 '데일리호텔 - 호텔&레스토랑 할인예약'과 관련된 내용으로 보입니다. 따라서 이벤트명과 이미지 제목의 일치도가 높은 공식 포스터 또는 대표 홍보 이미지가 없습니다.",
+      "searchQuery": "롯데월드 아쿠아리움 3월 연간권 특가 포스터",
+      "candidateCount": 4,
+      "candidates": [
+        {
+          "title": "★LIVE특가★ 롯데월드 아쿠아리움 & 서울스카이 입장권",
+          "link": "https://phinf.pstatic.net/dthumb/?src=%22https%3A%2F%2Fnaverbooking-phinf.pstatic.net%2F20250711_74%2F1752221604939Go5Ag_JPEG%2F%25B3%25D7%25C0%25CC%25B9%25F6_%25BD%25E6%25B3%25D7%25C0%25CF_%25C1%25F7%25BB%25E7%25B0%25A2%25C7%25FC_1242x816_20Mb.jpg%22&service=selective&type=f480_480_q90",
+          "domain": "phinf.pstatic.net"
+        },
+        {
+          "title": "★LIVE특가★ 롯데월드 아쿠아리움 & 서울스카이 입장권",
+          "link": "https://phinf.pstatic.net/dthumb/?src=%22https%3A%2F%2Fnaverbooking-phinf.pstatic.net%2F20250711_48%2F1752221820760iLEO7_JPEG%2F%25B3%25D7%25C0%25CC%25B9%25F6_%25BD%25E6%25B3%25D7%25C0%25CF_%25C1%25F7%25BB%25E7%25B0%25A2%25C7%25FC_1242x816_20Mb.jpg%22&service=selective&type=f480_480_q90",
+          "domain": "phinf.pstatic.net"
+        },
+        {
+          "title": "[서울 잠실] 롯데월드 아쿠아리움 입장권 1월 1차 특가 최저가 액티비티 인기상품 | 야놀자",
+          "link": "https://image6.yanolja.com/leisure/O0weDUi4Ktqk7AQL/w800",
+          "domain": "image6.yanolja.com"
+        },
+        {
+          "title": "[서울 송파] 롯데월드 아쿠아리움 3월 데일리호텔 - 호텔&레스토랑 할인예약",
+          "link": "https://image6.yanolja.com/leisure/lvl8CLJNVgpRdVCZ",
+          "domain": "image6.yanolja.com"
+        }
+      ],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8546,
+      "name": "롯데타워 주술회전 콜라보 전시",
+      "venue": "롯데타워전망대",
+      "source": "blog_discovery",
+      "currentPoster": "http://imgnews.naver.net/image/020/2026/02/08/0003695847_002_20260208170108886.png",
+      "llmPoster": "http://imgnews.naver.net/image/020/2026/02/08/0003695847_002_20260208170108886.png",
+      "llmReason": "이벤트명 '롯데타워 주술회전 콜라보 전시'의 핵심 키워드인 '주술회전'과 '롯데타워'(서울스카이)가 이미지 제목에 모두 포함되어 이벤트명과의 일치도가 가장 높습니다. 뉴스 이미지이지만 제목에 이벤트명이 명확히 포함되어 선택 기준에 부합합니다.",
+      "searchQuery": "롯데타워 주술회전 콜라보 전시 포스터",
+      "candidateCount": 2,
+      "candidates": [
+        {
+          "title": "[EVENT]  서울스카이 콜라보 기념! - 리디 [EVENT]  서울스카이 콜라보 기념!",
+          "link": "http://active.ridibooks.com/ridibooks_banner.m/20251226094429_1766709869622.jpg",
+          "domain": "active.ridibooks.com"
+        },
+        {
+          "title": "“영역전개, 서.울.스.카.이” 주술회전 성지 된 500m 롯데타워",
+          "link": "http://imgnews.naver.net/image/020/2026/02/08/0003695847_002_20260208170108886.png",
+          "domain": "imgnews.naver.net"
+        }
+      ],
+      "status": "match"
+    },
+    {
+      "id": 8547,
+      "name": "롯데호텔 월드 라세느 로니 캐릭터 공간",
+      "venue": "롯데호텔 월드 라세느",
+      "source": "blog_discovery",
+      "currentPoster": "https://dimg.donga.com/wps/SPORTS/IMAGE/2026/01/14/133152023.1.jpg",
+      "llmPoster": "http://imgnews.naver.net/image/5575/2026/01/23/0000630955_002_20260123163014046.jpg",
+      "llmReason": "이벤트명 '롯데호텔 월드 라세느 로니 캐릭터 공간'의 핵심 키워드인 '롯데호텔 월드'가 이미지 제목 '롯데호텔 월드, 설 명절 맞아 가족고객 위한 다채로운 이벤트'에 포함되어 있습니다. 해당 이미지는 뉴스 이미지(imgnews.naver.net)이며, 뉴스 이미지의 경우 제목에 이벤트명 핵심 키워드가 포함되면 선택 가능합니다. 다른 후보는 이벤트명과 관련이 없거나 제외 대상 도메인입니다.",
+      "searchQuery": "롯데호텔 월드 라세느 로니 캐릭터 공간 포스터",
+      "candidateCount": 2,
+      "candidates": [
+        {
+          "title": "The DECADE of us - 나무위키 The DECADE of us",
+          "link": "https://i.namu.wiki/i/sQRTfci2xxWs9_ZjW3wQWRJ4KPBejtVsLcdese9vTU2x4rdfZMPj9wxHjEe2iS2qnbOIn9HtOZfgL47ibULdtA.webp",
+          "domain": "i.namu.wiki"
+        },
+        {
+          "title": "롯데호텔 월드, 설 명절 맞아 가족고객 위한 다채로운 이벤트",
+          "link": "http://imgnews.naver.net/image/5575/2026/01/23/0000630955_002_20260123163014046.jpg",
+          "domain": "imgnews.naver.net"
+        }
+      ],
+      "status": "different"
+    },
+    {
+      "id": 8590,
+      "name": "망태할아버지가 온다",
+      "venue": "부평 기적의 도서관",
+      "source": "blog_discovery",
+      "currentPoster": "https://webzine.kotpa.org/wp-content/uploads/kboard_thumbnails/3/202001/5e1e61e5572337623525-600x1200.png",
+      "llmPoster": "https://webzine.kotpa.org/wp-content/uploads/kboard_thumbnails/3/202001/5e1e61e5572337623525-600x1200.png",
+      "llmReason": "이벤트명 '망태할아버지가 온다'가 이미지 제목에 직접 포함되어 있으며, 신뢰할 수 있는 문화예술기관(kotpa.org)의 웹진 이미지로 공식 홍보 포스터/배너로 적합합니다. 1번 후보는 책 표지로 제외 기준에 해당하며, 3번 후보는 이벤트명과 불일치하고, 4번 후보는 '토요국악동화'라는 특정 수식어가 붙어 있어 '망태할아버지가 온다'라는 일반적인 이벤트명에 가장 직접적으로 일치하는 2번을 선택합니다.",
+      "searchQuery": "망태할아버지가 온다 포스터",
+      "candidateCount": 4,
+      "candidates": [
+        {
+          "title": "망태 할아버지가 온다 | 박연철 | 시공주니어 - 예스24",
+          "link": "https://image.yes24.com/goods/2535661/BACK/XL",
+          "domain": "image.yes24.com"
+        },
+        {
+          "title": "망태할아버지가 온다 - 월간 공진단 망태할아버지가 온다",
+          "link": "https://webzine.kotpa.org/wp-content/uploads/kboard_thumbnails/3/202001/5e1e61e5572337623525-600x1200.png",
+          "domain": "webzine.kotpa.org"
+        },
+        {
+          "title": "09화 망태 할아버지가 잡아간다.",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fpng/?fname=http://t1.daumcdn.net/brunch/service/user/ieoM/image/TyFlUJcMJM8fZLc1vRsuTxFG58E.png",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "토요국악동화 망태할아버지가 온다 - 월간 공진단 토요국악동화 망태할아버지가 온다",
+          "link": "https://webzine.kotpa.org/wp-content/uploads/kboard_thumbnails/3/201904/5ca40f4ec55a31598371-600x1200.jpg",
+          "domain": "webzine.kotpa.org"
+        }
+      ],
+      "status": "match"
+    },
+    {
+      "id": 8697,
+      "name": "매직드로잉 가족극 〈두들팝〉",
+      "venue": "홍보관",
+      "source": "blog_discovery",
+      "currentPoster": "http://tong.visitkorea.or.kr/cms/resource/37/3114537_image2_1.jpg",
+      "llmPoster": "http://tong.visitkorea.or.kr/cms/resource/37/3114537_image2_1.jpg",
+      "llmReason": "이미지 제목에 이벤트명 \"매직드로잉 가족극 〈두들팝〉\"이 직접 포함되어 있으며, 신뢰할 수 있는 도메인(tong.visitkorea.or.kr)의 이미지이므로 공식 포스터 또는 대표 홍보 이미지로 가장 적합합니다.",
+      "searchQuery": "매직드로잉 가족극 〈두들팝〉 포스터",
+      "candidateCount": 5,
+      "candidates": [
+        {
+          "title": "매직드로잉 가족극 〈두들팝〉 최신 축제 공연 행사 정보와 주변 관광 명소 및 근처 맛집 여행 정보",
+          "link": "http://tong.visitkorea.or.kr/cms/resource/37/3114537_image2_1.jpg",
+          "domain": "tong.visitkorea.or.kr"
+        },
+        {
+          "title": "매직 드로잉 가족극  홍보 영상 2 - kakaoTV 매직 드로잉 가족극  홍보 영상 2",
+          "link": "http://img1.daumcdn.net/kakaotv/KAKAOACCOUNT/574719847/thumb/20210302135505",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "매직드로잉 가족극 〈두들팝〉 최신 축제 공연 행사 정보와 주변 관광 명소 및 근처 맛집 여행 정보",
+          "link": "http://tong.visitkorea.or.kr/cms/resource/33/3114533_image2_1.jpg",
+          "domain": "tong.visitkorea.or.kr"
+        },
+        {
+          "title": "매직드로잉 가족극 〈두들팝〉 최신 축제 공연 행사 정보와 주변 관광 명소 및 근처 맛집 여행 정보",
+          "link": "http://tong.visitkorea.or.kr/cms/resource/36/3114536_image2_1.JPG",
+          "domain": "tong.visitkorea.or.kr"
+        },
+        {
+          "title": "매직드로잉 가족극 〈두들팝〉 최신 축제 공연 행사 정보와 주변 관광 명소 및 근처 맛집 여행 정보",
+          "link": "http://tong.visitkorea.or.kr/cms/resource/34/3114534_image2_1.jpg",
+          "domain": "tong.visitkorea.or.kr"
+        }
+      ],
+      "status": "match"
+    },
+    {
+      "id": 8582,
+      "name": "명랑동화뮤지컬 삼양동화",
+      "venue": "노원어린이극장",
+      "source": "blog_discovery",
+      "currentPoster": "https://www.jeonmae.co.kr/news/photo/202402/1017468_711236_2540.jpg",
+      "llmPoster": "https://www.jeonmae.co.kr/news/photo/202402/1017468_711236_2540.jpg",
+      "llmReason": "이벤트명 '삼양동화'가 이미지 제목에 포함되어 있으며, 특히 이벤트가 열리는 장소인 '노원어린이극장'이 이미지 제목에 명시되어 있어 가장 적합한 공식 포스터 또는 대표 홍보 이미지로 판단됩니다.",
+      "searchQuery": "명랑동화뮤지컬 삼양동화 포스터",
+      "candidateCount": 3,
+      "candidates": [
+        {
+          "title": "백설공주 왕비가 거울을 깼다면? …고전 동화 재해석 뮤지컬 '삼양동화' 2월 28일 개막",
+          "link": "http://imgnews.naver.net/image/5097/2026/01/28/0000422349_001_20260128175817390.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "세종문화회관 꿈의숲아트센터, 어린이 뮤지컬 '삼양동화' 공연 - 한국생활체육뉴스 세종문화회관 꿈의숲아트센터, 어린이 뮤지컬 '삼양동화' 공연",
+          "link": "http://www.kstnews.co.kr/news/photo/202307/26946_30262_5726.jpg",
+          "domain": "www.kstnews.co.kr"
+        },
+        {
+          "title": "노원문화재단, 노원어린이극장 3월 기획작품 ‘삼양동화’ 공연 - 전국매일신문 - 전국의 생생한 뉴스를 ‘한눈에’ 노원문화재단...",
+          "link": "https://www.jeonmae.co.kr/news/photo/202402/1017468_711236_2540.jpg",
+          "domain": "www.jeonmae.co.kr"
+        }
+      ],
+      "status": "match"
+    },
+    {
+      "id": 8687,
+      "name": "명탐정 코난 팝업",
+      "venue": "더현대 서울 5F",
+      "source": "blog_discovery",
+      "currentPoster": "https://image.yes24.com/momo/TopCate1852/MidCate004/185134363.jpg",
+      "llmPoster": "http://imgnews.naver.net/image/144/2026/02/19/0001098787_002_20260219171810849.jpg",
+      "llmReason": "이미지 제목에 이벤트명 '명탐정 코난 팝업'이 직접적으로 포함되어 있으며, 뉴스 이미지라도 제목에 이벤트명 핵심 키워드가 있으면 허용된다는 기준에 부합합니다. 다른 후보들은 영화 포스터, 개인 블로그 이미지, 도서/상품 이미지로 이벤트 '팝업'과는 관련성이 떨어집니다.",
+      "searchQuery": "명탐정 코난 팝업 포스터",
+      "candidateCount": 4,
+      "candidates": [
+        {
+          "title": "명탐정 코난: 100만 달러의 펜타그램 - 나무위키 명탐정 코난: 100만 달러의 펜타그램",
+          "link": "https://i.namu.wiki/i/-6iCJs7Ne0-58CgIWOlCbBbIx2RvZ3JqsVK0tGeqKzB97nvoHu17jqVO7Lh_7g9rgz-hVP5Fg0zLFBZxhTdBWQ.webp",
+          "domain": "i.namu.wiki"
+        },
+        {
+          "title": "네이버 인플루언서: 쿠도하루카의 홈 [네이버 인플루언서] 쿠도하루카",
+          "link": "https://dthumb-phinf.pstatic.net/?src=%22https://mblogthumb-phinf.pstatic.net/MjAyNTA4MDFfOTAg/MDAxNzU0MDYwMTc5MTE2.tuMgj1JSE1eFWMYIQwgqgqjCLwvZe2WP4ms0wOW5lYEg.7U1tr2Ge0RxhDbud-3_iWgy-dC9-gC0jqMcqdVHsGMwg.JPEG/GwcxrxZbEAAIGvo.jpg?type=w800%22&opts=2&twidth=700&theight=700",
+          "domain": "dthumb-phinf.pstatic.net"
+        },
+        {
+          "title": "명탐정코난 탐정연구소 입문백과 + 괴도키드 세트 | 아오야마 고쇼 원작 | 서울문화사 - 예스24",
+          "link": "https://image.yes24.com/momo/TopCate1852/MidCate004/185134363.jpg",
+          "domain": "image.yes24.com"
+        },
+        {
+          "title": "명탐정 코난 추리 게임 팝업, 전 회차 매진 속 성황리 종료",
+          "link": "http://imgnews.naver.net/image/144/2026/02/19/0001098787_002_20260219171810849.jpg",
+          "domain": "imgnews.naver.net"
+        }
+      ],
+      "status": "different"
+    },
+    {
+      "id": 8537,
+      "name": "무무슈 팝업스토어",
+      "venue": "스타필드 안성",
+      "source": "blog_discovery",
+      "currentPoster": "https://image.ohou.se/i/bucketplace-v2-development/uploads/productions/158169215779652108.jpg?gif=1&w=360&h=360&c=c&q=0.8",
+      "llmPoster": null,
+      "llmReason": "제시된 이미지 제목은 '무무슈' 브랜드를 포함하지만, 이벤트명인 '팝업스토어' 대신 '블랙프라이데이 파격라이브'라는 다른 유형의 프로모션을 지칭하고 있어, '무무슈 팝업스토어' 이벤트의 공식 포스터 또는 대표 홍보 이미지로 보기 어렵습니다. 이벤트명과 이미지 제목의 일치도가 가장 중요하므로, 해당 이미지는 적합하지 않습니다.",
+      "searchQuery": "무무슈 팝업스토어 포스터",
+      "candidateCount": 1,
+      "candidates": [
+        {
+          "title": "[무무슈]⚡️블랙프라이데이⚡️파격라이브",
+          "link": "https://g-selected.pstatic.net/MjAyMzExMjBfMjky/MDAxNzAwNDc3MzEwNTg2.j_viDh98htrAqo0sxUns1y3LbSZdkWIQBxN4ImLpTEsg.T33L5zQt9eeeV8rxJQdIAQ_cKpdGollJOizkFt7Xb4Mg.JPEG/image.jpg?type=w1440_q80",
+          "domain": "g-selected.pstatic.net"
+        }
+      ],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8534,
+      "name": "무직타이거 팝업스토어",
+      "venue": "이구홈성수",
+      "source": "blog_discovery",
+      "currentPoster": null,
+      "llmPoster": null,
+      "llmReason": "no candidates after filter",
+      "searchQuery": "무직타이거 팝업스토어 포스터",
+      "candidateCount": 0,
+      "candidates": [],
+      "status": "both_empty"
+    },
+    {
+      "id": 8581,
+      "name": "뮤지컬 100층짜리 집",
+      "venue": "성균관대학교 600년 기념관 새천년홀",
+      "source": "blog_discovery",
+      "currentPoster": "https://d2ur7st6jjikze.cloudfront.net/offer_photos/156250/1137413_large_1718155944.jpg?1718155944",
+      "llmPoster": null,
+      "llmReason": "제시된 이미지 후보 중 이벤트명 '뮤지컬 100층짜리 집'과 일치하거나 관련성이 있는 이미지가 없습니다. 모든 후보는 게임, 쇼핑, 웹소설 등 다른 콘텐츠와 관련된 이미지입니다.",
+      "searchQuery": "뮤지컬 100층짜리 집 포스터",
+      "candidateCount": 6,
+      "candidates": [
+        {
+          "title": "액션쾌감!!! 던전앤파이터! 액션쾌감!!! 던전앤파이터 - 비탑100층",
+          "link": "https://bbscdn.df.nexon.com/data7/commu/201803/134602_5aa3630a08c88.jpg",
+          "domain": "bbscdn.df.nexon.com"
+        },
+        {
+          "title": "100층 찰스, 흑우만 있음 된다고 해서 키웠는데.. 어떻게 깨야 될지;;",
+          "link": "https://d3kxs6kpbh59hp.cloudfront.net/community/COMMUNITY/20bcf268ec6046ffb5ad8497137cc1e2/c0f8bd0cbaea4727b8bb557df3358388_1563775641.jpg",
+          "domain": "d3kxs6kpbh59hp.cloudfront.net"
+        },
+        {
+          "title": "100층은 화장실도 좋네요 | KREAM KREAM | 한정판 거래의 FLEX",
+          "link": "https://kream-phinf.pstatic.net/MjAyNTA0MTlfMTY1/MDAxNzQ1MDI1NDQ0MjI0.yNEeLH0eONls6AqBOqrLLzvL5UWl9lkj_ZF5Ng16d8gg.PbaLAE_dL23rtMEiLKPMkJbbJ9cVN4YoHXI_k9WPDsMg.JPEG/p_007fe26ef8934f07909189ab0a98b2cf.jpeg?type=l_webp",
+          "domain": "kream-phinf.pstatic.net"
+        },
+        {
+          "title": "100층 스킬",
+          "link": "https://d3kxs6kpbh59hp.cloudfront.net/community/COMMUNITY/e60eb9480f3f4ec9b15a476ce076b088/b782f4eebd65400584eae9416afd5016_1561960583.jpg",
+          "domain": "d3kxs6kpbh59hp.cloudfront.net"
+        },
+        {
+          "title": "액션쾌감!!! 던전앤파이터! 액션쾌감!!! 던전앤파이터 - 100층 클리어",
+          "link": "http://bbscdn.df.nexon.com/data7/commu/201705/220345_591eed314ba5a.jpg",
+          "domain": "bbscdn.df.nexon.com"
+        },
+        {
+          "title": "100층의 올마스터 - 웹소설 | 카카오페이지 100층의 올마스터",
+          "link": "https://page-images.kakaoentcdn.com/download/resource?kid=dcVBa/dJMb995LbJi/qK8Wy1bUiWXjDjUNYqEvl1&filename=o1",
+          "domain": "page-images.kakaoentcdn.com"
+        }
+      ],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8692,
+      "name": "뮤지컬 나쁜 말 먹는 괴물",
+      "venue": "명륜아트홀",
+      "source": "blog_discovery",
+      "currentPoster": "https://image.yes24.com/goods/135213454/BACK/XL",
+      "llmPoster": "http://imgnews.naver.net/image/5335/2026/02/02/20260202500105_20260202133410653.jpg",
+      "llmReason": "이벤트명 '뮤지컬 나쁜 말 먹는 괴물'의 핵심 키워드인 '뮤지컬 나쁜 말 먹는 괴물'이 이미지 제목에 직접적으로 포함되어 있으며, '공연'임을 명시하고 있어 공식 포스터 또는 대표 홍보 이미지로 가장 적합합니다.",
+      "searchQuery": "뮤지컬 나쁜 말 먹는 괴물 포스터",
+      "candidateCount": 4,
+      "candidates": [
+        {
+          "title": "정읍기적의도서관, 어린이 뮤지컬    ‘나쁜 말 먹는 괴물’ 공연",
+          "link": "http://imgnews.naver.net/image/5335/2026/02/02/20260202500105_20260202133410653.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "나쁜 말 먹는 괴물 | 카시 르코크 | 그린북 - 예스24",
+          "link": "https://image.yes24.com/goods/135213454/BACK/XL",
+          "domain": "image.yes24.com"
+        },
+        {
+          "title": "겨울방학, 말의 힘을 배우다…정읍기적의도서관 가족 뮤지컬",
+          "link": "http://imgnews.naver.net/image/5395/2026/02/02/0000309740_001_20260202100213757.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "율곡도서관 「나쁜 말 먹는 괴물」 공연 성황리 개최 | 뉴스로",
+          "link": "https://www.newsro.kr/wp-content/uploads/2026/02/19c40c9b447ea515_2-771x578.jpg",
+          "domain": "www.newsro.kr"
+        }
+      ],
+      "status": "different"
+    },
+    {
+      "id": 8585,
+      "name": "뮤지컬 멜로우TV <Run it up>",
+      "venue": "소월아트홀",
+      "source": "blog_discovery",
+      "currentPoster": "http://ticketimage.interpark.com/PlayDictionary/DATA/PlayDic/PlayDicUpload/040001/25/12/0400012512_225249_02.524.gif",
+      "llmPoster": "http://ticketimage.interpark.com/PlayDictionary/DATA/PlayDic/PlayDicUpload/040001/25/12/0400012512_225249_02.524.gif",
+      "llmReason": "다른 모든 후보 이미지는 이벤트명과 관련 없는 내용이거나 제외 대상에 해당합니다. 1번 후보는 신뢰할 수 있는 예매 사이트(interpark.com)의 도메인에 있으며, 비록 이미지 제목이 비어있지만, 신뢰 도메인의 이미지는 제목이 불명확해도 선택 허용된다는 기준에 따라 가장 적합한 선택입니다.",
+      "searchQuery": "뮤지컬 멜로우TV <Run it up> 포스터",
+      "candidateCount": 8,
+      "candidates": [
+        {
+          "title": "",
+          "link": "http://ticketimage.interpark.com/PlayDictionary/DATA/PlayDic/PlayDicUpload/040001/25/12/0400012512_225249_02.524.gif",
+          "domain": "ticketimage.interpark.com"
+        },
+        {
+          "title": "- Ben 10: Up to Speed TV Commercial, 'Run Right At It' - iSpot.tv Ben 10: Up to Speed TV Commercial, 'Run Right At It'",
+          "link": "https://d2z1w4aiblvrwu.cloudfront.net/ad/A8xr/ben-10-up-to-speed-run-right-at-it-large-2.jpg",
+          "domain": "d2z1w4aiblvrwu.cloudfront.net"
+        },
+        {
+          "title": "BJP Owns Up To Running NaMo TV | HuffPost News Spoiler Alert: BJP Says NaMo TV Is Run By Its IT Cell",
+          "link": "https://img.huffingtonpost.com/asset/5caef34c2400001901c892b5.jpeg?cache=s2wIEGyAu1&ops=1200_630",
+          "domain": "img.huffingtonpost.com"
+        },
+        {
+          "title": "Rev. Run On Being A TV Dad: 'It's Important To Me' | HuffPost Voices Rev. Run Opens Up About His Influence As A TV Dad",
+          "link": "https://img.huffingtonpost.com/asset/576459572200002e00f81ac9.jpeg?cache=Mr4Z3gK0Go&ops=1200_630",
+          "domain": "img.huffingtonpost.com"
+        },
+        {
+          "title": "Kamp Koral - how Sponge on the Run sets it up New SpongeBob movie sets up the prequel TV show by retconning",
+          "link": "https://hips.hearstapps.com/hmg-prod/images/spongebob-gary-1604588653.jpg?crop=1.00xw:0.928xh;0,0.0723xh&resize=1200:*",
+          "domain": "hips.hearstapps.com"
+        },
+        {
+          "title": "Trevor Noah: ‘Is it a crime to cry and run away from the mob you riled up?’ | Late-night TV roundup | The Guardian Trevor...",
+          "link": "https://i.guim.co.uk/img/media/f07cb931f5c02d06e1614947db678f673053d7f4/121_108_2592_1555/master/2592.jpg?width=1200&height=630&quality=85&auto=format&fit=crop&overlay-align=bottom%2Cleft&overlay-width=100p&overlay-base64=L2ltZy9zdGF0aWMvb3ZlcmxheXMvdGctYWdlLTIwMjIucG5n&enable=upscale&s=4c6b70a8c775d16dbc13d6455bf275f8",
+          "domain": "i.guim.co.uk"
+        },
+        {
+          "title": "3 Ways to Install Speakers - wikiHow",
+          "link": "https://www.wikihow.com/images/thumb/4/4d/Install-Speakers-Step-3-Version-2.jpg/aid24523-v4-728px-Install-Speakers-Step-3-Version-2.jpg.webp",
+          "domain": "www.wikihow.com"
+        },
+        {
+          "title": "27 Things That Rich People Have Ruined For Everyone Else \"The Price Has Gone Up, And Quality Has Gone Down\": People Are Sharing...",
+          "link": "https://img.buzzfeed.com/buzzfeed-static/static/2025-12/02/00/subbuzz/Ueglbmc7h.jpg",
+          "domain": "img.buzzfeed.com"
+        }
+      ],
+      "status": "match"
+    },
+    {
+      "id": 8576,
+      "name": "봄을 담은 향기로운 꽃비누 만들기 키즈",
+      "venue": "더현대 서울",
+      "source": "blog_discovery",
+      "currentPoster": null,
+      "llmPoster": null,
+      "llmReason": "no candidates after filter",
+      "searchQuery": "봄을 담은 향기로운 꽃비누 만들기 키즈 포스터",
+      "candidateCount": 0,
+      "candidates": [],
+      "status": "both_empty"
+    },
+    {
+      "id": 8596,
+      "name": "뽀로로 캐릭터 공연",
+      "venue": "뽀로로파크 킨텍스점",
+      "source": "blog_discovery",
+      "currentPoster": "https://search.pstatic.net/common/?autoRotate=true&type=w560_sharpen&src=http%3A%2F%2Fblogfiles.naver.net%2FMjAyMzAzMTJfMzcg%2FMDAxNjc4NTk1NzUzMDEy.VTpgsXzgMC_-UTsFxgeCZkP1yJcXScJDXutVAcccY0Ag.g7X-57cUZ_zSClme7JkmB3H8mY7PYC7qcPqtlyFr2hIg.JPEG.jaewonlee32%2F2023-02-21_16.16.47.jpg",
+      "llmPoster": null,
+      "llmReason": "no candidates after filter",
+      "searchQuery": "뽀로로 캐릭터 공연 포스터",
+      "candidateCount": 0,
+      "candidates": [],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8694,
+      "name": "서울국제유아교육전&키즈페어",
+      "venue": "삼성 코엑스 A hall",
+      "source": "blog_discovery",
+      "currentPoster": "http://img1.daumcdn.net/kakaotv/KAKAOACCOUNT/1505588093/thumb/20191111145200",
+      "llmPoster": null,
+      "llmReason": "no candidates after filter",
+      "searchQuery": "서울국제유아교육전&키즈페어 포스터",
+      "candidateCount": 0,
+      "candidates": [],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8606,
+      "name": "서울물재생체험관 물놀이형 체험시설",
+      "venue": "서울물재생체험관",
+      "source": "blog_discovery",
+      "currentPoster": null,
+      "llmPoster": null,
+      "llmReason": "no candidates after filter",
+      "searchQuery": "서울물재생체험관 물놀이형 체험시설 포스터",
+      "candidateCount": 0,
+      "candidates": [],
+      "status": "both_empty"
+    },
+    {
+      "id": 8686,
+      "name": "서초책있는거리 5월 북크닉 일반축제",
+      "venue": "서초책있는거리",
+      "source": "blog_discovery",
+      "currentPoster": "http://tong.visitkorea.or.kr/cms/resource/46/3304946_image2_1.jpg",
+      "llmPoster": "http://tong.visitkorea.or.kr/cms/resource/46/3304946_image2_1.jpg",
+      "llmReason": "제시된 모든 이미지 후보의 제목이 이벤트명인 '서초책있는거리 5월 북크닉 일반축제'의 핵심 키워드('서초책있는거리 5월 북크닉 축제')를 직접 포함하고 있으며, 신뢰할 수 있는 도메인(tong.visitkorea.or.kr)에서 제공됩니다. 모든 후보가 동일한 제목과 도메인을 가지므로, 첫 번째 후보를 선택합니다.",
+      "searchQuery": "서초책있는거리 5월 북크닉 일반축제 포스터",
+      "candidateCount": 6,
+      "candidates": [
+        {
+          "title": "서초책있는거리 5월 북크닉 최신 축제 공연 행사 정보와 주변 관광 명소 및 근처 맛집 여행 정보",
+          "link": "http://tong.visitkorea.or.kr/cms/resource/46/3304946_image2_1.jpg",
+          "domain": "tong.visitkorea.or.kr"
+        },
+        {
+          "title": "서초책있는거리 5월 북크닉 최신 축제 공연 행사 정보와 주변 관광 명소 및 근처 맛집 여행 정보",
+          "link": "http://tong.visitkorea.or.kr/cms/resource/44/3304944_image2_1.jpg",
+          "domain": "tong.visitkorea.or.kr"
+        },
+        {
+          "title": "서초책있는거리 5월 북크닉 최신 축제 공연 행사 정보와 주변 관광 명소 및 근처 맛집 여행 정보",
+          "link": "http://tong.visitkorea.or.kr/cms/resource/48/3304948_image2_1.jpg",
+          "domain": "tong.visitkorea.or.kr"
+        },
+        {
+          "title": "서초책있는거리 5월 북크닉 최신 축제 공연 행사 정보와 주변 관광 명소 및 근처 맛집 여행 정보",
+          "link": "http://tong.visitkorea.or.kr/cms/resource/47/3304947_image2_1.jpg",
+          "domain": "tong.visitkorea.or.kr"
+        },
+        {
+          "title": "서초책있는거리 5월 북크닉 최신 축제 공연 행사 정보와 주변 관광 명소 및 근처 맛집 여행 정보",
+          "link": "http://tong.visitkorea.or.kr/cms/resource/51/3304951_image2_1.jpg",
+          "domain": "tong.visitkorea.or.kr"
+        },
+        {
+          "title": "서초책있는거리 5월 북크닉 최신 축제 공연 행사 정보와 주변 관광 명소 및 근처 맛집 여행 정보",
+          "link": "http://tong.visitkorea.or.kr/cms/resource/45/3304945_image2_1.jpg",
+          "domain": "tong.visitkorea.or.kr"
+        }
+      ],
+      "status": "match"
+    },
+    {
+      "id": 8696,
+      "name": "석촌호수 벚꽃축제",
+      "venue": "석촌호수",
+      "source": "blog_discovery",
+      "currentPoster": "http://img1.daumcdn.net/kakaotv/KAKAOACCOUNT/766380021/thumb/20200221124955",
+      "llmPoster": "http://img1.daumcdn.net/kakaotv/KAKAOACCOUNT/766380021/thumb/20200221124955",
+      "llmReason": "이벤트명 '석촌호수 벚꽃축제'가 이미지 제목에 '석촌호수벚꽃축제 2020'으로 직접 포함되어 있으며, '33세컨즈', 'kakaoTV', '마음 속 벚꽃을 피우다!'와 같은 문구를 통해 공식 홍보 영상의 썸네일 또는 배너 이미지임을 명확히 알 수 있어 공식 포스터 또는 대표 홍보 이미지로 가장 적합합니다.",
+      "searchQuery": "석촌호수 벚꽃축제 포스터",
+      "candidateCount": 2,
+      "candidates": [
+        {
+          "title": "⏰33세컨즈ㅣ석촌호수벚꽃축제 2020, 마음 속 벚꽃을 피우다! - kakaoTV ⏰33세컨즈ㅣ석촌호수벚꽃축제 2020, 마음 속 벚꽃을 피우다!",
+          "link": "http://img1.daumcdn.net/kakaotv/KAKAOACCOUNT/766380021/thumb/20200221124955",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "석촌호수 벚꽃축제 ~ ^^ - Vintage/ETC - TIMEFORUM",
+          "link": "https://www.timeforum.co.kr/files/attach/images/69/373/570/007/6440eff105e7418dc59f622e53e9486b.jpg",
+          "domain": "www.timeforum.co.kr"
+        }
+      ],
+      "status": "match"
+    },
+    {
+      "id": 8679,
+      "name": "스윗용산 무료체험 전시",
+      "venue": "용산 박물관",
+      "source": "blog_discovery",
+      "currentPoster": "http://imgnews.naver.net/image/5038/2026/01/13/0001139808_001_20260113085412898.jpg",
+      "llmPoster": null,
+      "llmReason": "제시된 이미지 후보는 '스윗용산 무료체험 전시'와 관련 없는 다른 이벤트('빈센트 반 고흐의 꽃향기')의 포스터입니다. 이벤트명과 이미지 제목의 일치도가 가장 중요하며, 핵심 키워드가 전혀 일치하지 않아 적합한 포스터가 없습니다.",
+      "searchQuery": "스윗용산 무료체험 전시 포스터",
+      "candidateCount": 1,
+      "candidates": [
+        {
+          "title": "서울드래곤시티, 체험 전시 '빈센트 반 고흐의 꽃향기' 개최",
+          "link": "http://imgnews.naver.net/image/5038/2026/01/13/0001139808_001_20260113085412898.jpg",
+          "domain": "imgnews.naver.net"
+        }
+      ],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8618,
+      "name": "시흥 거북섬 어린이 체험형 놀이 프로그램",
+      "venue": "시흥 거북섬",
+      "source": "blog_discovery",
+      "currentPoster": "https://www.gc.go.kr/webdata/editor/images/000033/20240426095348862_M4FV3A58.png",
+      "llmPoster": null,
+      "llmReason": "제시된 모든 이미지 후보는 '세종행복교육지원센터' 관련 이미지이며, 이벤트명 '시흥 거북섬 어린이 체험형 놀이 프로그램'과 장소(시흥)가 일치하지 않습니다. 이벤트명과 이미지 제목의 일치도가 가장 중요하다는 기준에 따라 적합한 이미지가 없습니다.",
+      "searchQuery": "시흥 거북섬 어린이 체험형 놀이 프로그램 포스터",
+      "candidateCount": 15,
+      "candidates": [
+        {
+          "title": "체험프로그램신청 : 목록 세종행복교육지원센터",
+          "link": "https://www.sejong.go.kr/happyedu/cmm/fms/getImage.do?atchFileId=FILE_000000000010307&fileSn=0",
+          "domain": "www.sejong.go.kr"
+        },
+        {
+          "title": "체험프로그램신청 : 목록 세종행복교육지원센터",
+          "link": "https://www.sejong.go.kr/happyedu/cmm/fms/getImage.do?atchFileId=FILE_000000000007525&fileSn=0",
+          "domain": "www.sejong.go.kr"
+        },
+        {
+          "title": "체험프로그램신청 : 내용 세종행복교육지원센터",
+          "link": "https://www.sejong.go.kr/happyedu/upload/editor/upload/202109241519572563cf8e-ccf1-479a-b3b0-2b2e6503fba7.jpg",
+          "domain": "www.sejong.go.kr"
+        },
+        {
+          "title": "체험프로그램신청 : 내용 세종행복교육지원센터",
+          "link": "https://www.sejong.go.kr/happyedu/cmm/fms/getImage.do?atchFileId=FILE_000000000005347&fileSn=0",
+          "domain": "www.sejong.go.kr"
+        },
+        {
+          "title": "체험프로그램신청 : 내용 세종행복교육지원센터",
+          "link": "https://www.sejong.go.kr/happyedu/cmm/fms/getImage.do?atchFileId=FILE_000000000003921&fileSn=0",
+          "domain": "www.sejong.go.kr"
+        },
+        {
+          "title": "체험프로그램신청 : 내용 세종행복교육지원센터",
+          "link": "https://www.sejong.go.kr/happyedu/cmm/fms/getImage.do?atchFileId=FILE_000000000005349&fileSn=0",
+          "domain": "www.sejong.go.kr"
+        },
+        {
+          "title": "체험프로그램신청 : 내용 세종행복교육지원센터",
+          "link": "https://www.sejong.go.kr/happyedu/cmm/fms/getImage.do?atchFileId=FILE_000000000004341&fileSn=0",
+          "domain": "www.sejong.go.kr"
+        },
+        {
+          "title": "체험프로그램신청 : 내용 세종행복교육지원센터",
+          "link": "https://www.sejong.go.kr/happyedu/upload/editor/upload/20230323182523870e7aad-8f48-490c-b336-b5ff0a0d7696.png",
+          "domain": "www.sejong.go.kr"
+        },
+        {
+          "title": "체험프로그램신청 : 내용 세종행복교육지원센터",
+          "link": "https://www.sejong.go.kr/happyedu/cmm/fms/getImage.do?atchFileId=FILE_000000000004361&fileSn=0",
+          "domain": "www.sejong.go.kr"
+        },
+        {
+          "title": "체험프로그램신청 : 내용 세종행복교육지원센터",
+          "link": "https://www.sejong.go.kr/happyedu/cmm/fms/getImage.do?atchFileId=FILE_000000000004576&fileSn=0",
+          "domain": "www.sejong.go.kr"
+        },
+        {
+          "title": "체험프로그램신청 : 내용 세종행복교육지원센터",
+          "link": "https://www.sejong.go.kr/happyedu/cmm/fms/getImage.do?atchFileId=FILE_000000000003992&fileSn=1",
+          "domain": "www.sejong.go.kr"
+        },
+        {
+          "title": "체험프로그램신청 : 내용 세종행복교육지원센터",
+          "link": "https://www.sejong.go.kr/happyedu/cmm/fms/getImage.do?atchFileId=FILE_000000000005241&fileSn=1",
+          "domain": "www.sejong.go.kr"
+        },
+        {
+          "title": "체험프로그램신청 : 내용 세종행복교육지원센터",
+          "link": "https://www.sejong.go.kr/happyedu/upload/editor/upload/202407291517409bae25d1-a26f-47e5-aff3-b78edf97d74c.png",
+          "domain": "www.sejong.go.kr"
+        },
+        {
+          "title": "체험프로그램신청 : 내용 세종행복교육지원센터",
+          "link": "https://www.sejong.go.kr/happyedu/cmm/fms/getImage.do?atchFileId=FILE_000000000004574&fileSn=1",
+          "domain": "www.sejong.go.kr"
+        },
+        {
+          "title": "체험프로그램신청 : 내용 세종행복교육지원센터",
+          "link": "https://www.sejong.go.kr/happyedu/cmm/fms/getImage.do?atchFileId=FILE_000000000003769&fileSn=0",
+          "domain": "www.sejong.go.kr"
+        }
+      ],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8544,
+      "name": "아쿠아 플라넷 일산 곤충 파충류 기획전",
+      "venue": "아쿠아 플라넷 일산",
+      "source": "blog_discovery",
+      "currentPoster": "http://tong.visitkorea.or.kr/cms/resource/82/2889882_image2_1.jpg",
+      "llmPoster": null,
+      "llmReason": "제시된 후보 이미지 중 이벤트명 '아쿠아 플라넷 일산 곤충 파충류 기획전'과 이미지 제목의 일치도가 높은 공식 포스터 또는 대표 홍보 이미지가 없습니다. 후보 1, 2는 '곤충생태관'을 언급하지만, '아쿠아 플라넷 일산', '파충류', '기획전' 등 이벤트의 핵심 키워드가 포함되어 있지 않아 해당 이벤트의 공식 포스터로 보기 어렵습니다. 후보 3은 스톡 이미지로, 선택 기준의 제외 대상에 해당합니다.",
+      "searchQuery": "아쿠아 플라넷 일산 곤충 파충류 기획전 포스터",
+      "candidateCount": 3,
+      "candidates": [
+        {
+          "title": "곤충생태관 - 주변 여행 및 근처 관광 명소 - 국내 여행 정보와 관광 명소 정보",
+          "link": "http://tong.visitkorea.or.kr/cms/resource/82/2889882_image2_1.jpg",
+          "domain": "tong.visitkorea.or.kr"
+        },
+        {
+          "title": "곤충생태관 문화 정보와 주변 관광 명소 및 근처 맛집 여행 정보",
+          "link": "http://tong.visitkorea.or.kr/cms/resource/91/3430691_image2_1.jpg",
+          "domain": "tong.visitkorea.or.kr"
+        },
+        {
+          "title": "현대 곤충 포스터. 벌레, 딱정벌레, 나비 스톡 벡터(로열티 프리) 2396705305 | Shutterstock",
+          "link": "https://www.shutterstock.com/shutterstock/photos/2396705305/display_1500/stock-vector-modern-insects-posters-set-bug-beetle-and-butterfly-minimalistic-creativity-and-art-biology-and-2396705305.jpg",
+          "domain": "www.shutterstock.com"
+        }
+      ],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8602,
+      "name": "알파블럭스 뮤지컬",
+      "venue": "극장용",
+      "source": "blog_discovery",
+      "currentPoster": "https://dthumb-phinf.pstatic.net/?src=%22https://mblogthumb-phinf.pstatic.net/MjAyNjAyMDZfNTcg/MDAxNzcwMzU2MjkzMjkx.mEZm1VdYK6Q4Fhtc8SWg34TZPKPFQK08_H7_juvVyoMg.CxC3aLE2bGHC7joTrt7eIFKME-B_QyTK2xs83EeBbPgg.JPEG/900%25A3%25DF20260203%25A3%25DF130938.jpg?type=w800%22&opts=2&twidth=700&theight=700",
+      "llmPoster": "https://dthumb-phinf.pstatic.net/?src=%22https://mblogthumb-phinf.pstatic.net/MjAyNjAyMDZfNTcg/MDAxNzcwMzU2MjkzMjkx.mEZm1VdYK6Q4Fhtc8SWg34TZPKPFQK08_H7_juvVyoMg.CxC3aLE2bGHC7joTrt7eIFKME-B_QyTK2xs83EeBbPgg.JPEG/900%25A3%25DF20260203%25A3%25DF130938.jpg?type=w800%22&opts=2&twidth=700&theight=700",
+      "llmReason": "후보 1의 이미지 제목에 이벤트명 핵심 키워드인 '알파블록스'와 '뮤지컬'이 모두 포함되어 있어 이벤트와의 관련성이 가장 높습니다. 다른 후보들은 'Alphablocks'를 포함하고 있으나, 모두 '앱'과 관련된 이미지로 뮤지컬 포스터가 아닙니다.",
+      "searchQuery": "알파블럭스 뮤지컬 포스터",
+      "candidateCount": 4,
+      "candidates": [
+        {
+          "title": "네이버 인플루언서 [네이버 인플루언서] 아기 유아 어린이 뮤지컬 공연 넘버블록스 알파블록스 비교 총정리",
+          "link": "https://dthumb-phinf.pstatic.net/?src=%22https://mblogthumb-phinf.pstatic.net/MjAyNjAyMDZfNTcg/MDAxNzcwMzU2MjkzMjkx.mEZm1VdYK6Q4Fhtc8SWg34TZPKPFQK08_H7_juvVyoMg.CxC3aLE2bGHC7joTrt7eIFKME-B_QyTK2xs83EeBbPgg.JPEG/900%25A3%25DF20260203%25A3%25DF130938.jpg?type=w800%22&opts=2&twidth=700&theight=700",
+          "domain": "dthumb-phinf.pstatic.net"
+        },
+        {
+          "title": "Alphablocks, How to Write - Google Play 앱",
+          "link": "https://play-lh.googleusercontent.com/g-pG2WLLhu1CzezzMAn_vdJShf00HL7N9KR-iChGN45iS13x2TQFmA_E7todSrdcosI",
+          "domain": "play-lh.googleusercontent.com"
+        },
+        {
+          "title": "Alphablocks: Letter Fun 다운로드 무",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fpng/?fname=http://t1.daumcdn.net/brunch/service/user/iciX/image/TmRmqBSGkvJ3rYwmlzxsNqIRWSk.png",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "Alphablocks World - Google Play 앱",
+          "link": "https://play-lh.googleusercontent.com/ryI9TQ50HKMBeWkiGr9m_cyuKM-UbkoJY_gM15iCiOfa4KoSxp_m52QSc_kau0Q4ptRRfzugvxijAzYs1tUEIA",
+          "domain": "play-lh.googleusercontent.com"
+        }
+      ],
+      "status": "match"
+    },
+    {
+      "id": 8682,
+      "name": "알폰스 무하 전시 도슨트 키즈 체험",
+      "venue": "더현대서울",
+      "source": "blog_discovery",
+      "currentPoster": "https://influencer-phinf.pstatic.net/MjAyNjAxMTdfMjk1/MDAxNzY4NTg0MDIzMzUw.flsdzhKU1ShLLbhJVWF-m5w7JEeAv4E8gAVCNpWYrF8g.IpQE0Nmg_DTwmn3t8JG7SF6gsiJxuq_3_USNHo0hbHcg.PNG/f11e.png?type=w700",
+      "llmPoster": null,
+      "llmReason": "제시된 이미지 후보들은 모두 '서울 미디어아트 전시'와 관련된 제목을 가지고 있어, 요청된 이벤트인 '알폰스 무하 전시 도슨트 키즈 체험'과는 관련이 없습니다. 이벤트명과 이미지 제목의 불일치로 인해 적합한 포스터가 없습니다.",
+      "searchQuery": "알폰스 무하 전시 도슨트 키즈 체험 포스터",
+      "candidateCount": 2,
+      "candidates": [
+        {
+          "title": "서울 미디어아트 전시 입장권 - 클룩 Klook 한국",
+          "link": "https://res.klook.com/images/fl_lossy.progressive,q_65/c_fill,w_1295,h_854/w_80,x_15,y_15,g_south_west,l_Klook_water_br_trans_yhcmh3/activities/y37xwgemkdyimac6q7we/%EC%84%9C%EC%9A%B8%EC%95%8C%ED%8F%B0%EC%8A%A4%EB%AC%B4%ED%95%98%EB%AF%B8%EB%94%94%EC%96%B4%EC%95%84%ED%8A%B8%EC%A0%84%EC%8B%9C%ED%9A%8C%EC%9E%85%EC%9E%A5%EA%B6%8C.jpg",
+          "domain": "res.klook.com"
+        },
+        {
+          "title": "서울 미디어아트 전시 입장권 - 클룩 Klook 한국",
+          "link": "https://res.klook.com/images/fl_lossy.progressive,q_65/c_fill,w_1295,h_854/w_80,x_15,y_15,g_south_west,l_Klook_water_br_trans_yhcmh3/activities/p0fscu80yiluvhx80rru/%EC%84%9C%EC%9A%B8%EC%95%8C%ED%8F%B0%EC%8A%A4%EB%AC%B4%ED%95%98%EB%AF%B8%EB%94%94%EC%96%B4%EC%95%84%ED%8A%B8%EC%A0%84%EC%8B%9C%ED%9A%8C%EC%9E%85%EC%9E%A5%EA%B6%8C.jpg",
+          "domain": "res.klook.com"
+        }
+      ],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8570,
+      "name": "어린이 서울체력장 팝업",
+      "venue": "서울시청 본관 1층 로비",
+      "source": "blog_discovery",
+      "currentPoster": "http://imgnews.naver.net/image/001/2026/02/18/AKR20260218054800004_01_i_P4_20260218183228150.jpg",
+      "llmPoster": "https://mediahub.seoul.go.kr/uploads/mediahub/2026/02/gmHhbUNOFMoNkFbzOCqbHtNMLRephfGR.jpg",
+      "llmReason": "이벤트명 '어린이 서울체력장 팝업'의 핵심 키워드인 '서울체력장 팝업'과 장소 '서울시청'이 이미지 제목에 명확히 포함되어 있습니다. 또한, `mediahub.seoul.go.kr`은 서울시의 공식 도메인으로, 신뢰할 수 있는 출처의 공식 홍보 이미지로 판단됩니다. '어린이'라는 특정 대상은 명시되지 않았으나, '서울시청이 팝업 체력장으로 깜짝 변신!'이라는 문구는 해당 이벤트의 본질을 가장 잘 나타냅니다.",
+      "searchQuery": "어린이 서울체력장 팝업 포스터",
+      "candidateCount": 4,
+      "candidates": [
+        {
+          "title": "팝업 포스터 일러스트, 일러스트 포트폴리오 - 크몽",
+          "link": "https://d2v80xjmx68n4w.cloudfront.net/members/portfolios/TIUfi1741779551.jpg",
+          "domain": "d2v80xjmx68n4w.cloudfront.net"
+        },
+        {
+          "title": "설 연휴에도 건강 챙겼다…'설맞이 팝업 서울체력장' 마무리",
+          "link": "http://imgnews.naver.net/image/001/2026/02/18/AKR20260218054800004_01_i_P4_20260218183228150.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "서울시청이 팝업 체력장으로 깜짝 변신! 건강 챙기고 포인트까지 | 서울시 - 내 손안에 서울 서울시청이 팝업 체력장으로 깜짝 변신! 건강 챙기고...",
+          "link": "https://mediahub.seoul.go.kr/uploads/mediahub/2026/02/gmHhbUNOFMoNkFbzOCqbHtNMLRephfGR.jpg",
+          "domain": "mediahub.seoul.go.kr"
+        },
+        {
+          "title": "포스터 sns 팝업 카드뉴스, 전단지·포스터·인쇄물 포트폴리오 - 크몽",
+          "link": "https://d2v80xjmx68n4w.cloudfront.net/members/portfolios/Xvjbm1761535916.jpg",
+          "domain": "d2v80xjmx68n4w.cloudfront.net"
+        }
+      ],
+      "status": "different"
+    },
+    {
+      "id": 8561,
+      "name": "어린이 음악회",
+      "venue": "부천 아트센터",
+      "source": "blog_discovery",
+      "currentPoster": "https://www.bucheonphil.or.kr/upload/62/20220121161756_1413319392.jpg",
+      "llmPoster": null,
+      "llmReason": "제시된 이미지 후보의 제목('사진모음 부천시립예술단')이 이벤트명 '어린이 음악회'와 일치하지 않습니다. 신뢰 도메인이라 할지라도, 이미지 제목이 특정 이벤트의 포스터가 아닌 일반적인 '사진모음'임을 명시하고 있어 해당 이벤트의 공식 포스터로 보기 어렵습니다.",
+      "searchQuery": "어린이 음악회 포스터",
+      "candidateCount": 1,
+      "candidates": [
+        {
+          "title": "사진모음 부천시립예술단",
+          "link": "https://www.bucheonphil.or.kr/upload/62/20220121161756_1413319392.jpg",
+          "domain": "www.bucheonphil.or.kr"
+        }
+      ],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8591,
+      "name": "어린이뮤지컬 겨울왕국 렛잇고 시즌3",
+      "venue": "안산문화예술의전당 달맞이극장",
+      "source": "blog_discovery",
+      "currentPoster": "http://ticketimage.interpark.com/PlayDictionary/DATA/PlayDic/PlayDicUpload/040001/19/09/0400011909_148097_0643.gif",
+      "llmPoster": null,
+      "llmReason": "no candidates after filter",
+      "searchQuery": "어린이뮤지컬 겨울왕국 렛잇고 시즌3 포스터",
+      "candidateCount": 0,
+      "candidates": [],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8586,
+      "name": "어린이뮤지컬 넘버블록스",
+      "venue": "티켓링크 1975씨어터",
+      "source": "blog_discovery",
+      "currentPoster": "https://dthumb-phinf.pstatic.net/?src=%22https://mblogthumb-phinf.pstatic.net/MjAyNTEyMjlfOTMg/MDAxNzY3MDA4MzM1NDc1.8m_b9Azx4mj3maSibTCp0X-Shq1NEf18ISdou52C2mcg.GQ4tNJUHCNwUe2z8RLnYzKLCIknEqk4XHfilVPZ_CKwg.JPEG/900%25A3%25DF20251227%25A3%25DF174302.jpg?type=w800%22&opts=2&twidth=700&theight=700",
+      "llmPoster": "https://www.haman.go.kr/_res/art/popup/20250425/pop20250425.jpg",
+      "llmReason": "이벤트명 '어린이뮤지컬 넘버블록스'의 핵심 키워드인 '넘버블록스'와 '뮤지컬'이 이미지 제목 '가족뮤지컬 넘버블록스 티켓 예매 안내'에 직접 포함되어 일치도가 매우 높습니다. 또한, `haman.go.kr`은 신뢰할 수 있는 공공기관 도메인이며, '티켓 예매 안내'라는 문구는 해당 이벤트의 공식 홍보 이미지임을 강력히 시사합니다. 다른 후보들은 제목이 너무 일반적이거나(2, 5, 6), 인플루언서 리뷰/비교 콘텐츠(1, 3)로 보여 공식 포스터로서의 적합성이 떨어집니다.",
+      "searchQuery": "어린이뮤지컬 넘버블록스 포스터",
+      "candidateCount": 6,
+      "candidates": [
+        {
+          "title": "네이버 인플루언서 [네이버 인플루언서] 아기 유아 어린이 뮤지컬 공연 넘버블록스 알파블록스 비교 총정리",
+          "link": "https://dthumb-phinf.pstatic.net/?src=%22https://mblogthumb-phinf.pstatic.net/MjAyNjAyMDZfNTcg/MDAxNzcwMzU2MjkzMjkx.mEZm1VdYK6Q4Fhtc8SWg34TZPKPFQK08_H7_juvVyoMg.CxC3aLE2bGHC7joTrt7eIFKME-B_QyTK2xs83EeBbPgg.JPEG/900%25A3%25DF20260203%25A3%25DF130938.jpg?type=w800%22&opts=2&twidth=700&theight=700",
+          "domain": "dthumb-phinf.pstatic.net"
+        },
+        {
+          "title": "HOME > 열린광장 > 포토갤러리 > 가족뮤지컬  문화예술회관",
+          "link": "https://www.haman.go.kr/board/image.do?idx=17204906&name=%EB%84%98%EB%B2%84%EB%B8%94%EB%A1%9D%EC%8A%A43.jpeg&gcode=159&s=",
+          "domain": "www.haman.go.kr"
+        },
+        {
+          "title": "네이버 인플루언서 [네이버 인플루언서] 아기 유아 어린이 뮤지컬 공연 넘버블록스 알파블록스 비교 총정리",
+          "link": "https://dthumb-phinf.pstatic.net/?src=%22https://mblogthumb-phinf.pstatic.net/MjAyNTEyMjlfOTMg/MDAxNzY3MDA4MzM1NDc1.8m_b9Azx4mj3maSibTCp0X-Shq1NEf18ISdou52C2mcg.GQ4tNJUHCNwUe2z8RLnYzKLCIknEqk4XHfilVPZ_CKwg.JPEG/900%25A3%25DF20251227%25A3%25DF174302.jpg?type=w800%22&opts=2&twidth=700&theight=700",
+          "domain": "dthumb-phinf.pstatic.net"
+        },
+        {
+          "title": "가족뮤지컬 넘버블록스 티켓 예매 안내",
+          "link": "https://www.haman.go.kr/_res/art/popup/20250425/pop20250425.jpg",
+          "domain": "www.haman.go.kr"
+        },
+        {
+          "title": "HOME > 열린광장 > 포토갤러리 > 가족뮤지컬  문화예술회관",
+          "link": "https://www.haman.go.kr/board/image.do?idx=17204909&name=%EB%84%98%EB%B2%84%EB%B8%94%EB%A1%9D%EC%8A%A48.jpeg&gcode=159&s=",
+          "domain": "www.haman.go.kr"
+        },
+        {
+          "title": "2026 가족뮤지컬 -앵콜 초대 이벤트 [3월 1일(일) 16시 30분] - 키노라이츠",
+          "link": "https://static.kinolights.com/popcorn/payable-point-item/view/824/row-1-column-1.jpg",
+          "domain": "static.kinolights.com"
+        }
+      ],
+      "status": "different"
+    },
+    {
+      "id": 8552,
+      "name": "연극 <급식왕 급식이가 사라졌다>",
+      "venue": "서울 스케치홀",
+      "source": "blog_discovery",
+      "currentPoster": "https://i.namu.wiki/i/ocU4EpOv3jadN58TdwmOxBglWc4CONm4p-2H9griLgiTRlc0l4o5jxcJ8BA2j0uX5QL3ddnT41Dt9-yY8E4O7A.webp",
+      "llmPoster": null,
+      "llmReason": "제시된 이미지 후보는 'i.namu.wiki' 도메인으로, 이는 '커뮤니티/갤러리/위키 사이트 이미지'에 해당하여 제외 대상입니다. 이벤트명과 직접적으로 일치하는 공식 포스터 또는 대표 홍보 이미지가 없습니다.",
+      "searchQuery": "연극 <급식왕 급식이가 사라졌다> 포스터",
+      "candidateCount": 1,
+      "candidates": [
+        {
+          "title": "급식왕 - 나무위키 급식왕",
+          "link": "https://i.namu.wiki/i/ocU4EpOv3jadN58TdwmOxBglWc4CONm4p-2H9griLgiTRlc0l4o5jxcJ8BA2j0uX5QL3ddnT41Dt9-yY8E4O7A.webp",
+          "domain": "i.namu.wiki"
+        }
+      ],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8530,
+      "name": "예인챔버오케스트라 어린이음악회",
+      "venue": "의정부문화원",
+      "source": "blog_discovery",
+      "currentPoster": "https://www.kopis.or.kr/upload/pfmPoster/PF_PF184339_211206_094347.jpg",
+      "llmPoster": null,
+      "llmReason": "제시된 모든 이미지 후보의 제목이 이벤트명 '예인챔버오케스트라 어린이음악회'와 일치하지 않습니다. 다른 오케스트라의 다른 종류의 음악회 포스터들입니다.",
+      "searchQuery": "예인챔버오케스트라 어린이음악회 포스터",
+      "candidateCount": 4,
+      "candidates": [
+        {
+          "title": "공연일정 | 공연 | 프로그램 | 유로챔버오케스트라 2024 연주회",
+          "link": "https://www.sejongpac.or.kr/cmmn/file/linkedxmlImg.do?performIdx=35664&ver=1.2",
+          "domain": "www.sejongpac.or.kr"
+        },
+        {
+          "title": "문화예술공연 - 코리안챔버오케스트라(KCO) 송년음악회 | 문화체육관광부",
+          "link": "https://www.mcst.go.kr/attachFiles/cultureInfoCourt/monthServ/1702277346960.gif",
+          "domain": "www.mcst.go.kr"
+        },
+        {
+          "title": "작품소개 | 상세 정보 | 공연·전시 | 예술의전당 서울비르투오지 챔버오케스트라  신년음악회",
+          "link": "https://center.sac.or.kr/SAC/File/RentConfirm/editor/1042e775-fe07-4dc7-bad5-44c3a80876fb",
+          "domain": "center.sac.or.kr"
+        },
+        {
+          "title": "공연일정 | 공연 | 프로그램 | OPUS Chamber Society 창단음악회",
+          "link": "https://www.sejongpac.or.kr/cmmn/file/imageSrc.do?fileStreCours=faec0c25744c22e99776405c0fa728023efc476b5f063d4f353e40b56af1b31a&streFileNm=3a49bfd886180e15cd0518f459f74dc352e2f1440befb29c34155b70a7ef77fe",
+          "domain": "www.sejongpac.or.kr"
+        }
+      ],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8615,
+      "name": "온 가족이 함께 하는 교육인원 힐링축제",
+      "venue": "어린이교실 하이브랜드",
+      "source": "blog_discovery",
+      "currentPoster": "https://www.mcst.go.kr/attachFiles/cultureInfoCourt/monthServ/1696571284629.gif",
+      "llmPoster": null,
+      "llmReason": "no candidates after filter",
+      "searchQuery": "온 가족이 함께 하는 교육인원 힐링축제 포스터",
+      "candidateCount": 0,
+      "candidates": [],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8680,
+      "name": "요즘엔 이렇게 배워요! : 놀면서 배우기 (K-에듀테크 스타트업 전시·체험)",
+      "venue": "용산어린이정원",
+      "source": "blog_discovery",
+      "currentPoster": "https://t1.daumcdn.net/news/202309/07/newsy/20230907083454246vsxs.jpg",
+      "llmPoster": null,
+      "llmReason": "no candidates after filter",
+      "searchQuery": "요즘엔 이렇게 배워요! : 놀면서 배우기 (K-에듀테크 스타트업 전시·체험) 포스터",
+      "candidateCount": 0,
+      "candidates": [],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8683,
+      "name": "용산 아이파크몰 캐릭터 팝업스토어 (핑크퐁, 아기상어, 뽀로로 등)",
+      "venue": "용산 아이파크몰",
+      "source": "blog_discovery",
+      "currentPoster": "https://dthumb-phinf.pstatic.net/?src=%22https://mblogthumb-phinf.pstatic.net/MjAyNjAyMDJfMjY3/MDAxNzcwMDE0NzI1NjMw.GZkJY9kiCl9yniAaf0P0XN13nfyiFhxucTFUBtgU-d0g.SnxCP3sOdLChwy90RnJvAi3CErQyV3sumNooOn0-9y0g.JPEG/IMG_9850%25286%2529.JPEG?type=w800%22&opts=2&twidth=700&theight=700",
+      "llmPoster": "https://dthumb-phinf.pstatic.net/?src=%22https://mblogthumb-phinf.pstatic.net/MjAyNjAyMDJfMjY3/MDAxNzcwMDE0NzI1NjMw.GZkJY9kiCl9yniAaf0P0XN13nfyiFhxucTFUBtgU-d0g.SnxCP3sOdLChwy90RnJvAi3CErQyV3sumNooOn0-9y0g.JPEG/IMG_9850%25286%2529.JPEG?type=w800%22&opts=2&twidth=700&theight=700",
+      "llmReason": "이벤트명 '용산 아이파크몰 캐릭터 팝업스토어'의 핵심 키워드인 '용산 아이파크몰', '캐릭터', '팝업스토어'가 이미지 제목에 모두 포함되어 있어 이벤트와의 일치도가 가장 높습니다. 다른 후보들은 '캐릭터' 키워드가 없거나 다른 종류의 팝업스토어를 언급하고 있습니다.",
+      "searchQuery": "용산 아이파크몰 캐릭터 팝업스토어 (핑크퐁, 아기상어, 뽀로로 등) 포스터",
+      "candidateCount": 5,
+      "candidates": [
+        {
+          "title": "네이버 인플루언서 [네이버 인플루언서] 용산 아이파크몰 캐릭터 투어｜건담베이스부터 팝업스토어까지",
+          "link": "https://dthumb-phinf.pstatic.net/?src=%22https://mblogthumb-phinf.pstatic.net/MjAyNjAyMDJfMjY3/MDAxNzcwMDE0NzI1NjMw.GZkJY9kiCl9yniAaf0P0XN13nfyiFhxucTFUBtgU-d0g.SnxCP3sOdLChwy90RnJvAi3CErQyV3sumNooOn0-9y0g.JPEG/IMG_9850%25286%2529.JPEG?type=w800%22&opts=2&twidth=700&theight=700",
+          "domain": "dthumb-phinf.pstatic.net"
+        },
+        {
+          "title": "용산아이파크몰, 필카·만년필 등 아날로그 감성 가득한 팝업스토어 선봬",
+          "link": "http://imgnews.naver.net/image/5272/2026/02/04/0000073959_002_20260204093213610.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "“귀여운 건 이길 수 없죠”...아이파크몰 용산점, 연매출 6500억 비결은 ‘이색 팝업’[가보니]",
+          "link": "http://imgnews.naver.net/image/5003/2026/02/06/20260205145755_2292025_1200_900_20260206110015901.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "아이파크몰,  팝업스토어 운영...\"아날로그 문화 즐기는 MZ세대\"",
+          "link": "http://imgnews.naver.net/image/5820/2026/02/04/0000165678_001_20260204103217225.png",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "아이파크몰, ‘오픈런’ 팝업 상설화…팬덤 상권 만든다",
+          "link": "http://imgnews.naver.net/image/018/2026/02/23/0006222453_001_20260223091611634.jpg",
+          "domain": "imgnews.naver.net"
+        }
+      ],
+      "status": "match"
+    },
+    {
+      "id": 8541,
+      "name": "용인 에버랜드 튤립 축제",
+      "venue": "용인 에버랜드",
+      "source": "blog_discovery",
+      "currentPoster": "https://cdn.tourtoctoc.com/news/photo/202508/10111_57687_2032.jpg",
+      "llmPoster": null,
+      "llmReason": "제시된 이미지는 '용인 에버랜드 튤립 축제'가 아닌 '용인 에버랜드 썸머스플래쉬 여름축제'에 대한 이미지이므로, 이벤트명과 일치하지 않아 선택할 수 없습니다.",
+      "searchQuery": "용인 에버랜드 튤립 축제 포스터",
+      "candidateCount": 1,
+      "candidates": [
+        {
+          "title": "\"물총 싸움의 성지!\" 용인 에버랜드, 썸머스플래쉬 여름축제 알아보기 < 국내 여행 < 기사본문 - 여행톡톡 \"물총 싸움의 성지!\" 용인 에버랜드...",
+          "link": "https://cdn.tourtoctoc.com/news/photo/202508/10111_57687_2032.jpg",
+          "domain": "cdn.tourtoctoc.com"
+        }
+      ],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8554,
+      "name": "운수대통 설맞이 축제",
+      "venue": "운현궁",
+      "source": "blog_discovery",
+      "currentPoster": "http://tong.visitkorea.or.kr/cms/resource/05/3464805_image2_1.jpg",
+      "llmPoster": "http://tong.visitkorea.or.kr/cms/resource/05/3464805_image2_1.jpg",
+      "llmReason": "후보 1의 이미지 제목에 '운현궁 운수대통 설맞이 축제'가 직접적으로 포함되어 있어 이벤트명과 장소의 일치도가 가장 높습니다. visitkorea.or.kr 도메인 또한 신뢰할 수 있는 출처입니다.",
+      "searchQuery": "운수대통 설맞이 축제 포스터",
+      "candidateCount": 4,
+      "candidates": [
+        {
+          "title": "운현궁 운수대통 설맞이 최신 축제 공연 행사 정보와 주변 관광 명소 및 근처 맛집 여행 정보",
+          "link": "http://tong.visitkorea.or.kr/cms/resource/05/3464805_image2_1.jpg",
+          "domain": "tong.visitkorea.or.kr"
+        },
+        {
+          "title": "마리오아울렛, 설맞이 '2026 운수대통 쇼핑 페스티벌'…설 연휴 정상 영업",
+          "link": "http://imgnews.naver.net/image/5381/2026/02/12/0000047120_001_20260212172010850.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "2022 설맞이 축제 이벤트 트레일러",
+          "link": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/news_live/c2b3c4fec69a6f3ad3857978c1029d690817b0c7-1280x720.jpg?accountingTag=LoL?w=1200&h=630&fm=webp&fit=crop&crop=center",
+          "domain": "cmsassets.rgpub.io"
+        },
+        {
+          "title": "깨어난 영웅 | 2022 설맞이 축제 시네마틱",
+          "link": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/news/c68f80a2212d3820066dd31a8fcb29eba585709f-1280x720.jpg?accountingTag=LoL?w=1200&h=630&fm=webp&fit=crop&crop=center",
+          "domain": "cmsassets.rgpub.io"
+        }
+      ],
+      "status": "match"
+    },
+    {
+      "id": 8588,
+      "name": "월간톡톡 공연놀이터 - 늑대야 친구하자 (어린이 클래식)",
+      "venue": "용인시평생학습관 큰어울마당",
+      "source": "blog_discovery",
+      "currentPoster": "https://www.jeonmae.co.kr/news/photo/202504/1136105_841680_1028.jpeg",
+      "llmPoster": null,
+      "llmReason": "제시된 이미지 후보의 제목에 이벤트명인 '월간톡톡 공연놀이터 - 늑대야 친구하자' 또는 핵심 키워드가 포함되어 있지 않습니다. 또한, 이미지 제목은 '경기도어린이박물관'에서의 공연을 언급하고 있어, '용인시평생학습관'에서 열리는 해당 이벤트와 관련성이 낮습니다.",
+      "searchQuery": "월간톡톡 공연놀이터 - 늑대야 친구하자 (어린이 클래식) 포스터",
+      "candidateCount": 1,
+      "candidates": [
+        {
+          "title": "경기도어린이박물관, 어린이 공연 시즌 개막… 9월까지 상설 무대 운영 - 전국매일신문 - 전국의 생생한 뉴스를 ‘한눈에’ 경기도어린이박물관...",
+          "link": "https://www.jeonmae.co.kr/news/photo/202504/1136105_841680_1028.jpeg",
+          "domain": "www.jeonmae.co.kr"
+        }
+      ],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8563,
+      "name": "위시캣 전시회",
+      "venue": "위시캣 테마파크",
+      "source": "blog_discovery",
+      "currentPoster": "https://img1.daumcdn.net/thumb/R1280x0.fwebp/?fname=http://t1.daumcdn.net/brunch/service/user/fWKx/image/9M2qxavFgB6OfyU0I4L6l3hLUMw",
+      "llmPoster": null,
+      "llmReason": "제시된 이미지 후보는 '위시캣 전시회' 이벤트의 공식 포스터나 대표 홍보 이미지가 아닙니다. 후보 1번은 '전시회 포스터 디자인'에 대한 일반적인 팁을 다루는 이미지로, 특정 이벤트명('위시캣 전시회')과 일치하지 않으며 이벤트 홍보 포스터로 볼 수 없습니다.",
+      "searchQuery": "위시캣 전시회 포스터",
+      "candidateCount": 1,
+      "candidates": [
+        {
+          "title": "전시회 포스터 디자인: 주목받는 작품을 위한 6가지 팁",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fwebp/?fname=http://t1.daumcdn.net/brunch/service/user/fWKx/image/9M2qxavFgB6OfyU0I4L6l3hLUMw",
+          "domain": "img1.daumcdn.net"
+        }
+      ],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8573,
+      "name": "이레베이킹 키즈클래스 1월 어묵키트 만들기 체험",
+      "venue": "이레베이킹",
+      "source": "blog_discovery",
+      "currentPoster": null,
+      "llmPoster": null,
+      "llmReason": "no candidates after filter",
+      "searchQuery": "이레베이킹 키즈클래스 1월 어묵키트 만들기 체험 포스터",
+      "candidateCount": 0,
+      "candidates": [],
+      "status": "both_empty"
+    },
+    {
+      "id": 8575,
+      "name": "인천 베이비페어 키즈페어",
+      "venue": "송도컨벤시아",
+      "source": "blog_discovery",
+      "currentPoster": null,
+      "llmPoster": null,
+      "llmReason": "no candidates after filter",
+      "searchQuery": "인천 베이비페어 키즈페어 포스터",
+      "candidateCount": 0,
+      "candidates": [],
+      "status": "both_empty"
+    },
+    {
+      "id": 8595,
+      "name": "잠실 루미나리에",
+      "venue": "아레나광장",
+      "source": "blog_discovery",
+      "currentPoster": "https://dthumb-phinf.pstatic.net/?src=%22https://moment-phinf.pstatic.net/MjAyMzEwMjhfMTIg/MDAxNjk4NDIwODMyOTQ2.okY8YS8vUovHdJeNL5K4YcN_AaCQ7kloAhX9KiOiKvIg.Hk6Chs5QX-oiL7AOnm-OoVptMMDN7C8qPCqLKO9S8uUg.JPEG/cdbc1288-e82c-4ff2-81f5-c5cc6df19a5a.jpg%22&opts=2&twidth=700&theight=700",
+      "llmPoster": "http://imgnews.naver.net/image/023/2026/02/12/0003958755_001_20260212005518174.jpg",
+      "llmReason": "이벤트명 '잠실 루미나리에'의 핵심 키워드인 '잠실'과 '루미나리에'가 이미지 제목에 모두 포함되어 있으며, '반짝반짝 잠실서 빛나는 루미나리에'라는 제목이 이벤트의 성격을 직접적으로 묘사하여 공식 포스터 또는 대표 홍보 이미지로 가장 적합합니다. 뉴스 이미지(imgnews.naver.net)는 제목에 이벤트명이 포함될 경우 허용됩니다. 다른 후보들은 커뮤니티/인플루언서/여행 블로그 등 공식 홍보 이미지가 아닌 출처이거나, 이벤트명과의 일치도가 떨어집니다.",
+      "searchQuery": "잠실 루미나리에 포스터",
+      "candidateCount": 8,
+      "candidates": [
+        {
+          "title": "롯데백화점, 잠실서 루미나리에 연계 소비 확대 실시",
+          "link": "http://imgnews.naver.net/image/5692/2026/02/04/0000043082_001_20260204105213184.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "반짝반짝 잠실서 빛나는 루미나리에",
+          "link": "http://imgnews.naver.net/image/023/2026/02/12/0003958755_001_20260212005518174.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "잠실월드몰 잔디광장 루미나리에 - Samsung Members 잠실월드몰 잔디광장 루미나리에",
+          "link": "https://r1.community.samsung.com/t5/image/serverpage/image-id/11367023i6C2263F6102DA076/image-size/large?v=v2&px=999",
+          "domain": "r1.community.samsung.com"
+        },
+        {
+          "title": "네이버 인플루언서 [네이버 인플루언서] 서울 가볼만한곳 잠실 석촌호수 루미나리에 빛축제",
+          "link": "https://dthumb-phinf.pstatic.net/?src=%22https://phinf.pstatic.net/tvcast/20240404_115/eao0926_1712200326012hzPow_JPEG/PublishThumb_20240404_121158_431.jpg%22&opts=2&twidth=700&theight=700",
+          "domain": "dthumb-phinf.pstatic.net"
+        },
+        {
+          "title": "2023 잠실 석촌호수 단풍축제 빛축제 루미나리에 총정리 (+주차, 카페) < 축제 & 전시 < 기사본문 - 여행톡톡 2023 잠실 석촌호수 단풍축제 빛축제...",
+          "link": "https://cdn.tourtoctoc.com/news/photo/202310/2750_17226_610.jpg",
+          "domain": "cdn.tourtoctoc.com"
+        },
+        {
+          "title": "네이버 인플루언서 [네이버 인플루언서] 크리스마스 잠실데이트코스 딱 정해드릴게요 ! 마켓, 맵핑쇼, 루미나리에",
+          "link": "https://influencer-phinf.pstatic.net/MjAyNTEyMTlfNTEg/MDAxNzY2MTQ4MTk0Mjcx.vf0vAKJXF9kxKAJOuqQd6D0J6iP0xp45N60Nij2U-rIg.YiP7KhuoK9BsvB2MjhtoNfD1DA-ZsfgY3-_f8jZQNPkg.PNG/f25f.png?type=w500",
+          "domain": "influencer-phinf.pstatic.net"
+        },
+        {
+          "title": "석촌호수 루미나리에 | KB부동산",
+          "link": "https://file.kbland.kr/image/kbstar/land/img/revw/userseq/3204800/20231031/N2I2ZWFkZTRlMTUwMTA1NTcy.jpg",
+          "domain": "file.kbland.kr"
+        },
+        {
+          "title": "루미나리 (2011) :: 왓챠 루미나리(2011) :: 왓챠",
+          "link": "https://dhgywazgeek0d.cloudfront.net/watcha/image/upload/c_fill,h_1080,q_80,w_1920/v1463649531/md8h1s-102000.jpg",
+          "domain": "dhgywazgeek0d.cloudfront.net"
+        }
+      ],
+      "status": "different"
+    },
+    {
+      "id": 8557,
+      "name": "장수탕 선녀님",
+      "venue": "서울어린이대공원 아트센터",
+      "source": "blog_discovery",
+      "currentPoster": "https://image.yes24.com/goods/154085781/XL",
+      "llmPoster": null,
+      "llmReason": "제시된 후보 이미지들은 모두 '장수탕 선녀님' 도서 자체의 표지, 상품 이미지, 또는 도서 관련 리뷰/기사 이미지로 판단됩니다. '서울어린이대공원 아트센터'에서 진행되는 공연/전시 이벤트의 공식 포스터 또는 대표 홍보 이미지로 적합한 것은 없습니다.",
+      "searchQuery": "장수탕 선녀님 포스터",
+      "candidateCount": 7,
+      "candidates": [
+        {
+          "title": "광주하남교육청 - 알림마당",
+          "link": "https://www.goegh.kr/main.php/entrance/entrance/main.php?master=bbs&act=exec&mode=download&master_sid=33&sid=129909&source=",
+          "domain": "www.goegh.kr"
+        },
+        {
+          "title": "장수탕 선녀님 - 웬디북",
+          "link": "https://img.wendybook.com/image/card/187301/9791198610621_10_20250226165618.jpg",
+          "domain": "img.wendybook.com"
+        },
+        {
+          "title": "어린이 뮤지컬  - kakaoTV 어린이 뮤지컬",
+          "link": "http://img1.kakaocdn.net/kakaotv/KAKAOACCOUNT/1054588146/thumb/20230217084700",
+          "domain": "img1.kakaocdn.net"
+        },
+        {
+          "title": "장수탕 선녀님 + 이상한 엄마 세트 | 백희나 | 스토리보울 - 예스24",
+          "link": "https://image.yes24.com/goods/154085781/XL",
+          "domain": "image.yes24.com"
+        },
+        {
+          "title": "[동화] 장수탕 선녀님_백희나_장수탕 선녀님에게 내가 좋아하는 요구르트를 나누다",
+          "link": "https://scs-phinf.pstatic.net/MjAyNTExMDJfMjk4/MDAxNzYyMDc1Mzk0NzUy.AO4X6ne9JqJDjzjCSXpA6s8-W9VZMTzn8POpHSsdi2Ag.smGkF55Y_hLMaCSclKdWXEfW45k50E0c_3m5S61YdJsg.JPEG/002.jpg?type=w800",
+          "domain": "scs-phinf.pstatic.net"
+        },
+        {
+          "title": "장수탕 선녀님 | 백희나 | 책읽는곰 - 예스24",
+          "link": "https://image.yes24.com/momo/TopCate3645/MidCate004/364435896.jpg",
+          "domain": "image.yes24.com"
+        },
+        {
+          "title": "장수탕선녀님이 가르쳐 준 내가 글을 쓸 이유",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fwebp/?fname=http://t1.daumcdn.net/brunch/service/user/6SDE/image/yC_f8E1RC5F9udbDpNPHNzrjlYk",
+          "domain": "img1.daumcdn.net"
+        }
+      ],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8698,
+      "name": "전래국악인형극",
+      "venue": "군포문화예술회관",
+      "source": "blog_discovery",
+      "currentPoster": "https://webzine.kotpa.org/wp-content/uploads/kboard_thumbnails/3/202602/698939f8adc8d8400707-600x1200.jpg",
+      "llmPoster": "https://webzine.kotpa.org/wp-content/uploads/kboard_thumbnails/3/202602/698939f8adc8d8400707-600x1200.jpg",
+      "llmReason": "이미지 제목 \"이달의 공연 전래국악인형극\"에 이벤트명 \"전래국악인형극\"이 직접 포함되어 있어, 선택 기준 1에 가장 부합합니다.",
+      "searchQuery": "전래국악인형극 포스터",
+      "candidateCount": 2,
+      "candidates": [
+        {
+          "title": "이달의 공연 전래국악인형극",
+          "link": "https://webzine.kotpa.org/wp-content/uploads/kboard_thumbnails/3/202602/698939f8adc8d8400707-600x1200.jpg",
+          "domain": "webzine.kotpa.org"
+        },
+        {
+          "title": "국립국악원 국악박물관 on Instagram",
+          "link": "https://scontent.cdninstagram.com/t51.2885-15/s640x640/sh0.08/e35/13423073_1584107905223119_946815952_n.jpg",
+          "domain": "scontent.cdninstagram.com"
+        }
+      ],
+      "status": "match"
+    },
+    {
+      "id": 8689,
+      "name": "제11회 서울국제어린이영화제",
+      "venue": "북한산",
+      "source": "blog_discovery",
+      "currentPoster": "https://an2-img.amz.wtchn.net/image/v2/M7Ho_jBO7Rjn4vjZCYXA2A.jpg?jwt=ZXlKaGJHY2lPaUpJVXpJMU5pSjkuZXlKdmNIUnpJanBiSW1SZk5Ea3dlRGN3TUhFNE1DSmRMQ0p3SWpvaUwzWXlMM04wYjNKbEwybHRZV2RsTHpFMk5UUTRNalF3T1RjNU5qRXpNekk0TlRZaWZRLjdrNlFoZDdxLWRNZ1MzWWh1aEg3dUU2blZGeVR1QzlJOXFxNmJZS3pUNjQ=",
+      "llmPoster": null,
+      "llmReason": "no candidates after filter",
+      "searchQuery": "제11회 서울국제어린이영화제 포스터",
+      "candidateCount": 0,
+      "candidates": [],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8681,
+      "name": "제46회 장애인의날 기념 장애인식개선 학생그림대회 작품 전시",
+      "venue": "금천장애인종합복지관",
+      "source": "blog_discovery",
+      "currentPoster": "https://image.toast.com/aaaaayz/prod/article/145229571/1_1712934949.jpeg",
+      "llmPoster": null,
+      "llmReason": "제시된 모든 이미지 후보는 이벤트명에 명시된 '제46회'와 일치하지 않으며, '학생그림대회 작품 전시'라는 이벤트 유형과도 정확히 일치하는 이미지가 없습니다. 후보 1, 3은 '제44회'를 언급하고 있으며, 후보 1은 '백일장 대회', 후보 2는 '교육', 후보 3은 '그림 포스터 공모전 안내'로 이벤트 유형이 다릅니다. 핵심 원칙인 '이벤트명과 이미지 제목의 일치도'가 부족하여 적합한 포스터가 없습니다.",
+      "searchQuery": "제46회 장애인의날 기념 장애인식개선 학생그림대회 작품 전시 포스터",
+      "candidateCount": 3,
+      "candidates": [
+        {
+          "title": "2024 제 44회 장애인의 날 기념 장애인식개선 교육 및 백일장 대회 안내 :: 공지사항 :: 인천경연초등학교 인천경연초등학교 :: 공지사항 :: 2024...",
+          "link": "https://image.toast.com/aaaaayz/prod/article/145175696/1_1712679283.png",
+          "domain": "image.toast.com"
+        },
+        {
+          "title": "2024 장애인의 날 기념 사회적 장애인식개선교육 및 장애이해교육, 장애학생 인권교육 안내 :: 가정통신문 :: 백운중학교 백운중학교...",
+          "link": "https://image.toast.com/aaaaayz/prod/article/145355296/2_1713487559.jpeg",
+          "domain": "image.toast.com"
+        },
+        {
+          "title": "제44회 장애인의 날 개념 장애인식개선 그림 포스터 공모전 안내 :: 공지사항 :: 남원초등학교 남원초등학교 :: 공지사항 :: 제44회 장애인의 날...",
+          "link": "https://image.toast.com/aaaaayz/prod/article/145229571/1_1712934949.jpeg",
+          "domain": "image.toast.com"
+        }
+      ],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8613,
+      "name": "중랑 어린이 풍선&페이스페인팅 체험",
+      "venue": "중랑용마폭포축제 문화마당",
+      "source": "blog_discovery",
+      "currentPoster": "https://t1.daumcdn.net/cafeattach/1MCqU/9b7eef16613c2da41c0aa94ab2135313530bd51e",
+      "llmPoster": null,
+      "llmReason": "제시된 이미지 후보 중 '중랑 어린이 풍선&페이스페인팅 체험' 이벤트의 공식 포스터 또는 대표 홍보 이미지로 적합한 것이 없습니다. 1, 2번 후보는 이벤트명에 포함된 '풍선' 또는 '페이스페인팅' 키워드를 포함하지만, '중랑'이라는 지역명과 일치하지 않으며 다른 특정 기관/행사를 지칭하고 있어 관련 없는 다른 이벤트의 포스터로 판단됩니다. 3~7번 후보는 모두 Pexels 도메인의 '무료 스톡 사진'으로 명시되어 있어 제외 대상에 해당합니다.",
+      "searchQuery": "중랑 어린이 풍선&페이스페인팅 체험 포스터",
+      "candidateCount": 7,
+      "candidates": [
+        {
+          "title": "활동앨범 | 분야별정보 > 경남가족봉사단 활동가대회 체험부스운영(풍선아트, 페이스페인팅)",
+          "link": "https://www.changwon.go.kr/cwportal/cmsfile/image.do?idx=455068&s=1200x1200",
+          "domain": "www.changwon.go.kr"
+        },
+        {
+          "title": "체험부스-페이스페인팅 - 천재 행사활동 - 국공립 화순 천재어린이집 체험부스-페이스페인팅",
+          "link": "https://t1.daumcdn.net/cafeattach/1MCqU/9b7eef16613c2da41c0aa94ab2135313530bd51e",
+          "domain": "t1.daumcdn.net"
+        },
+        {
+          "title": "시절, 어린이, 웃음, 이들리브 주, 재미, 전통적인, 중동, 지역 사회... 파티, 페이스 페인팅, 풍선, 행복, 희망에 관한 무료 스톡 사진 Ahmed...",
+          "link": "https://images.pexels.com/photos/12102656/pexels-photo-12102656.jpeg?auto=compress&cs=tinysrgb&h=627&fit=crop&w=1200",
+          "domain": "images.pexels.com"
+        },
+        {
+          "title": "기쁨, 어린이, 어린이 패션, 어린이 활동, 얼굴 그림, 여름, 웃음... 플래너, 페이스 페인팅, 풍선, 풍선을 들고, 핑크빛 옷, 행복, 행복한에 관한...",
+          "link": "https://images.pexels.com/photos/8384362/pexels-photo-8384362.jpeg?auto=compress&cs=tinysrgb&h=627&fit=crop&w=1200",
+          "domain": "images.pexels.com"
+        },
+        {
+          "title": "야외에서, 어린이, 어린이 파티, 어린이 활동, 엔터테인먼트, 여름... 파티, 페이스 페인팅, 풍선, 풍선 동물, 핸드메이드 풍선에 관한 무료 스톡...",
+          "link": "https://images.pexels.com/photos/18026385/pexels-photo-18026385.jpeg?auto=compress&cs=tinysrgb&h=627&fit=crop&w=1200",
+          "domain": "images.pexels.com"
+        },
+        {
+          "title": "시절, 어린이, 얼굴 그림, 엔터테인먼트, 웃음, 자연, 잔디, 장난스러운... 테마, 페이스 페인팅, 풍선, 핑크빛 옷, 하트 패턴, 행복에 관한 무료...",
+          "link": "https://images.pexels.com/photos/8385027/pexels-photo-8385027.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500",
+          "domain": "images.pexels.com"
+        },
+        {
+          "title": "패션, 어린이, 얼굴 그림, 여름, 여름 파티, 여성, 우정, 웃음, 이벤트... 플래너, 페이스 페인팅, 페인트 칠 된 얼굴들, 풍선, 함께, 행복한에...",
+          "link": "https://images.pexels.com/photos/8385033/pexels-photo-8385033.jpeg?auto=compress&cs=tinysrgb&h=627&fit=crop&w=1200",
+          "domain": "images.pexels.com"
+        }
+      ],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8622,
+      "name": "중랑용마폭포축제 어린이 체험",
+      "venue": "중랑용마폭포공원",
+      "source": "blog_discovery",
+      "currentPoster": "https://www.wevity.com/upload/contest/20250724174440_755cd9ce.jpg",
+      "llmPoster": "http://tong.visitkorea.or.kr/cms/resource/96/3540196_image2_1.jpg",
+      "llmReason": "이벤트명 '중랑용마폭포축제'가 이미지 제목에 포함되어 있으며, 한국관광공사(visitkorea.or.kr)의 공식 도메인에서 제공하는 '최신 축제 공연 행사 정보' 이미지로, 축제 전체를 대표하는 홍보 이미지로 가장 적합합니다. 다른 후보들은 특정 연도 자원봉사 모집 또는 특정 프로그램 참가 모집 포스터로, '어린이 체험'을 포함한 축제 전체의 대표 이미지로는 부적합합니다.",
+      "searchQuery": "중랑용마폭포축제 어린이 체험 포스터",
+      "candidateCount": 3,
+      "candidates": [
+        {
+          "title": "BaekSeok Culture Univ. - [중랑문화재단] 「2025 중랑용마폭포축제 」 자원봉사자 용마별 모집 K2WebWizard",
+          "link": "https://volunteer.bu.ac.kr/CrossEditor/binary/images/000235/001_2.png",
+          "domain": "volunteer.bu.ac.kr"
+        },
+        {
+          "title": "중랑용마폭포축제 최신 축제 공연 행사 정보와 주변 관광 명소 및 근처 맛집 여행 정보",
+          "link": "http://tong.visitkorea.or.kr/cms/resource/96/3540196_image2_1.jpg",
+          "domain": "tong.visitkorea.or.kr"
+        },
+        {
+          "title": "[중랑용마폭포축제] 중랑 재능콩쿠르 참가 모집 | 공모전 대외활동 콘테스트 - 위비티 [중랑용마폭포축제] 중랑 재능콩쿠르 참가 모집",
+          "link": "https://www.wevity.com/upload/contest/20250724174440_755cd9ce.jpg",
+          "domain": "www.wevity.com"
+        }
+      ],
+      "status": "different"
+    },
+    {
+      "id": 8690,
+      "name": "집사티비 뮤지컬",
+      "venue": "구리아트홀",
+      "source": "blog_discovery",
+      "currentPoster": "http://ticketimage.interpark.com/PlayDictionary/DATA/PlayDic/PlayDicUpload/040001/25/06/0400012506_218980_02.751.gif",
+      "llmPoster": null,
+      "llmReason": "제시된 이미지는 '집사TV' 관련 스티커/GIF 이미지로, '뮤지컬' 공연의 공식 포스터 또는 대표 홍보 이미지로 보기 어렵습니다. 이벤트명 '집사티비 뮤지컬'의 핵심 키워드 중 '뮤지컬'이 이미지 제목에 포함되어 있지 않으며, 이미지의 성격(스티커/GIF)이 포스터와는 다릅니다.",
+      "searchQuery": "집사티비 뮤지컬 포스터",
+      "candidateCount": 1,
+      "candidates": [
+        {
+          "title": "집사tv Sticker - 집사TV - GIF 탐색 및 공유",
+          "link": "https://media1.tenor.com/m/pN5ZgJt5l-EAAAAC/%EC%A7%91%EC%82%ACtv.gif",
+          "domain": "media1.tenor.com"
+        }
+      ],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8598,
+      "name": "찾아가는 유아 문화예술공연",
+      "venue": "파주한가람유치원",
+      "source": "blog_discovery",
+      "currentPoster": null,
+      "llmPoster": null,
+      "llmReason": "no candidates after filter",
+      "searchQuery": "찾아가는 유아 문화예술공연 포스터",
+      "candidateCount": 0,
+      "candidates": [],
+      "status": "both_empty"
+    },
+    {
+      "id": 8536,
+      "name": "치이카와 베이비 팝업",
+      "venue": "더현대서울",
+      "source": "blog_discovery",
+      "currentPoster": "https://scs-phinf.pstatic.net/MjAyNjAxMzBfMTM0/MDAxNzY5NzE1MzM5NjYz.u9V0ZT-VUSg9sLNXFjUDrV-4AFNjRU-Cjv9K37e8J6cg.KT56ZBpcp44Jff5P0EGhLb2SYQvCX3VL6VOurI9gqo4g.JPEG/deohyeondae_chiikawa_pabeob_3.jpg?type=w800",
+      "llmPoster": "https://scs-phinf.pstatic.net/MjAyNjAxMzBfMTM0/MDAxNzY5NzE1MzM5NjYz.u9V0ZT-VUSg9sLNXFjUDrV-4AFNjRU-Cjv9K37e8J6cg.KT56ZBpcp44Jff5P0EGhLb2SYQvCX3VL6VOurI9gqo4g.JPEG/deohyeondae_chiikawa_pabeob_3.jpg?type=w800",
+      "llmReason": "이벤트명 '치이카와 베이비 팝업'의 핵심 키워드인 '베이비 치이카와 팝업'과 장소 '더현대'가 이미지 제목에 직접 포함되어 일치도가 가장 높습니다.",
+      "searchQuery": "치이카와 베이비 팝업 포스터",
+      "candidateCount": 5,
+      "candidates": [
+        {
+          "title": "더현대 베이비 치이카와 팝업 예약 일정 굿즈",
+          "link": "https://scs-phinf.pstatic.net/MjAyNjAxMzBfMTM0/MDAxNzY5NzE1MzM5NjYz.u9V0ZT-VUSg9sLNXFjUDrV-4AFNjRU-Cjv9K37e8J6cg.KT56ZBpcp44Jff5P0EGhLb2SYQvCX3VL6VOurI9gqo4g.JPEG/deohyeondae_chiikawa_pabeob_3.jpg?type=w800",
+          "domain": "scs-phinf.pstatic.net"
+        },
+        {
+          "title": "[명소] 다들 굿스마 팝업 다녀올때 나가노마켓 팝업 다녀옴",
+          "link": "https://timg.humoruniv.com/thumb_crop_resize.php?url=https://down.humoruniv.com//hwiparambbs/data/editor/thema2/e_se3a133005_d365a1e5582be99de033fb0ece33da3cd9473253.jpg?SIZE=800x600",
+          "domain": "timg.humoruniv.com"
+        },
+        {
+          "title": "[명소] 다들 굿스마 팝업 다녀올때 나가노마켓 팝업 다녀옴",
+          "link": "https://timg.humoruniv.com/thumb_crop_resize.php?url=https://down.humoruniv.com//hwiparambbs/data/editor/thema2/e_se3a133004_03c34a7d2270fdfe2b22f581c140eb508d606f53.jpg?SIZE=800x600",
+          "domain": "timg.humoruniv.com"
+        },
+        {
+          "title": "부산 나가노마켓 팝업스토어 갔다온 나",
+          "link": "https://timg.humoruniv.com/thumb_crop_resize.php?url=https://down.humoruniv.com//hwiparambbs/data/editor/thema2/e_s956925009_1a5b91058d3942b349fd15a78ee66d2cafdd570e.jpg?SIZE=800x1067",
+          "domain": "timg.humoruniv.com"
+        },
+        {
+          "title": "더현대 치이카와 팝업 예약",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.kakaocdn.net/brunch/service/user/i43n/image/iYa6qkJeTcZn4A-3KY9VKWyRTLI.jpg",
+          "domain": "img1.daumcdn.net"
+        }
+      ],
+      "status": "match"
+    },
+    {
+      "id": 8566,
+      "name": "치이카와 팝업",
+      "venue": "아이파크몰",
+      "source": "blog_discovery",
+      "currentPoster": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.kakaocdn.net/brunch/service/user/i43n/image/iYa6qkJeTcZn4A-3KY9VKWyRTLI.jpg",
+      "llmPoster": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.kakaocdn.net/brunch/service/user/i43n/image/iYa6qkJeTcZn4A-3KY9VKWyRTLI.jpg",
+      "llmReason": "후보 1번의 이미지 제목 '더현대 치이카와 팝업 예약'에 이벤트명 '치이카와 팝업'이 직접적으로 포함되어 있어, 핵심 키워드 일치도가 가장 높습니다. 비록 장소(더현대 vs 아이파크몰)는 다르지만, 이벤트명 일치도가 최우선 선택 기준이므로 가장 적합합니다. 다른 후보들은 이벤트명과 전혀 관련이 없거나 제외 대상에 해당합니다.",
+      "searchQuery": "치이카와 팝업 포스터",
+      "candidateCount": 3,
+      "candidates": [
+        {
+          "title": "더현대 치이카와 팝업 예약",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.kakaocdn.net/brunch/service/user/i43n/image/iYa6qkJeTcZn4A-3KY9VKWyRTLI.jpg",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "재팬스토어- 쉽고 빠른 종합 일본 구매대행 전문 쇼핑몰 > 상품카테고리",
+          "link": "https://m.media-amazon.com/images/I/61ZaC4gSKBL._AC_SS600_.jpg",
+          "domain": "m.media-amazon.com"
+        },
+        {
+          "title": "キデイランド　マルイシティ横浜店のアルバイト・バイト求人情報｜【タウンワーク】でバイトやパートのお仕事探し...",
+          "link": "https://townwork.net/jo_img/town/detail/Y00H42AB/N6258393.jpg",
+          "domain": "townwork.net"
+        }
+      ],
+      "status": "match"
+    },
+    {
+      "id": 8545,
+      "name": "코난 캐릭터 팝업스토어",
+      "venue": "더현대 서울",
+      "source": "blog_discovery",
+      "currentPoster": "http://imgnews.naver.net/image/5445/2026/02/19/0000475255_002_20260219160814198.png",
+      "llmPoster": null,
+      "llmReason": "제시된 이미지 후보들은 '명탐정 코난 추리 게임 팝업'에 대한 뉴스 이미지로, 요청된 이벤트명인 '코난 캐릭터 팝업스토어'와는 이벤트 성격(캐릭터 vs 추리 게임)이 달라 일치하지 않습니다. 이벤트명과 이미지 제목의 일치도가 가장 중요하므로, 해당 이벤트의 공식 포스터로 적합하지 않습니다.",
+      "searchQuery": "코난 캐릭터 팝업스토어 포스터",
+      "candidateCount": 2,
+      "candidates": [
+        {
+          "title": "명탐정 코난 추리 게임 팝업, 전 회차 매진 속 성황리 종료",
+          "link": "http://imgnews.naver.net/image/144/2026/02/19/0001098787_002_20260219171810849.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "전 회차 매진·약 9,000명 참여... '명탐정 코난' 공식 추리 게임 팝업 성료",
+          "link": "http://imgnews.naver.net/image/5445/2026/02/19/0000475255_002_20260219160814198.png",
+          "domain": "imgnews.naver.net"
+        }
+      ],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8565,
+      "name": "코리아보드게임즈 플레이 스토어 팝업",
+      "venue": "강서 NC백화점",
+      "source": "blog_discovery",
+      "currentPoster": "http://imgnews.naver.net/image/5763/2026/02/23/0000023051_001_20260223173816532.jpg",
+      "llmPoster": "http://imgnews.naver.net/image/5763/2026/02/23/0000023051_001_20260223173816532.jpg",
+      "llmReason": "이벤트명 '코리아보드게임즈 플레이 스토어 팝업'과 장소 '강서 NC백화점'을 고려할 때, 후보 5번의 이미지 제목 '코리아보드게임즈 최대 80% 할인 NC백화점 팝업 오픈'은 이벤트 주최사, 팝업 이벤트 유형, 그리고 특정 장소(NC백화점)를 명확히 포함하고 있어 가장 직접적인 홍보 포스터 또는 대표 이미지로 적합합니다. 다른 후보들은 '컬렉션 팝업스토어'라는 유사한 명칭을 사용하지만, 장소 정보가 명시되지 않아 5번이 가장 구체적이고 일치도가 높습니다.",
+      "searchQuery": "코리아보드게임즈 플레이 스토어 팝업 포스터",
+      "candidateCount": 6,
+      "candidates": [
+        {
+          "title": "[포토] '코리아보드게임즈 컬렉션 팝업스토어' 운영",
+          "link": "http://imgnews.naver.net/image/5038/2026/02/24/0001155049_001_20260224154612621.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "[포토] 코리아보드게임즈 컬렉션 팝업스토어",
+          "link": "http://imgnews.naver.net/image/5038/2026/02/24/0001155199_001_20260224182014427.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "[포토] '코리아보드게임즈 컬렉션 팝업스토어' 찾은 방문객들",
+          "link": "http://imgnews.naver.net/image/5038/2026/02/24/0001155080_001_20260224161012297.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "[포토] 다양한 보드게임 마련된 '코리아보드게임즈 컬렉션' 팝업",
+          "link": "http://imgnews.naver.net/image/5038/2026/02/24/0001155129_001_20260224165614210.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "코리아보드게임즈 최대 80% 할인 NC백화점 팝업 오픈",
+          "link": "http://imgnews.naver.net/image/5763/2026/02/23/0000023051_001_20260223173816532.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "[포토] 팝업스토어에서 즐기는 보드게임",
+          "link": "http://imgnews.naver.net/image/5038/2026/02/24/0001155194_001_20260224181012813.jpg",
+          "domain": "imgnews.naver.net"
+        }
+      ],
+      "status": "match"
+    },
+    {
+      "id": 8574,
+      "name": "코베 베이비페어 & 유아교육전",
+      "venue": "COEX",
+      "source": "blog_discovery",
+      "currentPoster": null,
+      "llmPoster": null,
+      "llmReason": "no candidates after filter",
+      "searchQuery": "코베 베이비페어 & 유아교육전 포스터",
+      "candidateCount": 0,
+      "candidates": [],
+      "status": "both_empty"
+    },
+    {
+      "id": 8685,
+      "name": "쿠키런 전시",
+      "venue": "국립현대미술관",
+      "source": "blog_discovery",
+      "currentPoster": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/pML/image/kUjwF_8CkSiB5a1ylXjGpdDn_7c.jpg",
+      "llmPoster": "http://imgnews.naver.net/image/421/2026/01/22/0008728514_001_20260122123919144.jpg",
+      "llmReason": "이벤트명 '쿠키런 전시'의 핵심 키워드인 '쿠키'가 이미지 제목 '미디어 아트로 만나는 쿠키'에 포함되어 있으며, 뉴스 이미지(imgnews.naver.net)는 제목에 이벤트명 핵심 키워드가 포함될 경우 허용됩니다. 반면, 1번 후보의 제목 '전시 포스터'는 너무 일반적입니다.",
+      "searchQuery": "쿠키런 전시 포스터",
+      "candidateCount": 2,
+      "candidates": [
+        {
+          "title": "전시 포스터",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/pML/image/kUjwF_8CkSiB5a1ylXjGpdDn_7c.jpg",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "미디어 아트로 만나는 쿠키",
+          "link": "http://imgnews.naver.net/image/421/2026/01/22/0008728514_001_20260122123919144.jpg",
+          "domain": "imgnews.naver.net"
+        }
+      ],
+      "status": "different"
+    },
+    {
+      "id": 8584,
+      "name": "크리스마스 <동화의 숲: 성냥팔이 소녀를 구하라!>",
+      "venue": "서울랜드",
+      "source": "blog_discovery",
+      "currentPoster": "https://image.yes24.com/goods/142195653/XL",
+      "llmPoster": null,
+      "llmReason": "제시된 이미지 후보 중 이벤트명 \"크리스마스 <동화의 숲: 성냥팔이 소녀를 구하라!>\"와 일치하거나 핵심 키워드를 포함하는 제목의 공식 포스터 또는 대표 홍보 이미지가 없습니다. 대부분의 이미지는 다른 이벤트, 일반적인 동화 관련 이미지, 또는 관련 없는 제목을 가지고 있습니다.",
+      "searchQuery": "크리스마스 <동화의 숲: 성냥팔이 소녀를 구하라!> 포스터",
+      "candidateCount": 7,
+      "candidates": [
+        {
+          "title": "이야기리포트 : 부산시보 부산 언택트 관광지, 안데르센 동화마을",
+          "link": "https://www.busan.go.kr/ImagePrint.do?dir=smartEditor&savename=2045da4f94ec44828f9a04e460978e4a&realname=KakaoTalk_20200704_221825312_02.jpg&fileext=jpg&filetype=image/jpeg&filesize=257476",
+          "domain": "www.busan.go.kr"
+        },
+        {
+          "title": "03화 무엇이 멈추게 하는가? : 안데르센",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/hVgM/image/2Inks4XNBW3Uv-Gx0BEar1XVLKc.jpg",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "겨울왕국",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fwebp/?fname=http://t1.daumcdn.net/brunch/service/user/3kT/image/3uGckRH2ujvt4l6Lsgq21rsQ6Ro.JPG",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "겨울왕국",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fwebp/?fname=http://t1.daumcdn.net/brunch/service/user/3kT/image/EvzScjh_KUZM5AZCYxiWh1NbPBc.JPG",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "01화 주여! 그들의 죄를 사하여 주소서.",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/8jX3/image/6dF8yJ8Hhzg4d7MgEWo_pNAXpsM.jpg",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "이야기리포트 : 부산시보 부산 언택트 관광지, 안데르센 동화마을",
+          "link": "https://www.busan.go.kr/ImagePrint.do?dir=smartEditor&savename=86fa31ad890a40a08e4fbc22458bb798&realname=KakaoTalk_20200704_221825312_03.jpg&fileext=jpg&filetype=image/jpeg&filesize=265972",
+          "domain": "www.busan.go.kr"
+        },
+        {
+          "title": "산그림 작가의 개인 갤러리 입니다.",
+          "link": "https://www.picturebook-illust.com/upload_board/new_Gallery/Original/i/2021625122530.jpg",
+          "domain": "www.picturebook-illust.com"
+        }
+      ],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8529,
+      "name": "크리스찬 히다카: 하늘이 극장이 되고, 극장이 하늘에 있으니",
+      "venue": "북서울미술관",
+      "source": "blog_discovery",
+      "currentPoster": null,
+      "llmPoster": "https://img1.daumcdn.net/thumb/R1280x0.fwebp/?fname=http://t1.daumcdn.net/brunch/service/user/htnv/image/vi48jCCHP9HkWO8XbEYRZ_HQhmY.heic",
+      "llmReason": "이미지 제목 \"01화 크리스찬 히다카 전시\"가 이벤트명 \"크리스찬 히다카: 하늘이 극장이 되고, 극장이 하늘에 있으니\"의 핵심 키워드인 '크리스찬 히다카'와 '전시'를 직접 포함하고 있어, 이벤트명과 이미지 제목의 일치도가 가장 높습니다.",
+      "searchQuery": "크리스찬 히다카: 하늘이 극장이 되고, 극장이 하늘에 있으니 포스터",
+      "candidateCount": 9,
+      "candidates": [
+        {
+          "title": "01화 크리스찬 히다카 전시",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fwebp/?fname=http://t1.daumcdn.net/brunch/service/user/htnv/image/vi48jCCHP9HkWO8XbEYRZ_HQhmY.heic",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "네이버 인플루언서 [네이버 인플루언서] 로즈베리의 서울시립미술관",
+          "link": "https://dthumb-phinf.pstatic.net/?src=%22https://mblogthumb-phinf.pstatic.net/MjAyNTA3MTVfMTcy/MDAxNzUyNTcwMjQ4OTE0.AzxGg2hLzneVBK0o_cxdg0zYJ4p7sPKSsLkNmWJKfB0g.5kQV6_EJ5il7J-neBy4azaOcXJel5UWfyRR-1HrRk9Ig.JPEG/900%25A3%25DF20250711%25A3%25DF120521.jpg?type=w800%22&opts=2&twidth=700&theight=700",
+          "domain": "dthumb-phinf.pstatic.net"
+        },
+        {
+          "title": "Soap Bubbles - Wikidata Soap Bubbles",
+          "link": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d8/Jean_Sim%C3%A9on_Chardin_-_Soap_Bubbles_-_Google_Art_Project.jpg/969px-Jean_Sim%C3%A9on_Chardin_-_Soap_Bubbles_-_Google_Art_Project.jpg",
+          "domain": "upload.wikimedia.org"
+        },
+        {
+          "title": "Cute Cartoon Bear and Bunny Inside Pink Box Stock Vector - Illustration of icon, design: 270667144 Cute Cartoon Bear And Bunny...",
+          "link": "https://thumbs.dreamstime.com/b/basic-rgb-270667144.jpg",
+          "domain": "thumbs.dreamstime.com"
+        },
+        {
+          "title": "네이버 인플루언서 [네이버 인플루언서] 분홍공주의 서울시립미술관",
+          "link": "https://dthumb-phinf.pstatic.net/?src=%22https://mblogthumb-phinf.pstatic.net/MjAyNTA4MTRfMjc3/MDAxNzU1MTc4NzkxNjM2.cC5kQxJioZQ2rOGICbaqkycHaHy1aBRKwT0DDWjI-gsg.g0RUs4LRu94MbRLqH6rrpll_mO-EdQANKL7wl1lnt9Qg.JPEG/900%25A3%25DFScreenshot%25A3%25DF20250813%25A3%25DF110148%25A3%25DFInstagram.jpg?type=w800%22&opts=2&twidth=700&theight=700",
+          "domain": "dthumb-phinf.pstatic.net"
+        },
+        {
+          "title": "Wool Icon - Free PNG & SVG 4281678 - Noun Project",
+          "link": "https://thenounproject.com/api/private/icons/4281678/edit/?backgroundShape=SQUARE&backgroundShapeColor=%23000000&backgroundShapeOpacity=0&exportSize=752&flipX=false&flipY=false&foregroundColor=%23000000&foregroundOpacity=1&imageFormat=png&rotation=0",
+          "domain": "thenounproject.com"
+        },
+        {
+          "title": "Modern Torah Bar Mitzvah Save the Date Gray Blue | Zazzle",
+          "link": "https://rlv.zcache.com/modern_torah_bar_mitzvah_save_the_date_gray_blue-r45083c4bf43e4d4d9300527ab06db344_tcvt0_736.jpg",
+          "domain": "rlv.zcache.com"
+        },
+        {
+          "title": "National Gallery of Art",
+          "link": "https://upload.wikimedia.org/wikipedia/en/c/ca/Family_of_Saltimbanques.JPG",
+          "domain": "upload.wikimedia.org"
+        },
+        {
+          "title": "네이버 인플루언서 [네이버 인플루언서] 8월 꼭 가봐야 할 문화생활 모음집",
+          "link": "https://dthumb-phinf.pstatic.net/?src=%22https://mblogthumb-phinf.pstatic.net/MjAyNTA4MDlfNzAg/MDAxNzU0NzQxNjM1MDIx.r50m2vosG7HIfNhfj3C0EtLHh5f8fwMIlUNYzPHB8msg.nXQZ4nExBmqx15JZhwOxXFqnx9XOVyBVLhHuq5NZfXIg.JPEG/531201071_18098112592612513_5675420042026736282_n.jpg?type=w800%22&opts=2&twidth=700&theight=700",
+          "domain": "dthumb-phinf.pstatic.net"
+        }
+      ],
+      "status": "new_poster"
+    },
+    {
+      "id": 8614,
+      "name": "키즈명화갤러리 by MAM 레플리카 체험전",
+      "venue": "매그놀리아 아트 뮤지엄",
+      "source": "blog_discovery",
+      "currentPoster": "https://media-cdn.tripadvisor.com/media/photo-s/0d/3b/3e/13/gift-boxes-available.jpg",
+      "llmPoster": null,
+      "llmReason": "no candidates after filter",
+      "searchQuery": "키즈명화갤러리 by MAM 레플리카 체험전 포스터",
+      "candidateCount": 0,
+      "candidates": [],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8559,
+      "name": "키즈오토파크 초등 교통안전교육 무료 체험",
+      "venue": "키즈오토파크",
+      "source": "blog_discovery",
+      "currentPoster": null,
+      "llmPoster": null,
+      "llmReason": "no candidates after filter",
+      "searchQuery": "키즈오토파크 초등 교통안전교육 무료 체험 포스터",
+      "candidateCount": 0,
+      "candidates": [],
+      "status": "both_empty"
+    },
+    {
+      "id": 8693,
+      "name": "타샤 튜더 전시",
+      "venue": "롯데뮤지엄",
+      "source": "blog_discovery",
+      "currentPoster": "https://dthumb-phinf.pstatic.net/?src=%22https://mblogthumb-phinf.pstatic.net/MjAyNjAzMDNfODYg/MDAxNzcyNTM2NTY2Njcx.vyGlPUu_ho1_EnspjWm8lG6D1cvdPzncOC4nYddgVtwg.nNdxXknCVFHsHZJh-Rde6p5tqb8gPPb7Aq0En65tKt4g.JPEG/900%25A3%25DF1772536500521.jpg?type=w800%22&opts=2&twidth=700&theight=700",
+      "llmPoster": "https://dthumb-phinf.pstatic.net/?src=%22https://mblogthumb-phinf.pstatic.net/MjAyNjAzMDNfODYg/MDAxNzcyNTM2NTY2Njcx.vyGlPUu_ho1_EnspjWm8lG6D1cvdPzncOC4nYddgVtwg.nNdxXknCVFHsHZJh-Rde6p5tqb8gPPb7Aq0En65tKt4g.JPEG/900%25A3%25DF1772536500521.jpg?type=w800%22&opts=2&twidth=700&theight=700",
+      "llmReason": "이벤트명 '타샤 튜더 전시'와 장소 '롯데뮤지엄'에 가장 정확하게 일치하는 이미지입니다. 이미지 제목에 '잠실 전시회 스틸 타샤 튜더'와 '@ 롯데뮤지엄'이 명시되어 있어, 이벤트명과 장소 모두를 포함하고 있습니다. 후보 2도 적합하지만, 후보 3이 장소 정보까지 포함하여 더 구체적인 일치도를 보입니다. 후보 1은 책 표지로 판단되어 제외합니다.",
+      "searchQuery": "타샤 튜더 전시 포스터",
+      "candidateCount": 3,
+      "candidates": [
+        {
+          "title": "타샤 튜더 나의 정원 | 타샤 튜더 | 윌북(willbook) - 예스24",
+          "link": "https://image.yes24.com/goods/125920879/XL",
+          "domain": "image.yes24.com"
+        },
+        {
+          "title": "\"그리고 그녀는 동화 속에서 살았답니다\" … '스틸, 타샤 튜더' 展",
+          "link": "http://imgnews.naver.net/image/5097/2026/01/04/0000419593_005_20260104101415466.jpeg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "네이버 인플루언서 [네이버 인플루언서] 잠실 전시회 스틸 타샤 튜더:행복의 아이콘 타샤 튜더의 삶 @ 롯데뮤지엄",
+          "link": "https://dthumb-phinf.pstatic.net/?src=%22https://mblogthumb-phinf.pstatic.net/MjAyNjAzMDNfODYg/MDAxNzcyNTM2NTY2Njcx.vyGlPUu_ho1_EnspjWm8lG6D1cvdPzncOC4nYddgVtwg.nNdxXknCVFHsHZJh-Rde6p5tqb8gPPb7Aq0En65tKt4g.JPEG/900%25A3%25DF1772536500521.jpg?type=w800%22&opts=2&twidth=700&theight=700",
+          "domain": "dthumb-phinf.pstatic.net"
+        }
+      ],
+      "status": "match"
+    },
+    {
+      "id": 8562,
+      "name": "타샤 튜더 전시회 '스틸, 타샤 튜더(STILL TAHSA)'",
+      "venue": "롯데뮤지엄",
+      "source": "blog_discovery",
+      "currentPoster": "https://og-data.s3.amazonaws.com/media/exhibitions/image/14621/ei_14621.png",
+      "llmPoster": "https://og-data.s3.amazonaws.com/media/exhibitions/image/14621/ei_14621.png",
+      "llmReason": "이벤트명 '타샤 튜더 전시회 '스틸, 타샤 튜더(STILL TAHSA)''의 핵심 키워드인 'Still, Tasha Tudor'와 '전시'가 이미지 제목에 명확하게 포함되어 있습니다. 특히 '전시 정보'라는 문구가 있어 이벤트의 성격과 가장 잘 부합하는 공식 홍보 이미지로 판단됩니다.",
+      "searchQuery": "타샤 튜더 전시회 '스틸, 타샤 튜더(STILL TAHSA)' 포스터",
+      "candidateCount": 15,
+      "candidates": [
+        {
+          "title": "'Still, Tasha Tudor : 행복의 아이콘, 타샤 튜더의 삶 ' 전시 정보 :: 오픈갤러리 Still, Tasha Tudor : 행복의 아이콘, 타샤 튜더의 삶",
+          "link": "https://og-data.s3.amazonaws.com/media/exhibitions/image/14621/ei_14621.png",
+          "domain": "og-data.s3.amazonaws.com"
+        },
+        {
+          "title": "\"그리고 그녀는 동화 속에서 살았답니다\" … '스틸, 타샤 튜더' 展",
+          "link": "http://imgnews.naver.net/image/5097/2026/01/04/0000419593_002_20260104101415377.jpeg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "몽글몽글 따스한 展",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fwebp/?fname=http://t1.kakaocdn.net/brunch/service/user/fSbI/image/HaJPS1Sn1sI8FYGJLGo4l4sQKig.heic",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "몽글몽글 따스한 展",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fwebp/?fname=http://t1.kakaocdn.net/brunch/service/user/fSbI/image/xxH0wqVKzTqpi6aM9Mq-dCV24e0.jpeg",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "몽글몽글 따스한 展",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fwebp/?fname=http://t1.kakaocdn.net/brunch/service/user/fSbI/image/f6k4JUpFp2rU3G4H0u8BS__DY4s.heic",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "몽글몽글 따스한 展",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fwebp/?fname=http://t1.kakaocdn.net/brunch/service/user/fSbI/image/W3wKjrLHGqeRSKyYgKK5Q0wC9kQ.heic",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "몽글몽글 따스한 展",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fwebp/?fname=http://t1.kakaocdn.net/brunch/service/user/fSbI/image/p_WG8toDB06W406__SZ2jnxktAY.heic",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "스틸, 타샤튜더 '전 연계 프로그램 운영",
+          "link": "http://imgnews.naver.net/image/5360/2026/01/09/0000035014_001_20260109012025891.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "09화 스틸, 타샤튜더 - Part1",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/pML/image/l_ksuzR9wy5DNqRL9WRY8ZRpQd4.jpg",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "09화 스틸, 타샤튜더 - Part1",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/pML/image/VXFO0hgodHqK9QDv0fEVueZlbjc.jpg",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "09화 스틸, 타샤튜더 - Part1",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/pML/image/5glYcm9xlkDWbXZUPlzftz2Xwgw.jpg",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "09화 스틸, 타샤튜더 - Part1",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/pML/image/1TxW_2taKyAQ7QFvblVn039S9JE.jpg",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "09화 스틸, 타샤튜더 - Part1",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/pML/image/gQLPOKS0S3YvucExmGQLeZlFkvI.jpg",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "09화 스틸, 타샤튜더 - Part1",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/pML/image/aXT4EFfalpeoMTp57V3g21iLLGU.jpg",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "09화 스틸, 타샤튜더 - Part1",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fpng/?fname=http://t1.daumcdn.net/brunch/service/user/pML/image/ClLMP71dwPuekBBAVytgCyPX5bU.png",
+          "domain": "img1.daumcdn.net"
+        }
+      ],
+      "status": "match"
+    },
+    {
+      "id": 8572,
+      "name": "튼튼영어 서울강서센터 2주년 이벤트",
+      "venue": "튼튼영어 서울강서센터",
+      "source": "blog_discovery",
+      "currentPoster": "https://www.kgeu.org/files/branch/bsgangseogu/image/bsgangseogu250724150212029651001.jpg",
+      "llmPoster": null,
+      "llmReason": "제시된 이미지 후보의 제목은 '튼튼영어 베이비리그 주니어플러스 서울강서센터'로, 이벤트명 '튼튼영어 서울강서센터 2주년 이벤트'에서 '2주년 이벤트'라는 핵심 키워드가 누락되어 있습니다. 이는 해당 이미지가 이벤트 자체의 포스터라기보다는 센터의 일반적인 홍보 이미지로 판단됩니다. '이벤트명과 이미지 제목의 일치도가 가장 중요'하다는 선택 기준에 따라, 이 이벤트를 대표하는 공식 포스터 또는 대표 홍보 이미지로 적합하지 않습니다.",
+      "searchQuery": "튼튼영어 서울강서센터 2주년 이벤트 포스터",
+      "candidateCount": 1,
+      "candidates": [
+        {
+          "title": "튼튼영어 베이비리그 주니어플러스 서울강서센터",
+          "link": "https://naverbooking-phinf.pstatic.net/20240104_297/1704347048569TEBsx_JPEG/image.jpg",
+          "domain": "naverbooking-phinf.pstatic.net"
+        }
+      ],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8569,
+      "name": "팝업 체험전",
+      "venue": "스타필드 빌리지 운정",
+      "source": "blog_discovery",
+      "currentPoster": "https://d2v80xjmx68n4w.cloudfront.net/members/portfolios/TIUfi1741779551.jpg",
+      "llmPoster": null,
+      "llmReason": "두 후보 모두 크몽(Kmong)의 포트폴리오 이미지로, 특정 이벤트의 공식 포스터가 아닌 디자인 작업물 예시입니다. 이벤트명 '팝업 체험전'과 직접적인 연관성이 부족하며, '포트폴리오'라는 설명으로 인해 공식 홍보 이미지로 볼 수 없습니다. 따라서 적합한 포스터가 없습니다.",
+      "searchQuery": "팝업 체험전 포스터",
+      "candidateCount": 2,
+      "candidates": [
+        {
+          "title": "팝업 포스터 일러스트, 일러스트 포트폴리오 - 크몽",
+          "link": "https://d2v80xjmx68n4w.cloudfront.net/members/portfolios/TIUfi1741779551.jpg",
+          "domain": "d2v80xjmx68n4w.cloudfront.net"
+        },
+        {
+          "title": "포스터 sns 팝업 카드뉴스, 전단지·포스터·인쇄물 포트폴리오 - 크몽",
+          "link": "https://d2v80xjmx68n4w.cloudfront.net/members/portfolios/Xvjbm1761535916.jpg",
+          "domain": "d2v80xjmx68n4w.cloudfront.net"
+        }
+      ],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8616,
+      "name": "페인터즈",
+      "venue": "경향아트힐",
+      "source": "blog_discovery",
+      "currentPoster": "https://www.kopis.or.kr/upload/pfmIntroImage/PF_PF173757_210420_1054010.jpg",
+      "llmPoster": null,
+      "llmReason": "제시된 이미지 후보 중 이벤트명 '페인터즈'가 이미지 제목에 직접 포함되거나, 신뢰할 수 있는 도메인에서 해당 이벤트와 명확히 연결되는 이미지가 없습니다. 가장 근접한 5번 후보(gokams.or.kr)의 경우 신뢰 도메인이지만, 이미지 제목이 '알림/ 소식 > 공모·기금·행사 상세보기'로 이벤트명과 전혀 관련이 없는 일반적인 페이지 제목이므로 선택 기준에 부합하지 않습니다.",
+      "searchQuery": "페인터즈 포스터",
+      "candidateCount": 8,
+      "candidates": [
+        {
+          "title": "Colour Cloud Flowers Floral Art Print coloured Lino | Etsy Colour Cloud  Flowers  Floral  Art Print coloured Lino | Etsy",
+          "link": "https://i.etsystatic.com/27528052/r/il/1a5172/3672772978/il_500x500.3672772978_oxwt.jpg",
+          "domain": "i.etsystatic.com"
+        },
+        {
+          "title": "Zhino en Radio Bar at Radio Bar, Mexico Zhino en Radio Bar at Radio Bar, Mexico ⟋ RA",
+          "link": "https://imgproxy.ra.co/_/quality:66/aHR0cHM6Ly9pbWFnZXMucmEuY28vNmQ1MmYxYWQwMzY3ZThmMzJhOGU3MmY4MGQ5ZTk5OTg5OTEwNjZkYy5qcGc=",
+          "domain": "imgproxy.ra.co"
+        },
+        {
+          "title": "Book giveaway for Defying China: A Memoir by Tsultrim Dolma Aug 04-Sep 02, 2025",
+          "link": "https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1749697000i/236116731._UY630_SR1200,630_.jpg",
+          "domain": "i.gr-assets.com"
+        },
+        {
+          "title": "2011年7月11日（月）のイベント （5ページ目） | mixiコミュニティ 2011年7月11日（月）のイベント | mixiコミュニティ",
+          "link": "https://classic-imagecluster.img.mixi.jp/p/8a8aea646c22da5941812337ad58e87a8484624a0e/691af2b6/photo/bbs/63343826_150.jpg",
+          "domain": "classic-imagecluster.img.mixi.jp"
+        },
+        {
+          "title": "알림/ 소식 > 공모·기금·행사 상세보기",
+          "link": "https://www.gokams.or.kr/se_upload/gokamsEdt_231128_071118563.jpg",
+          "domain": "www.gokams.or.kr"
+        },
+        {
+          "title": "E-mails  - leonardo lima interface designer and art director",
+          "link": "http://payload.cargocollective.com/1/0/26995/315439/email3.png",
+          "domain": "payload.cargocollective.com"
+        },
+        {
+          "title": "[Art] Life Of Pi",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fwebp/?fname=http://t1.daumcdn.net/brunch/service/user/dvzC/image/gb8y8eFgJgTmQZRcW3Ra1VFGmYs.jpeg",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "내외신문 : 전체기사 > 1 페이지",
+          "link": "http://www.naewaynews.com/data/naewaynews_com/mainimages/201602/20160212_1_46081.jpg",
+          "domain": "www.naewaynews.com"
+        }
+      ],
+      "status": "llm_removed"
+    },
+    {
+      "id": 8619,
+      "name": "포켓몬 런 (잉어킹 마라톤)",
+      "venue": "뚝섬 한강공원",
+      "source": "blog_discovery",
+      "currentPoster": "http://imgnews.naver.net/image/356/2026/02/16/0000080239_001_20260216112118339.jpg",
+      "llmPoster": "http://imgnews.naver.net/image/356/2026/02/16/0000080239_001_20260216112118339.jpg",
+      "llmReason": "이벤트명 '포켓몬 런'과 핵심 키워드 '잉어킹'이 이미지 제목에 직접 포함되어 있으며, '어린이날 개최'라는 문구가 홍보 포스터/배너의 성격을 잘 나타냅니다. 뉴스 이미지 도메인(imgnews.naver.net)이지만, 제목 일치도가 높아 선택 기준에 부합합니다.",
+      "searchQuery": "포켓몬 런 (잉어킹 마라톤) 포스터",
+      "candidateCount": 8,
+      "candidates": [
+        {
+          "title": "모두가 잉어킹 되어 달리자! 포켓몬 런 2026 어린이날 개최",
+          "link": "http://imgnews.naver.net/image/356/2026/02/16/0000080239_001_20260216112118339.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "5,000명의 잉어킹이 한강을 달린다… 포켓몬 런 2026이 보여준 러닝 산업의 진화 < 트렌드 인사이트 < INSIGHT < 기사본문 - 소비자평가 5...",
+          "link": "https://cdn.iconsumer.or.kr/news/photo/202602/30276_40596_2830.png",
+          "domain": "cdn.iconsumer.or.kr"
+        },
+        {
+          "title": "I-Run Goa Marathon - Taleigão - I-Run Goa Marathon의 리뷰 - 트립어드바이저",
+          "link": "https://dynamic-media-cdn.tripadvisor.com/media/photo-o/27/a5/85/52/goa-s-best-half-marathon.jpg?w=1200&h=1200&s=1",
+          "domain": "dynamic-media-cdn.tripadvisor.com"
+        },
+        {
+          "title": "06화 함께 런",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/ad6K/image/LsMWvhsZ3eO1i2b-m0kfiYS35Wc.jpg",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "(저자6강) run은 \"런\"이 아니고 remember는",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/2jRL/image/skrijxX3GHOQJ6PMIKiYwthB3zM.jpg",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "MintyRun - 두런쇼",
+          "link": "https://lh3.googleusercontent.com/sitesv/AAzXCkeXComUdCNyQLf7pYLjJgCn8A8-pvKZL1hEYsUpBQYl11YLkBS1dzHdQGmgJsWzxqdS-ZyQPYvXUEvrmJ-cqgQPgRsFmdViyk6pCou_Xff6YjP58vk8d-N1klP5zbP_XZGp_UCg19Q4DKOrnBXL6KouOFBtktaZb0Dueeohtgz2Q-i-BOIYaFwKHoBmi5ceuE6RqxQHMQ-rmJ_u_U5sA44R09WqrXT6mbeq=w1280",
+          "domain": "lh3.googleusercontent.com"
+        },
+        {
+          "title": "2022년 7월 2일 런콥 데상트 나이트런 사진 공유 - 대회사진 - VMK한국시각장애인마라톤회 2022년 7월 2일 런콥 데상트 나이트런 사진 공유",
+          "link": "https://t1.daumcdn.net/cafeattach/131A2/a3c21dd47e9adfd3b651a5a8079f2fd5cef1394b",
+          "domain": "t1.daumcdn.net"
+        },
+        {
+          "title": "11화 얼떨결에 우중런",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=https://t1.daumcdn.net/brunch/service/user/5ZBg/image/CiXKQvL3MteSQ7kO81O9ew4Roj8.jpg",
+          "domain": "img1.daumcdn.net"
+        }
+      ],
+      "status": "match"
+    },
+    {
+      "id": 8539,
+      "name": "플로로도라&비클린 팝업",
+      "venue": "판교 현대백화점",
+      "source": "blog_discovery",
+      "currentPoster": null,
+      "llmPoster": null,
+      "llmReason": "제시된 이미지 후보 중 이벤트명 '플로로도라&비클린 팝업'과 일치하거나 관련성이 높은 공식 포스터 또는 홍보 이미지가 없습니다. 후보 1은 '플로리스클린'이라는 다른 브랜드의 웹 UI/UX 포트폴리오 이미지로, 이벤트명과 일치하지 않으며 이벤트 포스터가 아닙니다.",
+      "searchQuery": "플로로도라&비클린 팝업 포스터",
+      "candidateCount": 1,
+      "candidates": [
+        {
+          "title": "플로리스클린 FLAWLESS CLEAN, 웹 UI·UX 포트폴리오 - 크몽",
+          "link": "https://d2v80xjmx68n4w.cloudfront.net/members/portfolios/sxvqR1596872755.jpg",
+          "domain": "d2v80xjmx68n4w.cloudfront.net"
+        }
+      ],
+      "status": "both_empty"
+    },
+    {
+      "id": 8533,
+      "name": "하리보 팝업",
+      "venue": "김포 현대아울렛",
+      "source": "blog_discovery",
+      "currentPoster": "http://imgnews.naver.net/image/5575/2026/02/26/0000638835_001_20260226090017533.jpg",
+      "llmPoster": "http://imgnews.naver.net/image/5575/2026/02/26/0000638835_001_20260226090017533.jpg",
+      "llmReason": "이미지 제목에 이벤트명인 '하리보'와 '팝업'이 명확하게 포함되어 있으며, 장소인 '현대프리미엄아울렛 김포점'까지 언급되어 이벤트와의 일치도가 가장 높습니다. 뉴스 이미지 출처도 허용 기준에 부합합니다.",
+      "searchQuery": "하리보 팝업 포스터",
+      "candidateCount": 2,
+      "candidates": [
+        {
+          "title": "하리보, 현대프리미엄아울렛 김포점에 '스위트 타운' 팝업 오픈",
+          "link": "http://imgnews.naver.net/image/5575/2026/02/26/0000638835_001_20260226090017533.jpg",
+          "domain": "imgnews.naver.net"
+        },
+        {
+          "title": "콜라보 팝업스토어로 MZ 세대 공략하기",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fpng/?fname=http://t1.daumcdn.net/brunch/service/user/h8F8/image/DjjIthVQY-xHL8QppRT3424xR50.png",
+          "domain": "img1.daumcdn.net"
+        }
+      ],
+      "status": "match"
+    },
+    {
+      "id": 8568,
+      "name": "하리보젤리 팝업스토어",
+      "venue": "김포현대프리미엄아울렛",
+      "source": "blog_discovery",
+      "currentPoster": "https://ak-d.tripcdn.com/images/1mi6d2215gtbpgrxc3AEA_W_640_0_R5_Q80.jpg?proc=source/trip",
+      "llmPoster": "http://imgnews.naver.net/image/5575/2026/02/26/0000638835_001_20260226090017533.jpg",
+      "llmReason": "이벤트명 '하리보젤리 팝업스토어'의 핵심 키워드인 '하리보'와 '팝업'이 이미지 제목에 포함되어 있으며, 장소인 '현대프리미엄아울렛 김포점'도 명확히 언급되어 있습니다. 뉴스 이미지(imgnews.naver.net)이지만, 제목에 이벤트명이 포함되면 허용된다는 기준에 부합합니다.",
+      "searchQuery": "하리보젤리 팝업스토어 포스터",
+      "candidateCount": 1,
+      "candidates": [
+        {
+          "title": "하리보, 현대프리미엄아울렛 김포점에 '스위트 타운' 팝업 오픈",
+          "link": "http://imgnews.naver.net/image/5575/2026/02/26/0000638835_001_20260226090017533.jpg",
+          "domain": "imgnews.naver.net"
+        }
+      ],
+      "status": "different"
+    },
+    {
+      "id": 8604,
+      "name": "헤일리 티프먼, 일상을 그리다 전시",
+      "venue": "마이아트뮤지엄 원그로브점",
+      "source": "blog_discovery",
+      "currentPoster": "https://d2mgzmtdeipcjp.cloudfront.net/files/good/2026/02/12/17708795257303.jpg",
+      "llmPoster": "https://d2mgzmtdeipcjp.cloudfront.net/files/good/2026/02/12/17708795257303.jpg",
+      "llmReason": "이벤트명 '헤일리 티프먼, 일상을 그리다 전시'와 이미지 제목 '서울 '헤일리 티프먼, 일상을 그리다' 전시 (원그로브점)'이 가장 정확하게 일치하며, '전시'와 장소 '원그로브점'까지 명시되어 있어 공식 포스터/홍보 이미지로 가장 적합합니다.",
+      "searchQuery": "헤일리 티프먼, 일상을 그리다 전시 포스터",
+      "candidateCount": 15,
+      "candidates": [
+        {
+          "title": "서울 '헤일리 티프먼, 일상을 그리다' 전시 (원그로브점)",
+          "link": "https://d2mgzmtdeipcjp.cloudfront.net/files/good/2026/02/12/17708795257303.jpg",
+          "domain": "d2mgzmtdeipcjp.cloudfront.net"
+        },
+        {
+          "title": "12화 헤일리 티프먼, 일상을 그리다",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/pML/image/4hdeSZfmyg43RtyC_zid_evUmBM.jpg",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "12화 헤일리 티프먼, 일상을 그리다",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/pML/image/9289M-nLpFooO6XMGSbIpXhJ6Z0.jpg",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "12화 헤일리 티프먼, 일상을 그리다",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/pML/image/IZQsjmhQYBGL3J_c6OkiXhsfZIo.jpg",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "12화 헤일리 티프먼, 일상을 그리다",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/pML/image/nDkYttQLLHVREmnAnLoNZtYVDl4.jpg",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "12화 헤일리 티프먼, 일상을 그리다",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/pML/image/Y6Sd0A2LNwo7gghZtl-ogouMDqg.jpg",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "12화 헤일리 티프먼, 일상을 그리다",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/pML/image/4WTHSLp54WwCHEGuA4Ti62CC83o.jpg",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "12화 헤일리 티프먼, 일상을 그리다",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/pML/image/3gxl7PU0pgLKPmPzxy3fWt4Q0zo.jpg",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "12화 헤일리 티프먼, 일상을 그리다",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/pML/image/fmF-YjSOIzKyiGXMaXjQCfSjpH8.jpg",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "12화 헤일리 티프먼, 일상을 그리다",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/pML/image/laZfOd4v5d95wrPA4fkuaa9l5-A.jpg",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "12화 헤일리 티프먼, 일상을 그리다",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/pML/image/W1jLO9goFgYs914v7SefBDY3uAA.jpg",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "12화 헤일리 티프먼, 일상을 그리다",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/pML/image/MYQa7WTRc_n6FJdFxMbvpWXDlf8.jpg",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "12화 헤일리 티프먼, 일상을 그리다",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/pML/image/j5afYn_c-LJuoLVyiF3qL6EGsO4.jpg",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "12화 헤일리 티프먼, 일상을 그리다",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/pML/image/PADASwXpFpM_aaaYn-moBvB8NhM.jpg",
+          "domain": "img1.daumcdn.net"
+        },
+        {
+          "title": "12화 헤일리 티프먼, 일상을 그리다",
+          "link": "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/pML/image/XU_FSr7Lvk9D21K2rHnOzmL6zDg.jpg",
+          "domain": "img1.daumcdn.net"
+        }
+      ],
+      "status": "match"
+    },
+    {
+      "id": 8589,
+      "name": "홍기쁨쇼",
+      "venue": "필근아 소극장",
+      "source": "blog_discovery",
+      "currentPoster": null,
+      "llmPoster": null,
+      "llmReason": "제시된 이미지 후보 중 이벤트명 '홍기쁨쇼'와 일치하는 공식 포스터 또는 대표 홍보 이미지가 없습니다. 후보 1은 '사이드쇼 [에이리언 킹]' 관련 이미지로 이벤트명과 불일치하며, 후보 2는 '탤런트 쇼' 관련 스톡 이미지로 이벤트명과 불일치하고 스톡 이미지 제외 대상에 해당합니다.",
+      "searchQuery": "홍기쁨쇼 포스터",
+      "candidateCount": 2,
+      "candidates": [
+        {
+          "title": "익스트림무비 - 사이드쇼 [에이리언 킹] 프린트 고퀄 포스터",
+          "link": "https://extmovie.maxmovie.com/xe/files/attach/images/18828601/772/622/019/1046833792c439e39eaf582ef117bd2f.jpg",
+          "domain": "extmovie.maxmovie.com"
+        },
+        {
+          "title": "탤런트 쇼 배너, 포스터, 금색 문자 스톡 벡터(로열티 프리) 1550798876 | Shutterstock",
+          "link": "https://www.shutterstock.com/image-vector/talent-show-banner-poster-gold-600w-1550798876.jpg",
+          "domain": "www.shutterstock.com"
+        }
+      ],
+      "status": "both_empty"
+    },
+    {
+      "id": 8621,
+      "name": "홍대 난타",
+      "venue": "극장",
+      "source": "blog_discovery",
+      "currentPoster": "http://tong.visitkorea.or.kr/cms/resource/27/1895127_image2_1.jpg",
+      "llmPoster": "http://tong.visitkorea.or.kr/cms/resource/27/1895127_image2_1.jpg",
+      "llmReason": "이벤트명 '홍대 난타'와 이미지 제목 'Hongdae Nanta Theatre (홍대난타전용관)'이 직접적으로 일치하며, '극장'이라는 장소 정보와도 부합합니다. 또한, 신뢰할 수 있는 관광 정보 사이트(visitkorea.or.kr)의 이미지로, 공식 홍보 이미지일 가능성이 높습니다. 이는 '이벤트명이 이미지 제목에 직접 포함된 홍보 포스터/배너'라는 최우선 선택 기준을 충족합니다.",
+      "searchQuery": "홍대 난타 포스터",
+      "candidateCount": 5,
+      "candidates": [
+        {
+          "title": "HOME > 함안소식 > 새소식 > 송승환의 오리지널 난타 공연안내(3월17일) 뉴스포털",
+          "link": "https://www.haman.go.kr/board/image.do?idx=12425099&name=%EB%82%9C%ED%83%80-%ED%8F%AC%EC%8A%A4%ED%84%B0.jpg&gcode=1009&s=",
+          "domain": "www.haman.go.kr"
+        },
+        {
+          "title": "싸니까 믿으니까 - 인터파크 티켓",
+          "link": "http://ticketimage.interpark.com/Play/image/large/09/09005510_p.gif",
+          "domain": "ticketimage.interpark.com"
+        },
+        {
+          "title": "",
+          "link": "http://ticketimage.interpark.com/PlayDictionary/DATA/PlayDic/PlayDicUpload/040001/23/08/0400012308_192633_01.553.gif",
+          "domain": "ticketimage.interpark.com"
+        },
+        {
+          "title": "Hongdae Nanta Theatre (홍대난타전용관) - Culture - Korea travel and tourism information",
+          "link": "http://tong.visitkorea.or.kr/cms/resource/27/1895127_image2_1.jpg",
+          "domain": "tong.visitkorea.or.kr"
+        },
+        {
+          "title": "오픈 갤러리 - 홍대입구 주말야외공연",
+          "link": "http://www.missdica.com/files/attach/images/727383/834/641/002/fd19f458704762c6cdae200d9f4b0bbe.jpg",
+          "domain": "www.missdica.com"
+        }
+      ],
+      "status": "match"
+    }
+  ]
+}
