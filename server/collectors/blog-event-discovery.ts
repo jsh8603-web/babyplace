@@ -557,6 +557,10 @@ const POSTER_BLOCKED_DOMAINS = [
   'img.freepik.com', 'png.pngtree.com', 'marketplace.canva.com',
   'preview.gettyimagesbank.com', 'media.istockphoto.com', 'img.lovepik.com',
   'thumb2.gettyimageskorea.com',
+  'st3.depositphotos.com', 'st2.depositphotos.com', 'st.depositphotos.com',
+  'previews.123rf.com', 'us.123rf.com',
+  'thumbs.dreamstime.com', 'www.shutterstock.com',
+  'image.shutterstock.com', 'thumb.ac-illust.com',
   // Shopping
   'shop-phinf.pstatic.net', 'shop1.phinf.naver.net', 'shopping.phinf.naver.net',
   'item.ssgcdn.com', 'ai.esmplus.com', 'image.msscdn.net',
@@ -572,6 +576,7 @@ const POSTER_BLOCKED_DOMAINS = [
   // Music/video
   'is1-ssl.mzstatic.com', 'i1.sndcdn.com', 'image.genie.co.kr',
   'file.kinolights.com',
+  'kakaotv/kakaoaccount', 'img.tumblbug.com',
   // News archive
   'cphoto.asiae.co.kr', 'img.asiatoday.co.kr', 'pds.joins.com',
   'cdn.socialfocus.co.kr', 'cdn.autoherald.co.kr',
@@ -582,6 +587,7 @@ const POSTER_BLOCKED_DOMAINS = [
   'www.yeonggwang.go.kr', 'www.bonghwa.go.kr', 'www.naju.go.kr',
   'www.jje.go.kr', 'www.gjartcenter.kr', 'www.cu.ac.kr',
   'www.cng.go.kr', 'www.jj.ac.kr', 'www.uiryeong.go.kr',
+  'www.gokseong.go.kr',
   // Other
   'data.ad.co.kr', 'mir-s3-cdn-cf.behance.net', 'd7hftxdivxxvm.cloudfront.net',
   'www.reportworld.co.kr', 'www.ibric.org', 'bric.postech.ac.kr',
@@ -592,6 +598,18 @@ const POSTER_BLOCKED_DOMAINS = [
   'lh7-rt.googleusercontent.com',
   'scontent-nrt1-2.cdninstagram.com', 'scontent-nrt1-1.cdninstagram.com',
   'inaturalist-open-data.s3.amazonaws.com',
+  'gall-img.com', '3.gall-img.com',
+  'image.slidesharecdn.com', 'cdn.class101.net', 'cdn.crowdpic.net',
+  'static.leisureq.io', 'd2ur7st6jjikze.cloudfront.net',
+  'ak-d.tripcdn.com', 'media.triple.guide',
+  'www.all-con.co.kr', 'cdn.wikiwiki.jp',
+  'image.ohou.se', 'image.ohousecdn.com',
+  'www.gc.go.kr', 'dimg.donga.com', 'www.kgeu.org',
+  'i.namu.wiki', 'www.wevity.com',
+  'naverbooking-phinf.pstatic.net', 'www.archives.go.kr',
+  'influencer-phinf.pstatic.net', 'www.bucheonphil.or.kr',
+  'www.forest.go.kr', 't1.daumcdn.net/cafeattach',
+  'search.pstatic.net/common', 'www.idfac.or.kr',
 ]
 
 /**
@@ -604,7 +622,125 @@ const POSTER_TRUSTED_DOMAINS = [
   'ticket.melon.com', 'ticketlink.co.kr', 'interpark.com',
   'yes24.com', 'cjcgv.co.kr', 'megabox.co.kr',
   'museum.go.kr', 'mmca.go.kr', 'sema.seoul.go.kr',
+  'museum.seoul.go.kr', 'visitkorea.or.kr', 'mediahub.seoul.go.kr',
 ]
+
+/** Trusted page domains for Naver Web Search og:image extraction */
+const OG_TRUSTED_PAGE_DOMAINS = [
+  'culture.seoul.go.kr', 'kopis.or.kr', 'museum.seoul.go.kr',
+  'tickets.interpark.com', 'ticket.yes24.com', 'ticketlink.co.kr',
+  'museum.go.kr', 'mmca.go.kr', 'sema.seoul.go.kr',
+  'visitkorea.or.kr', 'korean.visitseoul.net', 'mediahub.seoul.go.kr',
+  'lottemuseum.com', 'sac.or.kr', 'sejongpac.or.kr',
+]
+
+/** og:image blocklist — site-wide default images (logos, placeholders) */
+const OG_IMAGE_BLOCKLIST = [
+  'culturePotalImg', 'mainUX/main.png', 'og_noImage',
+  'kakaobanner', 'default_og', 'logo', 'Logo', 'favicon',
+  '/common/img/', 'share_img', 'shareImg', 'back_img',
+  '/images/common/', 'ticketlink_rebranding', 'defaultMobileBanner',
+  'defaultBanner', 'tketlink.dn.toastoven.net/static',
+]
+
+function cleanEventName(name: string): string {
+  return name
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/[「」『』《》<>〈〉]/g, ' ')
+    .replace(/[·•:：\-\|\/]/g, ' ')
+    .replace(/\([^)]*\)/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function extractCoreKeywords(name: string): string {
+  const cleaned = cleanEventName(name)
+  const tokens = cleaned.split(' ').filter(t =>
+    t.length >= 2 &&
+    !['체험', '무료', '기념', '특가', '프로그램', '이벤트', '전시', '공연', '축제', '팝업', '뮤지컬'].includes(t)
+  )
+  return tokens.slice(0, 3).join(' ')
+}
+
+function isBlocked(url: string): boolean {
+  const lower = url.toLowerCase()
+  return POSTER_BLOCKED_DOMAINS.some((d) => lower.includes(d))
+}
+
+function isTrusted(url: string): boolean {
+  return POSTER_TRUSTED_DOMAINS.some((d) => url.includes(d))
+}
+
+function isPageTrusted(url: string): boolean {
+  return OG_TRUSTED_PAGE_DOMAINS.some((d) => url.includes(d))
+}
+
+/**
+ * Fetch og:image from a URL using simple regex extraction.
+ */
+async function fetchOgImage(pageUrl: string): Promise<{ url: string; title: string } | null> {
+  try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 8000)
+    const res = await fetch(pageUrl, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; BabyPlacePosterBot/1.0)' },
+      signal: controller.signal,
+      redirect: 'follow',
+    })
+    clearTimeout(timeout)
+    if (!res.ok) return null
+
+    const html = await res.text()
+    const ogMatch = html.match(/<meta\s+(?:property|name)=["']og:image["']\s+content=["']([^"']+)["']/i)
+      || html.match(/<meta\s+content=["']([^"']+)["']\s+(?:property|name)=["']og:image["']/i)
+    if (!ogMatch) return null
+
+    let imgUrl = ogMatch[1]
+    if (imgUrl.startsWith('//')) imgUrl = 'https:' + imgUrl
+    else if (imgUrl.startsWith('/')) {
+      const base = new URL(pageUrl)
+      imgUrl = base.origin + imgUrl
+    }
+
+    if (OG_IMAGE_BLOCKLIST.some(p => imgUrl.includes(p))) return null
+
+    const titleMatch = html.match(/<meta\s+(?:property|name)=["']og:title["']\s+content=["']([^"']+)["']/i)
+      || html.match(/<meta\s+content=["']([^"']+)["']\s+(?:property|name)=["']og:title["']/i)
+      || html.match(/<title>([^<]+)<\/title>/i)
+    const title = titleMatch ? stripHtml(titleMatch[1]) : ''
+
+    return { url: imgUrl, title }
+  } catch {
+    return null
+  }
+}
+
+interface PosterCandidate {
+  title: string
+  link: string
+  width: number
+  height: number
+  source: 'og:image' | 'naver_image' | 'web_og:image'
+}
+
+function preFilterImages(images: NaverImageItem[]): PosterCandidate[] {
+  return images
+    .filter((img) => {
+      if (isBlocked(img.link)) return false
+      if (hasStaleYear(img.link)) return false
+      const w = parseInt(img.sizewidth) || 0
+      const h = parseInt(img.sizeheight) || 0
+      if (w < 200 || h < 200) return false
+      return true
+    })
+    .map(img => ({
+      title: stripHtml(img.title),
+      link: img.link,
+      width: parseInt(img.sizewidth) || 0,
+      height: parseInt(img.sizeheight) || 0,
+      source: 'naver_image' as const,
+    }))
+}
 
 /**
  * Check if URL contains a stale year (< current year) in path segments.
@@ -701,82 +837,149 @@ function selectBestPoster(images: NaverImageItem[], eventName: string, venueName
   return null
 }
 
-// ─── LLM-based poster selection ──────────────────────────────────────────────
+// ─── Multi-source poster collection + LLM selection (R20 optimized) ─────────
 
-interface PosterCandidate {
-  title: string
-  link: string
-  domain: string
-  width: number
-  height: number
+/**
+ * Collect poster candidates from multiple sources:
+ * 1. Naver Image Search (5-step fallback, 2-query collection)
+ * 2. Naver Web Search → trusted domain og:image extraction
+ * Then: pre-filter → Gemini LLM selection with R20 optimal prompt.
+ */
+async function collectPosterCandidates(
+  eventName: string,
+  venueName: string,
+): Promise<PosterCandidate[]> {
+  const candidates: PosterCandidate[] = []
+
+  // ─── Source 1: Naver Image Search (5-step fallback) ─────────────────────
+  const cleaned = cleanEventName(eventName)
+  const coreKw = extractCoreKeywords(eventName)
+  const queries = [
+    `${cleaned} 포스터`,
+    venueName ? `${cleaned} ${venueName}` : null,
+    cleaned,
+    coreKw !== cleaned ? coreKw : null,
+    venueName ? `${venueName} ${coreKw}` : null,
+  ].filter(Boolean) as string[]
+  const uniqueQueries = [...new Set(queries)]
+
+  // R14: collect from up to 2 successful queries
+  let naverHits = 0
+  for (const q of uniqueQueries) {
+    const imgUrl = `${NAVER_IMAGE_URL}?query=${encodeURIComponent(q)}&display=20&sort=sim`
+    const imgResults = await fetchNaverSearch<NaverImageItem>(imgUrl)
+    if (imgResults && imgResults.length > 0) {
+      const filtered = preFilterImages(imgResults)
+      if (filtered.length > 0) {
+        candidates.push(...filtered)
+        naverHits++
+        if (naverHits >= 2) break
+      }
+    }
+    await new Promise(r => setTimeout(r, 150))
+  }
+
+  // ─── Source 2: Naver Web Search → og:image from trusted pages ──────────
+  const hasTrustedCandidate = candidates.some(c => isTrusted(c.link))
+  if (!hasTrustedCandidate) {
+    const webQueries = [`${cleaned} 포스터`, cleaned]
+    let trustedPages: { title: string; link: string }[] = []
+    for (const wq of webQueries) {
+      const webUrl = `${NAVER_WEB_URL}?query=${encodeURIComponent(wq)}&display=10`
+      const webResults = await fetchNaverSearch<{ title: string; link: string; description: string }>(webUrl)
+      trustedPages = (webResults || []).filter(r => isPageTrusted(r.link))
+      if (trustedPages.length > 0) break
+      await new Promise(r => setTimeout(r, 150))
+    }
+
+    for (const page of trustedPages.slice(0, 3)) {
+      const ogResult = await fetchOgImage(page.link)
+      if (ogResult && ogResult.url && !isBlocked(ogResult.url) && !hasStaleYear(ogResult.url)) {
+        candidates.push({
+          title: ogResult.title || stripHtml(page.title),
+          link: ogResult.url,
+          width: 0, height: 0,
+          source: 'web_og:image',
+        })
+      }
+      await new Promise(r => setTimeout(r, 300))
+    }
+  }
+
+  // Deduplicate by URL
+  const seen = new Set<string>()
+  return candidates.filter(c => {
+    if (seen.has(c.link)) return false
+    seen.add(c.link)
+    return true
+  })
 }
 
 /**
- * Use Gemini Flash to select the best poster from pre-filtered image candidates.
+ * Use Gemini Flash to select the best poster from multi-source candidates.
+ * R20 optimal prompt: region matching, tour performance allowance, book cover ban.
  * Falls back to rule-based selectBestPoster if LLM fails.
  */
 export async function selectPosterWithLLM(
-  images: NaverImageItem[],
+  candidates: PosterCandidate[],
   eventName: string,
   venueName?: string
 ): Promise<string | null> {
-  // Pre-filter: blocked domains, stale year, size
-  const filtered = images.filter((img) => {
-    const url = img.link.toLowerCase()
-    if (POSTER_BLOCKED_DOMAINS.some((d) => url.includes(d))) return false
-    if (hasStaleYear(url)) return false
-    const w = parseInt(img.sizewidth) || 0
-    const h = parseInt(img.sizeheight) || 0
-    if (w < 200 || h < 200) return false
-    return true
+  if (candidates.length === 0) return null
+
+  const allCandidates = candidates.slice(0, 15).map((img, i) => {
+    let domain = ''
+    try { domain = new URL(img.link).hostname } catch { domain = 'unknown' }
+    const trusted = isTrusted(img.link)
+    return { idx: i + 1, title: img.title, link: img.link, domain, w: img.width, h: img.height, trusted, source: img.source }
   })
 
-  if (filtered.length === 0) return null
+  // Auto-select: single og:image from trusted page → skip LLM
+  if (allCandidates.length === 1 && allCandidates[0].source === 'og:image' && isPageTrusted(allCandidates[0].link)) {
+    return allCandidates[0].link
+  }
 
-  // Build candidate list for LLM (max 15)
-  const candidates: PosterCandidate[] = filtered.slice(0, 15).map((img) => {
-    const url = new URL(img.link)
-    return {
-      title: stripHtml(img.title),
-      link: img.link,
-      domain: url.hostname,
-      width: parseInt(img.sizewidth) || 0,
-      height: parseInt(img.sizeheight) || 0,
-    }
-  })
+  const prompt = `이벤트 "${eventName}"${venueName ? ` (장소: ${venueName})` : ''}의 포스터를 선택하세요.
 
-  const prompt = `이벤트 "${eventName}"${venueName ? ` (장소: ${venueName})` : ''}의 공식 포스터를 선택하세요.
+판단 순서:
+1. [공식] 표시 후보 → source_url 또는 공식 페이지 이미지. 최우선 선택.
+2. [신뢰] 표시 후보 → 예매/문화포털 공식 포스터.
+   단, yes24/interpark 상품이 도서·음반 표지인 경우 제외 (공연 포스터만).
+3. 이벤트명 핵심 키워드가 제목에 포함된 이미지 (뉴스 보도 허용).
+4. 같은 IP/브랜드의 다른 행사 포스터도 허용.
+5. 후보 모두 이벤트명과 완전히 무관하면 → 0.
 
-아래 이미지 후보 목록에서 **공식 이벤트 포스터**를 1개 선택하세요.
+중요: 같은 제목/IP의 공연·전시 순회공연은 다른 공연장이어도 허용.
+단, 완전히 다른 행사(다른 지역 유사 테마)는 제외.
 
-선택 기준:
-1. 이벤트명과 직접 관련된 공식 홍보 포스터 (행사 제목이 포함된 디자인 이미지)
-2. 공연/전시/축제의 메인 비주얼 또는 키비주얼
-3. 공식 문화포털/예매사이트/주최사 도메인 우선
-
-제외 대상:
-- 현장 사진, 방문 후기, 블로그 스냅샷
-- 뉴스 기사 속 사진 (기자 촬영 현장컷)
-- 관련 없는 다른 이벤트의 포스터
-- 쇼핑몰/상품 이미지, 책 표지
-- 스톡 이미지, 템플릿
+금지:
+- 완전히 다른 IP/작품의 포스터
+- 다른 지역의 유사 테마 행사 (같은 작품 순회공연은 예외)
+- 개인 블로그 방문 후기, 셀카, 스냅
+- 상품/책/앨범/도서 표지, 스톡/템플릿
 
 후보:
-${candidates.map((c, i) => `${i + 1}. [${c.domain}] "${c.title}" (${c.width}×${c.height})`).join('\n')}
+${allCandidates.map((c) => {
+  const tag = c.source === 'og:image' ? '[공식]' : c.trusted ? '[신뢰]' : ''
+  const size = c.w > 0 ? ` (${c.w}×${c.h})` : ''
+  return `${c.idx}. ${tag} [${c.domain}] "${c.title}"${size}`
+}).join('\n')}
 
-적합한 공식 포스터가 있으면 번호를, 없으면 0을 응답하세요.
-JSON만 응답: {"pick": 번호, "reason": "선택 이유"}`
+JSON만 응답: {"pick": 번호, "reason": "이유"}`
 
   try {
     const text = await extractWithGemini(prompt)
     const parsed = JSON.parse(text) as { pick: number; reason: string }
-    if (parsed.pick > 0 && parsed.pick <= candidates.length) {
-      return candidates[parsed.pick - 1].link
+    if (parsed.pick > 0 && parsed.pick <= allCandidates.length) {
+      return allCandidates[parsed.pick - 1].link
     }
     return null
   } catch {
     // Fallback to rule-based selection
-    return selectBestPoster(images, eventName, venueName)
+    const naverImages = candidates
+      .filter(c => c.source === 'naver_image')
+      .map(c => ({ title: c.title, link: c.link, thumbnail: c.link, sizewidth: String(c.width), sizeheight: String(c.height) }))
+    return selectBestPoster(naverImages, eventName, venueName)
   }
 }
 
@@ -888,19 +1091,11 @@ async function enrichEvents(events: ExtractedEvent[]): Promise<EnrichedEvent[]> 
     const webUrl = `${NAVER_WEB_URL}?query=${webQuery}&display=5`
     const webResults = await fetchNaverSearch<NaverWebItem>(webUrl)
 
-    // 2) Naver image search: 3-step fallback strategy
-    const imgQueries = [
-      `${event.event} 포스터`,
-      `${event.event} ${event.venue}`,
-      event.event,
-    ]
+    // 2) Multi-source poster collection (5-step fallback + web search + LLM)
+    const posterCandidates = await collectPosterCandidates(event.event, event.venue)
     let bestPoster: string | null = null
-    for (const q of imgQueries) {
-      const imgUrl = `${NAVER_IMAGE_URL}?query=${encodeURIComponent(q)}&display=20&sort=sim`
-      const imgResults = await fetchNaverSearch<NaverImageItem>(imgUrl)
-      bestPoster = selectBestPoster(imgResults || [], event.event, event.venue)
-      if (bestPoster) break
-      await new Promise((r) => setTimeout(r, 150))
+    if (posterCandidates.length > 0) {
+      bestPoster = await selectPosterWithLLM(posterCandidates, event.event, event.venue)
     }
 
     enriched.push({
