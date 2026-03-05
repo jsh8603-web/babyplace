@@ -28,6 +28,7 @@
  */
 
 import { supabaseAdmin } from '../lib/supabase-admin'
+import { logCollection } from '../lib/collection-log'
 import { searchKakaoPlace } from '../lib/kakao-search'
 import { isInServiceRegion } from '../enrichers/region'
 import { getDistrictCode } from '../enrichers/district'
@@ -130,12 +131,12 @@ export async function runAutoPromotion(): Promise<AutoPromoteResult> {
   }
 
   // Log to collection_logs
-  await supabaseAdmin.from('collection_logs').insert({
+  await logCollection({
     collector: 'auto-promote',
-    results_count: result.candidatesEvaluated,
-    new_places: result.promoted,
-    status: result.errors > 0 ? 'partial' : 'success',
-    duration_ms: Date.now() - startedAt,
+    startedAt,
+    resultsCount: result.candidatesEvaluated,
+    newPlaces: result.promoted,
+    errors: result.errors,
   })
 
   return result

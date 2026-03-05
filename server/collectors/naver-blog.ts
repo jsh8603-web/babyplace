@@ -23,6 +23,7 @@
 
 import { extractWithGemini } from '../lib/gemini'
 import { supabaseAdmin } from '../lib/supabase-admin'
+import { logCollection } from '../lib/collection-log'
 import { naverLimiter, kakaoSearchLimiter } from '../rate-limiter'
 import { findMatchingPlace } from '../matchers/duplicate'
 import { normalizePlaceName } from '../matchers/similarity'
@@ -195,12 +196,12 @@ export async function runKeywordSearchBatch(): Promise<PipelineBResult['keywordS
   }
   console.log(`[pipeline-b] Recorded ${newUrls.length} analyzed URLs`)
 
-  await supabaseAdmin.from('collection_logs').insert({
+  await logCollection({
     collector: 'pipeline-b-keyword-search',
-    results_count: stats.newMentions,
-    new_places: stats.newCandidates,
-    status: stats.errors > 0 ? 'partial' : 'success',
-    duration_ms: Date.now() - startedAt,
+    startedAt,
+    resultsCount: stats.newMentions,
+    newPlaces: stats.newCandidates,
+    errors: stats.errors,
   })
 
   return stats
@@ -235,12 +236,12 @@ export async function runPipelineB(): Promise<PipelineBResult> {
   const totalNew = result.reverseSearch.newMentions + result.keywordSearch.newMentions
   const totalErrors = result.reverseSearch.errors + result.keywordSearch.errors
 
-  await supabaseAdmin.from('collection_logs').insert({
+  await logCollection({
     collector: 'pipeline-b-naver-blog',
-    results_count: totalNew,
-    new_places: result.keywordSearch.newCandidates,
-    status: totalErrors > 0 ? 'partial' : 'success',
-    duration_ms: Date.now() - startedAt,
+    startedAt,
+    resultsCount: totalNew,
+    newPlaces: result.keywordSearch.newCandidates,
+    errors: totalErrors,
   })
 
   return result

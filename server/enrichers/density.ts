@@ -16,6 +16,7 @@
  */
 
 import { supabaseAdmin } from '../lib/supabase-admin'
+import { logCollection } from '../lib/collection-log'
 
 export interface DensityControlResult {
   districtsProcessed: number
@@ -76,17 +77,12 @@ export async function runDensityControl(): Promise<DensityControlResult> {
     }
 
     // Log density control run
-    const { error: logError } = await supabaseAdmin.from('collection_logs').insert({
+    await logCollection({
       collector: 'density-control',
-      results_count: result.districtsProcessed,
-      status: result.errors > 0 ? 'partial' : 'success',
-      duration_ms: Date.now() - startedAt,
+      startedAt,
+      resultsCount: result.districtsProcessed,
+      errors: result.errors,
     })
-
-    if (logError) {
-      console.error('[density] Failed to log density control run:', logError)
-      result.errors++
-    }
 
     console.log(
       `[density] Completed: ${result.districtsProcessed} districts, ${result.placesDeactivated} places deactivated`

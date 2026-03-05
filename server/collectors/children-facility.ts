@@ -24,6 +24,8 @@ import { isInServiceRegion } from '../enrichers/region'
 import { getDistrictCode } from '../enrichers/district'
 import { PlaceCategory } from '../../src/types/index'
 import { checkPlaceGate } from '../matchers/place-gate'
+import { prefetchIds } from '../lib/prefetch'
+import { logCollection } from '../lib/collection-log'
 
 // ─── API types ──────────────────────────────────────────────────────────────
 
@@ -121,6 +123,7 @@ const API_BASE = 'https://apis.data.go.kr/1741000/pfc3/getPfctInfo3'
 const PAGE_SIZE = 1000
 const MAX_PAGES = 100
 
+
 // ─── Main export ────────────────────────────────────────────────────────────
 
 export interface ChildrenFacilityResult {
@@ -177,41 +180,26 @@ export async function runChildrenFacility(): Promise<ChildrenFacilityResult> {
   const existingSourceIds = await prefetchExistingSourceIds()
   console.log(`[children-facility] Pre-fetched ${existingSourceIds.size} existing source_ids`)
 
-  // Process all targets in parallel (each uses different instlPlaceCd — independent API calls)
-  const targetResults = await Promise.allSettled(
-    FACILITY_TARGETS.map(async (target) => {
-      console.log(`[children-facility] Fetching: ${target.label}`)
-      const partial: ChildrenFacilityResult = {
-        totalFetched: 0, newPlaces: 0, duplicates: 0,
-        skippedOutOfArea: 0, skippedClosed: 0, errors: 0,
-      }
-      await processTarget(apiKey, target, partial, existingSourceIds)
-      return { label: target.label, partial }
-    })
-  )
-
-  // Merge results
-  for (const settled of targetResults) {
-    if (settled.status === 'fulfilled') {
-      const { partial } = settled.value
-      result.totalFetched += partial.totalFetched
-      result.newPlaces += partial.newPlaces
-      result.duplicates += partial.duplicates
-      result.skippedOutOfArea += partial.skippedOutOfArea
-      result.skippedClosed += partial.skippedClosed
-      result.errors += partial.errors
-    } else {
-      console.error(`[children-facility] Target failed:`, settled.reason)
+  // Process targets sequentially to avoid data.go.kr WAF rate limiting
+  // (same domain + API key, parallel requests trigger IP blocks)
+  for (const target of FACILITY_TARGETS) {
+    console.log(`[children-facility] Fetching: ${target.label}`)
+    try {
+      await processTarget(apiKey, target, result, existingSourceIds)
+    } catch (err) {
+      console.error(`[children-facility] Target failed: ${target.label}`, err)
       result.errors++
     }
+    // Cooldown between targets to avoid WAF (same pattern as public-data.ts)
+    await new Promise(r => setTimeout(r, 10000))
   }
 
-  await supabaseAdmin.from('collection_logs').insert({
+  await logCollection({
     collector: 'children-facility',
-    results_count: result.totalFetched,
-    new_places: result.newPlaces,
-    status: result.errors > 0 ? 'partial' : 'success',
-    duration_ms: Date.now() - startedAt,
+    startedAt,
+    resultsCount: result.totalFetched,
+    newPlaces: result.newPlaces,
+    errors: result.errors,
   })
 
   console.log(`[children-facility] Done: ${JSON.stringify(result)}`)
@@ -221,32 +209,11 @@ export async function runChildrenFacility(): Promise<ChildrenFacilityResult> {
 // ─── Processing ─────────────────────────────────────────────────────────────
 
 async function prefetchExistingSourceIds(): Promise<Set<string>> {
-  const ids = new Set<string>()
-  let offset = 0
-  const batchSize = 1000
-
-  while (true) {
-    const { data, error } = await supabaseAdmin
-      .from('places')
-      .select('source_id')
-      .eq('source', 'children-facility')
-      .range(offset, offset + batchSize - 1)
-
-    if (error) {
-      console.error('[children-facility] Prefetch error:', error.message)
-      break
-    }
-    if (!data || data.length === 0) break
-
-    for (const row of data) {
-      if (row.source_id) ids.add(row.source_id)
-    }
-
-    if (data.length < batchSize) break
-    offset += batchSize
-  }
-
-  return ids
+  return prefetchIds({
+    table: 'places',
+    column: 'source_id',
+    filters: [{ op: 'eq', column: 'source', value: 'children-facility' }],
+  })
 }
 
 async function processTarget(
@@ -278,6 +245,9 @@ async function processTarget(
     const totalPages = parseInt(data.response?.body?.totalPageCnt || '1', 10)
     if (page >= totalPages) break
     page++
+
+    // Delay between pages to avoid WAF rate limiting
+    if (page > 1) await new Promise(r => setTimeout(r, 3000))
   }
 }
 

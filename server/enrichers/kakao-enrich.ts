@@ -14,6 +14,8 @@
  */
 
 import { supabaseAdmin } from '../lib/supabase-admin'
+import { logCollection } from '../lib/collection-log'
+import { prefetchIds } from '../lib/prefetch'
 import { searchKakaoPlace, searchKakaoPlaceDetailed } from '../lib/kakao-search'
 import { kakaoLimiter } from '../rate-limiter'
 import { isInServiceArea } from './region'
@@ -95,12 +97,12 @@ export async function runKakaoEnrichment(): Promise<KakaoEnrichResult> {
     }
   }
 
-  await supabaseAdmin.from('collection_logs').insert({
+  await logCollection({
     collector: 'kakao-enrich',
-    results_count: result.evaluated,
-    new_places: result.enriched,
-    status: result.errors > 0 ? 'partial' : 'success',
-    duration_ms: Date.now() - startedAt,
+    startedAt,
+    resultsCount: result.evaluated,
+    newPlaces: result.enriched,
+    errors: result.errors,
   })
 
   console.log(`[kakao-enrich] Done: ${JSON.stringify(result)}`)
@@ -110,23 +112,11 @@ export async function runKakaoEnrichment(): Promise<KakaoEnrichResult> {
 // ─── Prefetch helpers ─────────────────────────────────────────────────────
 
 async function prefetchUsedKakaoPlaceIds(): Promise<Set<string>> {
-  const ids = new Set<string>()
-  let offset = 0
-  const batchSize = 1000
-  while (true) {
-    const { data, error } = await supabaseAdmin
-      .from('places')
-      .select('kakao_place_id')
-      .not('kakao_place_id', 'is', null)
-      .range(offset, offset + batchSize - 1)
-    if (error || !data || data.length === 0) break
-    for (const row of data) {
-      if (row.kakao_place_id) ids.add(row.kakao_place_id)
-    }
-    if (data.length < batchSize) break
-    offset += batchSize
-  }
-  return ids
+  return prefetchIds({
+    table: 'places',
+    column: 'kakao_place_id',
+    filters: [{ op: 'not_null', column: 'kakao_place_id' }],
+  })
 }
 
 // ─── Per-place enrichment ──────────────────────────────────────────────────
@@ -297,12 +287,12 @@ export async function runEventKakaoEnrichment(): Promise<EventKakaoEnrichResult>
     }
   }
 
-  await supabaseAdmin.from('collection_logs').insert({
+  await logCollection({
     collector: 'kakao-enrich-events',
-    results_count: result.evaluated,
-    new_events: result.enriched,
-    status: result.errors > 0 ? 'partial' : 'success',
-    duration_ms: Date.now() - startedAt,
+    startedAt,
+    resultsCount: result.evaluated,
+    newEvents: result.enriched,
+    errors: result.errors,
   })
 
   console.log(`[kakao-enrich-events] Done: ${JSON.stringify(result)}`)

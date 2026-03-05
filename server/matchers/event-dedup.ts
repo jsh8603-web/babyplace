@@ -15,6 +15,7 @@
  */
 
 import { supabaseAdmin } from '../lib/supabase-admin'
+import { logCollection } from '../lib/collection-log'
 import { similarity } from './similarity'
 
 export interface EventDeduplicationResult {
@@ -89,12 +90,11 @@ export async function runEventDeduplication(): Promise<EventDeduplicationResult>
     )
 
     // Log to collection_logs (informational, not critical)
-    await supabaseAdmin.from('collection_logs').insert({
+    await logCollection({
       collector: 'event-dedup',
-      results_count: result.analyzed,
-      new_events: result.merged,
-      status: 'success',
-      duration_ms: Date.now() - startedAt,
+      startedAt,
+      resultsCount: result.analyzed,
+      newEvents: result.merged,
     })
   } catch (err) {
     console.error('[event-dedup] Fatal error:', err)

@@ -15,6 +15,8 @@
 
 import { extractWithGemini } from '../lib/gemini'
 import { supabaseAdmin } from '../lib/supabase-admin'
+import { logCollection } from '../lib/collection-log'
+import { prefetchIds } from '../lib/prefetch'
 import { kakaoSearchLimiter } from '../rate-limiter'
 import { fetchNaverSearch, stripHtml } from './naver-blog'
 import { searchKakaoPlaceDetailed } from '../lib/kakao-search'
@@ -166,22 +168,21 @@ export async function runBlogEventDiscovery(): Promise<BlogEventDiscoveryResult>
       }
     }
 
-    await supabaseAdmin.from('collection_logs').insert({
+    await logCollection({
       collector: 'blog-event-discovery',
-      results_count: result.blogPostsFetched,
-      new_events: result.eventsInserted,
-      status: result.errors > 0 ? 'partial' : 'success',
-      duration_ms: Date.now() - startedAt,
+      startedAt,
+      resultsCount: result.blogPostsFetched,
+      newEvents: result.eventsInserted,
+      errors: result.errors,
     })
   } catch (err) {
     console.error('[blog-event] Fatal error:', err)
     result.errors++
 
-    await supabaseAdmin.from('collection_logs').insert({
+    await logCollection({
       collector: 'blog-event-discovery',
-      status: 'error',
+      startedAt,
       error: String(err),
-      duration_ms: Date.now() - startedAt,
     })
   }
 
@@ -473,8 +474,13 @@ async function validateAndInsert(
   const { startDate, endDate } = parseDates(dateStr)
   const dateConfirmed = !!(enriched?.enriched_dates) || !!(event.dates && event.dates.match(/\d{4}-\d{2}-\d{2}/))
 
-  // Skip past events (endDate already passed)
+  // Skip events from past years or already ended
+  const currentYear = new Date().getFullYear()
   const today = new Date().toISOString().split('T')[0]
+  if (startDate && parseInt(startDate.substring(0, 4)) < currentYear) {
+    result.duplicatesSkipped++
+    return
+  }
   if (endDate < today) {
     result.duplicatesSkipped++
     return
@@ -518,32 +524,11 @@ async function validateAndInsert(
 // ─── Source ID prefetch (seoul-events.ts pattern) ───────────────────────────
 
 async function prefetchKnownSourceIds(): Promise<Set<string>> {
-  const ids = new Set<string>()
-  let offset = 0
-  const batchSize = 1000
-
-  while (true) {
-    const { data, error } = await supabaseAdmin
-      .from('events')
-      .select('source_id')
-      .in('source', ['blog_discovery', 'exhibition_extraction'])
-      .range(offset, offset + batchSize - 1)
-
-    if (error) {
-      console.error('[blog-event] Prefetch error:', error.message)
-      break
-    }
-    if (!data || data.length === 0) break
-
-    for (const row of data) {
-      if (row.source_id) ids.add(row.source_id)
-    }
-
-    if (data.length < batchSize) break
-    offset += batchSize
-  }
-
-  return ids
+  return prefetchIds({
+    table: 'events',
+    column: 'source_id',
+    filters: [{ op: 'in', column: 'source', value: ['blog_discovery', 'exhibition_extraction'] }],
+  })
 }
 
 // ─── Enrichment constants ────────────────────────────────────────────────────
@@ -551,6 +536,249 @@ async function prefetchKnownSourceIds(): Promise<Set<string>> {
 const NAVER_WEB_URL = 'https://openapi.naver.com/v1/search/webkr'
 const NAVER_IMAGE_URL = 'https://openapi.naver.com/v1/search/image'
 const ENRICH_BATCH_SIZE = 10
+
+// ─── Poster selection with strict relevance filtering ────────────────────────
+
+/**
+ * Domain blocklist: sources that almost never provide official event posters.
+ * Pinterest, DC Inside, Instiz = user-uploaded/fan content
+ * Personal blogs, YouTube thumbnails, book covers, Airbnb = irrelevant
+ */
+const POSTER_BLOCKED_DOMAINS = [
+  // Original
+  'i.pinimg.com', 'pinimg.com', 'dcimg', 'dcinside.com',
+  'instiz.net', 'postfiles.pstatic.net', 'yt3.googleusercontent.com',
+  'aladin.co.kr', 'woodo.kr', 'muscache.com', 'coupangcdn.com',
+  'fimg5.pann.com', 'momsdiary.co.kr', 'khidi.or.kr', 'anewsa.com',
+  // YouTube
+  'i.ytimg.com', 'img.youtube.com', 'yt3.ggpht.com',
+  // Stock/template
+  'clipartkorea.co.kr', 'mangoboard.net', 'miricanvas.com',
+  'img.freepik.com', 'png.pngtree.com', 'marketplace.canva.com',
+  'preview.gettyimagesbank.com', 'media.istockphoto.com', 'img.lovepik.com',
+  'thumb2.gettyimageskorea.com',
+  // Shopping
+  'shop-phinf.pstatic.net', 'shop1.phinf.naver.net', 'shopping.phinf.naver.net',
+  'item.ssgcdn.com', 'ai.esmplus.com', 'image.msscdn.net',
+  'cdn.dealbada.com', 'thumbnail.10x10.co.kr', 'image.idus.com',
+  'partybungbung.com',
+  // Community
+  'i1.ruliweb.com', 'i2.ruliweb.com', 'ruliweb.com',
+  'upload3.inven.co.kr', 'cdn.mania.kr', 'img.extmovie.com',
+  'img-cdn.theqoo.net', 'img.theqoo.net', 'img-store.theqoo.net',
+  'img.dmitory.com', 'fimg6.pann.com', 'edgio.clien.net',
+  'cdnweb01.wikitree.co.kr', 'imgssl.ezday.co.kr', 'www.momq.co.kr',
+  'dprime.kr', 'chulsa.kr', 'imgfiles.plaync.com',
+  // Music/video
+  'is1-ssl.mzstatic.com', 'i1.sndcdn.com', 'image.genie.co.kr',
+  'file.kinolights.com',
+  // News archive
+  'cphoto.asiae.co.kr', 'img.asiatoday.co.kr', 'pds.joins.com',
+  'cdn.socialfocus.co.kr', 'cdn.autoherald.co.kr',
+  'www.gukjenews.com', 'www.kns.tv', 'www.ctnews.kr',
+  'www.woorinews.co.kr', 'www.bodonews.com', 'thesegye.com', 'kr.news.cn',
+  // Wrong region
+  'www.jinju.go.kr', 'jinju.go.kr', 'taean.go.kr', 'lib.changwon.go.kr',
+  'www.yeonggwang.go.kr', 'www.bonghwa.go.kr', 'www.naju.go.kr',
+  'www.jje.go.kr', 'www.gjartcenter.kr', 'www.cu.ac.kr',
+  'www.cng.go.kr', 'www.jj.ac.kr', 'www.uiryeong.go.kr',
+  // Other
+  'data.ad.co.kr', 'mir-s3-cdn-cf.behance.net', 'd7hftxdivxxvm.cloudfront.net',
+  'www.reportworld.co.kr', 'www.ibric.org', 'bric.postech.ac.kr',
+  'www.ksponco.or.kr', 'contents.kyobobook.co.kr', 'cdn.getyourguide.com',
+  'cdn.imweb.me', 'www.e-redpoint.com', 'www.theteams.kr',
+  'overseas.mofa.go.kr', 'www.traveli.co.kr', 'www.youthnavi.net',
+  'pds.saramin.co.kr', 'ldb-phinf.pstatic.net', 'dbscthumb-phinf.pstatic.net',
+  'lh7-rt.googleusercontent.com',
+  'scontent-nrt1-2.cdninstagram.com', 'scontent-nrt1-1.cdninstagram.com',
+  'inaturalist-open-data.s3.amazonaws.com',
+]
+
+/**
+ * Trusted poster sources: official event/culture portals.
+ * Images from these domains get priority scoring.
+ */
+const POSTER_TRUSTED_DOMAINS = [
+  'culture.seoul.go.kr', 'kopis.or.kr', 'sac.or.kr', 'sejongpac.or.kr',
+  'og-data.s3.amazonaws.com', 'gwanak.go.kr', 'incheon.go.kr',
+  'ticket.melon.com', 'ticketlink.co.kr', 'interpark.com',
+  'yes24.com', 'cjcgv.co.kr', 'megabox.co.kr',
+  'museum.go.kr', 'mmca.go.kr', 'sema.seoul.go.kr',
+]
+
+/**
+ * Check if URL contains a stale year (< current year) in path segments.
+ */
+function hasStaleYear(url: string): boolean {
+  const currentYear = new Date().getFullYear()
+  const yearMatches = url.match(/\/(20[0-2]\d)\//g)
+  if (!yearMatches) return false
+  return yearMatches.some((m) => {
+    const year = parseInt(m.replace(/\//g, ''))
+    return year < currentYear
+  })
+}
+
+/**
+ * Select the best poster from Naver Image Search results.
+ * Strict filtering: blocked domains → stale year → size → scoring.
+ * Returns null if no confident match (better empty than wrong).
+ */
+function selectBestPoster(images: NaverImageItem[], eventName: string, venueName?: string): string | null {
+  const normalizedEvent = eventName
+    .replace(/[[\]<>()「」『』""'']/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase()
+  const eventTokens = normalizedEvent.split(/[\s,.:;·\-~]+/).filter((t) => t.length >= 2)
+  const venueTokens = (venueName || '').replace(/[[\]<>()]/g, '').toLowerCase()
+    .split(/[\s,.:;·\-~]+/).filter((t) => t.length >= 2)
+
+  const candidates = images
+    .filter((img) => {
+      const url = img.link.toLowerCase()
+      if (POSTER_BLOCKED_DOMAINS.some((d) => url.includes(d))) return false
+      if (hasStaleYear(url)) return false
+      const w = parseInt(img.sizewidth) || 0
+      const h = parseInt(img.sizeheight) || 0
+      if (w < 200 || h < 200) return false
+      return true
+    })
+    .map((img) => {
+      const title = stripHtml(img.title).toLowerCase()
+      const w = parseInt(img.sizewidth) || 1
+      const h = parseInt(img.sizeheight) || 1
+      const aspectRatio = h / w
+      let score = 0
+
+      // Title relevance (0~50)
+      const matchedTokens = eventTokens.filter((t) => title.includes(t))
+      const titleRelevance = eventTokens.length > 0 ? matchedTokens.length / eventTokens.length : 0
+      score += titleRelevance * 50
+
+      // Venue name matching (+10)
+      if (venueTokens.filter((t) => title.includes(t)).length > 0) score += 10
+
+      // Trusted domain (+20)
+      if (POSTER_TRUSTED_DOMAINS.some((d) => img.link.includes(d))) score += 20
+
+      // Poster aspect ratio (+10/+5)
+      if (aspectRatio >= 0.8 && aspectRatio <= 2.5) score += 10
+      if (aspectRatio >= 1.2 && aspectRatio <= 1.8) score += 5
+
+      // News image CDN — conditional scoring
+      if (img.link.includes('imgnews.naver.net') || img.link.includes('NISI')) {
+        const urlYearMatch = img.link.match(/\/(20\d{2})\//)
+        const urlYear = urlYearMatch ? parseInt(urlYearMatch[1]) : 0
+        const currentYear = new Date().getFullYear()
+        if (titleRelevance >= 0.5 && urlYear >= currentYear) {
+          score += 5
+        } else if (titleRelevance < 0.3 || urlYear < currentYear) {
+          score -= 15
+        }
+      }
+
+      // Official keywords (+10)
+      if (/공식|포스터|메인|키비주얼|대표/.test(title)) score += 10
+      // Performance/exhibition keywords (+5)
+      if (/전시|공연|뮤지컬|축제|페스티벌|팝업/.test(title)) score += 5
+
+      // Scene/review penalty (-15)
+      if (/현장|후기|방문|리뷰|체험기|블로그|스냅|사진찍/.test(title)) score -= 15
+      // News article URL penalty (-5)
+      if (/\/article\/|\/news\/|NISI\d/.test(img.link)) score -= 5
+
+      return { img, score, titleRelevance }
+    })
+    .filter((c) => c.titleRelevance >= 0.3 || c.score >= 20)
+    .sort((a, b) => b.score - a.score)
+
+  const best = candidates[0]
+  if (best && best.score >= 15) {
+    return best.img.link
+  }
+
+  return null
+}
+
+// ─── LLM-based poster selection ──────────────────────────────────────────────
+
+interface PosterCandidate {
+  title: string
+  link: string
+  domain: string
+  width: number
+  height: number
+}
+
+/**
+ * Use Gemini Flash to select the best poster from pre-filtered image candidates.
+ * Falls back to rule-based selectBestPoster if LLM fails.
+ */
+export async function selectPosterWithLLM(
+  images: NaverImageItem[],
+  eventName: string,
+  venueName?: string
+): Promise<string | null> {
+  // Pre-filter: blocked domains, stale year, size
+  const filtered = images.filter((img) => {
+    const url = img.link.toLowerCase()
+    if (POSTER_BLOCKED_DOMAINS.some((d) => url.includes(d))) return false
+    if (hasStaleYear(url)) return false
+    const w = parseInt(img.sizewidth) || 0
+    const h = parseInt(img.sizeheight) || 0
+    if (w < 200 || h < 200) return false
+    return true
+  })
+
+  if (filtered.length === 0) return null
+
+  // Build candidate list for LLM (max 15)
+  const candidates: PosterCandidate[] = filtered.slice(0, 15).map((img) => {
+    const url = new URL(img.link)
+    return {
+      title: stripHtml(img.title),
+      link: img.link,
+      domain: url.hostname,
+      width: parseInt(img.sizewidth) || 0,
+      height: parseInt(img.sizeheight) || 0,
+    }
+  })
+
+  const prompt = `이벤트 "${eventName}"${venueName ? ` (장소: ${venueName})` : ''}의 공식 포스터를 선택하세요.
+
+아래 이미지 후보 목록에서 **공식 이벤트 포스터**를 1개 선택하세요.
+
+선택 기준:
+1. 이벤트명과 직접 관련된 공식 홍보 포스터 (행사 제목이 포함된 디자인 이미지)
+2. 공연/전시/축제의 메인 비주얼 또는 키비주얼
+3. 공식 문화포털/예매사이트/주최사 도메인 우선
+
+제외 대상:
+- 현장 사진, 방문 후기, 블로그 스냅샷
+- 뉴스 기사 속 사진 (기자 촬영 현장컷)
+- 관련 없는 다른 이벤트의 포스터
+- 쇼핑몰/상품 이미지, 책 표지
+- 스톡 이미지, 템플릿
+
+후보:
+${candidates.map((c, i) => `${i + 1}. [${c.domain}] "${c.title}" (${c.width}×${c.height})`).join('\n')}
+
+적합한 공식 포스터가 있으면 번호를, 없으면 0을 응답하세요.
+JSON만 응답: {"pick": 번호, "reason": "선택 이유"}`
+
+  try {
+    const text = await extractWithGemini(prompt)
+    const parsed = JSON.parse(text) as { pick: number; reason: string }
+    if (parsed.pick > 0 && parsed.pick <= candidates.length) {
+      return candidates[parsed.pick - 1].link
+    }
+    return null
+  } catch {
+    // Fallback to rule-based selection
+    return selectBestPoster(images, eventName, venueName)
+  }
+}
 
 // ─── Date confirmation helper ────────────────────────────────────────────────
 
@@ -660,29 +888,26 @@ async function enrichEvents(events: ExtractedEvent[]): Promise<EnrichedEvent[]> 
     const webUrl = `${NAVER_WEB_URL}?query=${webQuery}&display=5`
     const webResults = await fetchNaverSearch<NaverWebItem>(webUrl)
 
-    // 2) Naver image search: "{event_name} 공식 포스터"
-    const imgQuery = encodeURIComponent(`${event.event} 공식 포스터`)
-    const imgUrl = `${NAVER_IMAGE_URL}?query=${imgQuery}&display=10&sort=sim`
-    const imgResults = await fetchNaverSearch<NaverImageItem>(imgUrl)
-
-    // Pick best poster: full image link (not thumbnail), min 300px, prefer tall aspect ratio
-    const bestPoster = (imgResults || [])
-      .filter((img) => {
-        const w = parseInt(img.sizewidth) || 0
-        const h = parseInt(img.sizeheight) || 0
-        return w >= 300 && h >= 300
-      })
-      .sort((a, b) => {
-        const ratioA = (parseInt(a.sizeheight) || 0) / (parseInt(a.sizewidth) || 1)
-        const ratioB = (parseInt(b.sizeheight) || 0) / (parseInt(b.sizewidth) || 1)
-        return ratioB - ratioA // taller (poster-like) first
-      })[0]
+    // 2) Naver image search: 3-step fallback strategy
+    const imgQueries = [
+      `${event.event} 포스터`,
+      `${event.event} ${event.venue}`,
+      event.event,
+    ]
+    let bestPoster: string | null = null
+    for (const q of imgQueries) {
+      const imgUrl = `${NAVER_IMAGE_URL}?query=${encodeURIComponent(q)}&display=20&sort=sim`
+      const imgResults = await fetchNaverSearch<NaverImageItem>(imgUrl)
+      bestPoster = selectBestPoster(imgResults || [], event.event, event.venue)
+      if (bestPoster) break
+      await new Promise((r) => setTimeout(r, 150))
+    }
 
     enriched.push({
       ...event,
       enriched_url: null,
       enriched_dates: null,
-      enriched_poster: bestPoster?.link || null,
+      enriched_poster: bestPoster,
       _webResults: webResults || undefined,
     })
 
@@ -916,12 +1141,12 @@ ${JSON.stringify(items, null, 0)}`
       await new Promise((r) => setTimeout(r, LLM_DELAY_MS))
     }
 
-    await supabaseAdmin.from('collection_logs').insert({
+    await logCollection({
       collector: 'exhibition-event-extraction',
-      results_count: result.blogPostsFetched,
-      new_events: result.eventsInserted,
-      status: result.errors > 0 ? 'partial' : 'success',
-      duration_ms: Date.now() - startedAt,
+      startedAt,
+      resultsCount: result.blogPostsFetched,
+      newEvents: result.eventsInserted,
+      errors: result.errors,
     })
   } catch (err) {
     console.error('[exhibition-event] Fatal error:', err)

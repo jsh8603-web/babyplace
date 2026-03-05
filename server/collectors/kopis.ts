@@ -15,6 +15,7 @@
 
 import { parseStringPromise } from 'xml2js'
 import { supabaseAdmin } from '../lib/supabase-admin'
+import { logCollection } from '../lib/collection-log'
 
 interface KOPISPerformance {
   mt10id: [string] // performance id
@@ -82,22 +83,21 @@ export async function runKOPISCollector(): Promise<KOPISCollectorResult> {
     }
 
     // Log to collection_logs
-    await supabaseAdmin.from('collection_logs').insert({
+    await logCollection({
       collector: 'kopis',
-      results_count: result.totalFetched,
-      new_events: result.newEvents,
-      status: result.errors > 0 ? 'partial' : 'success',
-      duration_ms: Date.now() - startedAt,
+      startedAt,
+      resultsCount: result.totalFetched,
+      newEvents: result.newEvents,
+      errors: result.errors,
     })
   } catch (err) {
     console.error('[kopis] Fatal error:', err)
     result.errors++
 
-    await supabaseAdmin.from('collection_logs').insert({
+    await logCollection({
       collector: 'kopis',
-      status: 'error',
+      startedAt,
       error: String(err),
-      duration_ms: Date.now() - startedAt,
     })
   }
 

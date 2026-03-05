@@ -10,6 +10,7 @@
  */
 
 import { supabaseAdmin } from '../lib/supabase-admin'
+import { logCollection } from '../lib/collection-log'
 import { kakaoLimiter } from '../rate-limiter'
 import { checkDuplicate } from '../matchers/duplicate'
 import { isInServiceRegion } from '../enrichers/region'
@@ -225,12 +226,12 @@ export async function runPipelineA(): Promise<PipelineAResult> {
   }
 
   // Log summary to collection_logs
-  await supabaseAdmin.from('collection_logs').insert({
+  await logCollection({
     collector: 'pipeline-a-kakao-category',
-    results_count: result.totalFetched,
-    new_places: result.newPlaces,
-    status: result.errors > 0 ? 'partial' : 'success',
-    duration_ms: Date.now() - startedAt,
+    startedAt,
+    resultsCount: result.totalFetched,
+    newPlaces: result.newPlaces,
+    errors: result.errors,
   })
 
   console.log(

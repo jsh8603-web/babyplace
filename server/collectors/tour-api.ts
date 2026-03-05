@@ -24,6 +24,8 @@ import { isInServiceRegion, isValidServiceAddress } from '../enrichers/region'
 import { getDistrictCode } from '../enrichers/district'
 import { PlaceCategory } from '../../src/types/index'
 import { checkPlaceGate } from '../matchers/place-gate'
+import { classifyEventByTitle } from '../utils/event-classifier'
+import { logCollection } from '../lib/collection-log'
 
 // ─── API types ──────────────────────────────────────────────────────────────
 
@@ -174,23 +176,22 @@ export async function runTourAPICollector(): Promise<TourAPICollectorResult> {
       }
     }
 
-    await supabaseAdmin.from('collection_logs').insert({
+    await logCollection({
       collector: 'tour-api-v2',
-      results_count: result.totalFetched,
-      new_places: result.newPlaces,
-      new_events: result.newEvents,
-      status: result.errors > 0 ? 'partial' : 'success',
-      duration_ms: Date.now() - startedAt,
+      startedAt,
+      resultsCount: result.totalFetched,
+      newPlaces: result.newPlaces,
+      newEvents: result.newEvents,
+      errors: result.errors,
     })
   } catch (err) {
     console.error('[tour-api] Fatal error:', err)
     result.errors++
 
-    await supabaseAdmin.from('collection_logs').insert({
+    await logCollection({
       collector: 'tour-api-v2',
-      status: 'error',
+      startedAt,
       error: String(err),
-      duration_ms: Date.now() - startedAt,
     })
   }
 
@@ -255,7 +256,6 @@ async function fetchListPage(
   pageNo: number
 ): Promise<TourListResponse> {
   const params = new URLSearchParams({
-    serviceKey: process.env.TOUR_API_KEY!,
     MobileOS: 'ETC',
     MobileApp: 'BabyPlace',
     _type: 'json',
@@ -266,7 +266,8 @@ async function fetchListPage(
     arrange: 'Q', // modified time desc
   })
 
-  const url = `${API_BASE}/areaBasedList2?${params.toString()}`
+  // Build URL with raw serviceKey to avoid double-encoding (same pattern as other data.go.kr collectors)
+  const url = `${API_BASE}/areaBasedList2?serviceKey=${process.env.TOUR_API_KEY}&${params.toString()}`
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 15000)
 
@@ -420,7 +421,11 @@ async function processAsEvent(
   const startDate = parseYYYYMMDD(intro?.eventstartdate) || new Date().toISOString().split('T')[0]
   const endDate = parseYYYYMMDD(intro?.eventenddate)
 
-  const { classifyEventByTitle } = await import('../utils/event-classifier')
+  // Skip events from past years or already ended
+  const currentYear = new Date().getFullYear()
+  const today = new Date().toISOString().split('T')[0]
+  if (parseInt(startDate.substring(0, 4)) < currentYear) return
+  if (endDate && endDate < today) return
 
   const { error } = await supabaseAdmin.from('events').insert({
     name: item.title,
@@ -499,7 +504,6 @@ async function fetchIntro(
   if (!process.env.TOUR_API_KEY) return null
 
   const params = new URLSearchParams({
-    serviceKey: process.env.TOUR_API_KEY,
     MobileOS: 'ETC',
     MobileApp: 'BabyPlace',
     _type: 'json',
@@ -507,7 +511,7 @@ async function fetchIntro(
     contentTypeId: String(contentTypeId),
   })
 
-  const url = `${API_BASE}/detailIntro2?${params.toString()}`
+  const url = `${API_BASE}/detailIntro2?serviceKey=${process.env.TOUR_API_KEY}&${params.toString()}`
 
   try {
     const response = await tourLimiter.throttle(() => fetch(url))

@@ -24,6 +24,7 @@
  */
 
 import { supabaseAdmin } from '../lib/supabase-admin'
+import { logCollection } from '../lib/collection-log'
 import { searchKakaoPlace } from '../lib/kakao-search'
 import type { PlaceCategory } from '../../src/types/index'
 
@@ -141,11 +142,11 @@ export async function runAutoDeactivate(): Promise<AutoDeactivateResult> {
   }
 
   // Log to collection_logs
-  await supabaseAdmin.from('collection_logs').insert({
+  await logCollection({
     collector: 'auto-deactivate',
-    results_count: result.placesChecked,
-    status: result.errors > 0 ? 'partial' : 'success',
-    duration_ms: Date.now() - startedAt,
+    startedAt,
+    resultsCount: result.placesChecked,
+    errors: result.errors,
   })
 
   return result

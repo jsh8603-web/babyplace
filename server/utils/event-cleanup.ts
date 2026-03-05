@@ -8,6 +8,7 @@
  */
 
 import { supabaseAdmin } from '../lib/supabase-admin'
+import { logCollection } from '../lib/collection-log'
 
 export interface EventCleanupResult {
   deleted: number
@@ -36,11 +37,11 @@ export async function runEventCleanup(): Promise<EventCleanupResult> {
       result.deleted = data?.length ?? 0
     }
 
-    await supabaseAdmin.from('collection_logs').insert({
+    await logCollection({
       collector: 'event-cleanup',
-      results_count: result.deleted,
-      status: result.errors > 0 ? 'partial' : 'success',
-      duration_ms: Date.now() - startedAt,
+      startedAt,
+      resultsCount: result.deleted,
+      errors: result.errors,
     })
   } catch (err) {
     console.error('[event-cleanup] Fatal error:', err)

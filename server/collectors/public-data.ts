@@ -22,6 +22,8 @@
 import * as http from 'node:http'
 import * as https from 'node:https'
 import { supabaseAdmin } from '../lib/supabase-admin'
+import { logCollection } from '../lib/collection-log'
+import { prefetchIds } from '../lib/prefetch'
 import { checkDuplicate } from '../matchers/duplicate'
 import { isInServiceRegion } from '../enrichers/region'
 import { getDistrictCode } from '../enrichers/district'
@@ -136,12 +138,12 @@ export async function runPublicData(): Promise<PublicDataResult> {
     result.museums.errors
 
   // Log to collection_logs
-  await supabaseAdmin.from('collection_logs').insert({
+  await logCollection({
     collector: 'public-data-go.kr',
-    results_count: result.totalFetched,
-    new_places: result.totalNew,
-    status: result.totalErrors > 0 ? 'partial' : 'success',
-    duration_ms: Date.now() - startedAt,
+    startedAt,
+    resultsCount: result.totalFetched,
+    newPlaces: result.totalNew,
+    errors: result.totalErrors,
   })
 
   return result
@@ -150,23 +152,11 @@ export async function runPublicData(): Promise<PublicDataResult> {
 // ─── Prefetch helpers ────────────────────────────────────────────────────────
 
 async function prefetchPublicDataSourceIds(): Promise<Set<string>> {
-  const ids = new Set<string>()
-  let offset = 0
-  const batchSize = 1000
-  while (true) {
-    const { data, error } = await supabaseAdmin
-      .from('places')
-      .select('source_id')
-      .eq('source', 'public-data-go.kr')
-      .range(offset, offset + batchSize - 1)
-    if (error || !data || data.length === 0) break
-    for (const row of data) {
-      if (row.source_id) ids.add(row.source_id)
-    }
-    if (data.length < batchSize) break
-    offset += batchSize
-  }
-  return ids
+  return prefetchIds({
+    table: 'places',
+    column: 'source_id',
+    filters: [{ op: 'eq', column: 'source', value: 'public-data-go.kr' }],
+  })
 }
 
 // ─── HTTP helpers for data.go.kr anti-bot challenge ─────────────────────────
@@ -191,9 +181,9 @@ function httpGet(
       },
     }
     const req = transport.get(reqOpts, (res) => {
-      let body = ''
-      res.on('data', (chunk: Buffer) => (body += chunk.toString()))
-      res.on('end', () => resolve({ status: res.statusCode || 0, headers: res.headers, body }))
+      const chunks: Buffer[] = []
+      res.on('data', (chunk: Buffer) => chunks.push(chunk))
+      res.on('end', () => resolve({ status: res.statusCode || 0, headers: res.headers, body: Buffer.concat(chunks).toString('utf-8') }))
       res.on('error', reject)
     })
     req.on('error', reject)
@@ -418,6 +408,10 @@ async function fetchParks(stats: ParkStats, existingSourceIds: Set<string>): Pro
           if (isNaN(lat) || isNaN(lng) || !lat || !lng) continue
           if (!isInServiceRegion(lat, lng, address)) continue
 
+          // Append park type suffix if name is just a prefix (API returns "소담" not "소담어린이공원")
+          const parkSuffix = parkType || '어린이공원'
+          const fullName = name.includes(parkSuffix) ? name : `${name} ${parkSuffix}`
+
           const sourceId = item.MANAGE_NO || `park_${name}`.replace(/\s+/g, '_')
 
           // Fast in-memory duplicate check
@@ -428,7 +422,7 @@ async function fetchParks(stats: ParkStats, existingSourceIds: Set<string>): Pro
 
           const dup = await checkDuplicate({
             kakaoPlaceId: `park_${sourceId}`,
-            name,
+            name: fullName,
             address,
             lat,
             lng,
@@ -440,15 +434,15 @@ async function fetchParks(stats: ParkStats, existingSourceIds: Set<string>): Pro
             continue
           }
 
-          const gate = await checkPlaceGate({ name, source: 'public-data-go.kr' })
+          const gate = await checkPlaceGate({ name: fullName, source: 'public-data-go.kr' })
           if (!gate.allowed) continue
 
           const districtCode = await getDistrictCode(lat, lng, address)
 
           const { error } = await supabaseAdmin.from('places').insert({
-            name,
+            name: fullName,
             category: '공원/놀이터' as PlaceCategory,
-            sub_category: parkType || '어린이공원',
+            sub_category: parkSuffix,
             address,
             road_address: item.RDNMADR || item.rdnmadr || null,
             lat,

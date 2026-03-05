@@ -52,6 +52,7 @@ import { runFullBlogAudit } from './utils/blog-full-audit'
 import { runBabygoCollector } from './collectors/babygo'
 import { runDataLabTrendDetection } from './keywords/datalab'
 import { initializeAllLimiters, flushAllLimiters } from './rate-limiter'
+import { supabaseAdmin } from './lib/supabase-admin'
 
 // ─── Schedule dispatch ────────────────────────────────────────────────────────
 
@@ -155,10 +156,8 @@ async function main(): Promise<void> {
       case 'manual-event-blog-search':
         // Search Naver blogs for active events
         console.log('[run] Manual mode — event blog search')
-        await initializeAllLimiters()
         const eventBlogSearchResult = await runEventBlogSearch()
         console.log('[run] Event blog search:', JSON.stringify(eventBlogSearchResult, null, 2))
-        await flushAllLimiters()
         break
 
       case 'manual-event-scoring':
@@ -173,19 +172,15 @@ async function main(): Promise<void> {
       case 'manual-blog-events':
         // Blog event discovery (Naver blog → Gemini extraction → enrichment → events)
         console.log('[run] Manual mode — blog event discovery')
-        await initializeAllLimiters()
         const blogEvResult = await runBlogEventDiscovery()
         console.log('[run] Blog event discovery:', JSON.stringify(blogEvResult, null, 2))
-        await flushAllLimiters()
         break
 
       case 'manual-exhibition-events':
         // Extract events from blog mentions of 전시/체험 places
         console.log('[run] Manual mode — exhibition event extraction')
-        await initializeAllLimiters()
         const exResult = await runExhibitionEventExtraction()
         console.log('[run] Exhibition event extraction:', JSON.stringify(exResult, null, 2))
-        await flushAllLimiters()
         break
 
       default:
@@ -360,7 +355,6 @@ async function runReplayJob(): Promise<void> {
   const batchId = process.argv[3]
   if (!batchId) {
     // Find the latest batch
-    const { supabaseAdmin } = await import('./lib/supabase-admin')
     const { data } = await supabaseAdmin
       .from('llm_extraction_results')
       .select('batch_id')

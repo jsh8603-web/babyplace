@@ -13,10 +13,12 @@
  */
 
 import { supabaseAdmin } from '../lib/supabase-admin'
+import { logCollection } from '../lib/collection-log'
 import { checkDuplicate } from '../matchers/duplicate'
 import { checkPlaceGate } from '../matchers/place-gate'
 import { isInServiceRegion } from '../enrichers/region'
 import { getDistrictCode } from '../enrichers/district'
+import { classifyEventByTitle } from '../utils/event-classifier'
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 
@@ -47,6 +49,7 @@ interface BabygoListItem {
   id: string
   name: string
   address: string
+  thumbnail: string | null
   likers_count: number
   score: number | null
   event_starts_at: string | null
@@ -57,10 +60,16 @@ interface BabygoDetailRaw {
   lat: number
   lng: number
   phone_number: string | null
+  note: string | null
   likers_count: number
   score: number | null
   event_starts_at: string | null
   event_ends_at: string | null
+  images: { image: string }[] | null
+  amenities: { name: string }[] | null
+  products: { name: string; price: number }[] | null
+  business_hours: { name: string; start_at: string; end_at: string }[] | null
+  main_child: string | null
 }
 
 interface BabygoPlace {
@@ -70,8 +79,15 @@ interface BabygoPlace {
   lat: number
   lng: number
   phone: string | null
+  thumbnail: string | null
+  note: string | null
   likers_count: number
   event_starts_at: string | null
+  event_ends_at: string | null
+  amenities: string | null
+  priceInfo: string | null
+  businessHours: string | null
+  ageRange: string | null
 }
 
 export interface BabygoResult {
@@ -165,6 +181,11 @@ async function fetchDetailsAndMerge(
     const detail = await fetchJson<BabygoDetailRaw>(`${API_BASE}/places/${id}`)
 
     if (detail?.lat && detail?.lng) {
+      // Build amenity/price/hours summaries
+      const amenities = detail.amenities?.map((a) => a.name).join(', ') || null
+      const priceInfo = detail.products?.map((p) => `${p.name} ${p.price}원`).join(', ') || null
+      const businessHours = detail.business_hours?.map((h) => `${h.name} ${h.start_at}~${h.end_at}`).join(', ') || null
+
       places.push({
         id: listItem.id,
         name: listItem.name,
@@ -172,8 +193,15 @@ async function fetchDetailsAndMerge(
         lat: detail.lat,
         lng: detail.lng,
         phone: detail.phone_number || null,
+        thumbnail: listItem.thumbnail || detail.images?.[0]?.image || null,
+        note: detail.note || null,
         likers_count: detail.likers_count ?? listItem.likers_count,
         event_starts_at: detail.event_starts_at ?? listItem.event_starts_at,
+        event_ends_at: detail.event_ends_at ?? listItem.event_ends_at,
+        amenities,
+        priceInfo,
+        businessHours,
+        ageRange: detail.main_child || null,
       })
     }
     await sleep(DELAY_MS)
@@ -243,6 +271,11 @@ export async function runBabygoCollector(): Promise<BabygoResult> {
     if (!isInServiceRegion(place.lat, place.lng, place.address || null)) {
       result.outOfArea++
       continue
+    }
+
+    // Create event entry regardless of place dedup (events are independent)
+    if (place.event_starts_at && place.event_ends_at) {
+      await createBabygoEvent(place, result)
     }
 
     // Fast source_id skip (already imported from babygo before)
@@ -315,6 +348,59 @@ export async function runBabygoCollector(): Promise<BabygoResult> {
     }
   }
 
-  console.log(`[babygo] Done: ${result.newPlaces} new, ${result.duplicates} dup, ${result.errors} err`)
+  console.log(`[babygo] Done: ${result.newPlaces} new, ${result.duplicates} dup, ${result.events} events, ${result.errors} err`)
   return result
+}
+
+/**
+ * Parse BabyGo event timestamp: "2024-09-09 18:09:1725872400" → "2024-09-09"
+ */
+function parseBabygoDate(dateStr: string): string | null {
+  if (!dateStr) return null
+  const match = dateStr.match(/^(\d{4}-\d{2}-\d{2})/)
+  return match ? match[1] : null
+}
+
+/**
+ * Create an event entry from BabyGo place with event dates.
+ */
+async function createBabygoEvent(place: BabygoPlace, result: BabygoResult): Promise<void> {
+  const startDate = parseBabygoDate(place.event_starts_at!)
+  const endDate = parseBabygoDate(place.event_ends_at!)
+  if (!startDate) return
+
+  // Skip events from past years or already ended
+  const currentYear = new Date().getFullYear()
+  const today = new Date().toISOString().split('T')[0]
+  if (parseInt(startDate.substring(0, 4)) < currentYear) return
+  if (endDate && endDate < today) return
+
+  const sourceId = `babygo_event_${place.id}`
+
+  const { error } = await supabaseAdmin.from('events').insert({
+    name: place.name,
+    category: '문화행사',
+    sub_category: classifyEventByTitle(place.name),
+    venue_name: place.name,
+    venue_address: place.address || null,
+    lat: place.lat,
+    lng: place.lng,
+    start_date: startDate,
+    end_date: endDate,
+    price_info: place.priceInfo,
+    age_range: place.ageRange,
+    description: place.note,
+    source: 'babygo',
+    source_id: sourceId,
+    source_url: null,
+    poster_url: place.thumbnail,
+  })
+
+  if (error) {
+    if (error.code !== '23505') {
+      console.error('[babygo] Event insert error:', error.message, place.name)
+    }
+  } else {
+    result.events++
+  }
 }

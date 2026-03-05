@@ -6,6 +6,8 @@
  */
 
 import { supabaseAdmin } from '../lib/supabase-admin'
+import { logCollection } from '../lib/collection-log'
+import { prefetchIds } from '../lib/prefetch'
 import {
   classifySeoulEvent,
   isBlacklisted,
@@ -62,32 +64,11 @@ export interface SeoulEventsCollectorResult {
  * Reuses the children-facility.ts prefetch pattern.
  */
 async function prefetchKnownSourceIds(): Promise<Set<string>> {
-  const ids = new Set<string>()
-  let offset = 0
-  const batchSize = 1000
-
-  while (true) {
-    const { data, error } = await supabaseAdmin
-      .from('events')
-      .select('source_id')
-      .eq('source', 'seoul_events')
-      .range(offset, offset + batchSize - 1)
-
-    if (error) {
-      console.error('[seoul-events] Prefetch error:', error.message)
-      break
-    }
-    if (!data || data.length === 0) break
-
-    for (const row of data) {
-      if (row.source_id) ids.add(row.source_id)
-    }
-
-    if (data.length < batchSize) break
-    offset += batchSize
-  }
-
-  return ids
+  return prefetchIds({
+    table: 'events',
+    column: 'source_id',
+    filters: [{ op: 'eq', column: 'source', value: 'seoul_events' }],
+  })
 }
 
 /**
@@ -121,9 +102,12 @@ export async function runSeoulEventsCollector(): Promise<SeoulEventsCollectorRes
     result.totalFetched = allEvents.length
     console.log(`[seoul-events] Fetched ${allEvents.length} events`)
 
-    // Step 0: Filter out past events (END_DATE < today) to avoid wasting LLM calls
+    // Step 0: Filter out past events (past year or END_DATE < today) to avoid wasting LLM calls
+    const currentYear = new Date().getFullYear()
     const today = new Date().toISOString().split('T')[0]
     const currentEvents = allEvents.filter((e) => {
+      const startDate = parseSeoulDateTime(e.STRTDATE)
+      if (startDate && parseInt(startDate.substring(0, 4)) < currentYear) return false
       const endDate = parseSeoulDateTime(e.END_DATE)
       if (endDate && endDate < today) return false
       return true
@@ -188,22 +172,21 @@ export async function runSeoulEventsCollector(): Promise<SeoulEventsCollectorRes
     }
 
     // Log to collection_logs
-    await supabaseAdmin.from('collection_logs').insert({
+    await logCollection({
       collector: 'seoul-events',
-      results_count: result.totalFetched,
-      new_events: result.newEvents,
-      status: result.errors > 0 ? 'partial' : 'success',
-      duration_ms: Date.now() - startedAt,
+      startedAt,
+      resultsCount: result.totalFetched,
+      newEvents: result.newEvents,
+      errors: result.errors,
     })
   } catch (err) {
     console.error('[seoul-events] Fatal error:', err)
     result.errors++
 
-    await supabaseAdmin.from('collection_logs').insert({
+    await logCollection({
       collector: 'seoul-events',
-      status: 'error',
+      startedAt,
       error: String(err),
-      duration_ms: Date.now() - startedAt,
     })
   }
 
