@@ -35,7 +35,8 @@ export default function KeywordsManagement() {
 
       const res = await fetch(`/api/admin/keywords?${params}`)
       if (!res.ok) throw new Error('Failed to fetch keywords')
-      return res.json()
+      const data = await res.json()
+      return data.keywords ?? []
     },
   })
 
@@ -67,7 +68,7 @@ export default function KeywordsManagement() {
       const res = await fetch(`/api/admin/keywords`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ id: data.keywordId, status: data.status }),
       })
       if (!res.ok) throw new Error('Failed to update keyword')
       return res.json()
@@ -79,7 +80,7 @@ export default function KeywordsManagement() {
 
   const deleteKeywordMutation = useMutation({
     mutationFn: async (keywordId: number) => {
-      const res = await fetch(`/api/admin/keywords?keywordId=${keywordId}`, {
+      const res = await fetch(`/api/admin/keywords?id=${keywordId}`, {
         method: 'DELETE',
       })
       if (!res.ok) throw new Error('Failed to delete keyword')

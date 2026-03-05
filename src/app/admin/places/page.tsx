@@ -42,7 +42,8 @@ export default function PlacesManagement() {
 
       const res = await fetch(`/api/admin/places?${params}`)
       if (!res.ok) throw new Error('Failed to fetch places')
-      return res.json()
+      const data = await res.json()
+      return data.places ?? []
     },
   })
 
@@ -51,7 +52,7 @@ export default function PlacesManagement() {
       const res = await fetch(`/api/admin/places`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ id: data.placeId, ...data.updates }),
       })
       if (!res.ok) throw new Error('Failed to update place')
       return res.json()

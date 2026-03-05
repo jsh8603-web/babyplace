@@ -199,7 +199,7 @@ test.describe('Phase 1 — UI Components (Module A)', () => {
       }
     })
 
-    page.on('error', (error) => {
+    page.on('pageerror', (error: Error) => {
       errors.push(error.message)
     })
 

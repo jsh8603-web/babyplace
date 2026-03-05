@@ -61,6 +61,7 @@ export interface Event {
   date_confirmed: boolean | null
   source_url: string | null
   poster_url: string | null
+  poster_hidden: boolean
   description: string | null
   mention_count: number
   popularity_score: number

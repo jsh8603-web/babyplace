@@ -23,17 +23,27 @@ interface SourceSummary {
   source: string
   totalRuns: number
   successCount: number
-  failCount: number
+  errorCount: number
   avgDuration: number
   lastRun: string
+}
+
+const PIPELINE_LABELS: Record<string, string> = {
+  A: 'Kakao Places Collection',
+  B: 'Naver Blog Reverse Search',
+  public: 'Public Data Collection',
+  events: 'Events Collection',
+  scoring: 'Scoring & Keyword Rotation',
 }
 
 const PIPELINE_SOURCES = [
   'kakao_collector',
   'naver_blog_collector',
   'publicdata_collector',
-  'kopis_collector',
   'tour_collector',
+  'scoring',
+  'poster-enrichment',
+  'event-cleanup',
   'keyword_evaluator',
 ]
 
@@ -47,7 +57,7 @@ export default function PipelineMonitoring() {
       collector: string
       totalRuns: number
       successCount: number
-      failCount: number
+      errorCount: number
       avgDuration: number
       lastRun: string
     }>
@@ -65,11 +75,11 @@ export default function PipelineMonitoring() {
   const logSummary = logsData?.summary || []
 
   const triggerPipelineMutation = useMutation({
-    mutationFn: async (source: string) => {
-      const res = await fetch(`/api/admin/pipeline/trigger`, {
+    mutationFn: async (pipeline: string) => {
+      const res = await fetch('/api/admin/pipeline', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ source }),
+        body: JSON.stringify({ pipeline }),
       })
       if (!res.ok) throw new Error('Failed to trigger pipeline')
       return res.json()
@@ -86,7 +96,7 @@ export default function PipelineMonitoring() {
       source: item.collector,
       totalRuns: item.totalRuns,
       successCount: item.successCount,
-      failCount: item.failCount,
+      errorCount: item.errorCount,
       avgDuration: item.avgDuration,
       lastRun: item.lastRun,
     }
@@ -178,7 +188,7 @@ export default function PipelineMonitoring() {
               source,
               totalRuns: 0,
               successCount: 0,
-              failCount: 0,
+              errorCount: 0,
               avgDuration: 0,
               lastRun: '-',
             }
@@ -214,7 +224,7 @@ export default function PipelineMonitoring() {
                       <div>
                         <p className="text-warm-500 mb-1">Failures</p>
                         <p className="text-lg font-bold text-red-600">
-                          {summary.failCount}
+                          {summary.errorCount}
                         </p>
                       </div>
                       <div>
@@ -247,21 +257,31 @@ export default function PipelineMonitoring() {
                     </div>
                   </div>
 
-                  <button
-                    onClick={() =>
-                      triggerPipelineMutation.mutate(source)
+                  {(() => {
+                    const pipelineMap: Record<string, string> = {
+                      kakao_collector: 'A',
+                      naver_blog_collector: 'B',
+                      publicdata_collector: 'public',
+                      tour_collector: 'events',
+                      scoring: 'scoring',
                     }
-                    disabled={triggerPipelineMutation.isPending}
-                    className="
-                      ml-4 px-4 py-2 rounded-lg bg-coral-500 text-white
-                      font-medium flex items-center gap-2
-                      hover:bg-coral-600 disabled:opacity-50 transition
-                      whitespace-nowrap
-                    "
-                  >
-                    <Play size={16} />
-                    Run Now
-                  </button>
+                    const pipelineId = pipelineMap[source]
+                    return pipelineId ? (
+                      <button
+                        onClick={() => triggerPipelineMutation.mutate(pipelineId)}
+                        disabled={triggerPipelineMutation.isPending}
+                        className="
+                          ml-4 px-4 py-2 rounded-lg bg-coral-500 text-white
+                          font-medium flex items-center gap-2
+                          hover:bg-coral-600 disabled:opacity-50 transition
+                          whitespace-nowrap
+                        "
+                      >
+                        <Play size={16} />
+                        Run Now
+                      </button>
+                    ) : null
+                  })()}
                 </div>
 
                 {/* Expandable logs */}

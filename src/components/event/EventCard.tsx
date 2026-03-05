@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Calendar, MapPin, Clock, DollarSign, Users, EyeOff } from 'lucide-react'
+import { Calendar, MapPin, Clock, DollarSign, Users, EyeOff, ImageOff } from 'lucide-react'
 import type { Event } from '@/types'
 import PopularityBar from '@/components/place/PopularityBar'
 
@@ -9,6 +9,8 @@ interface EventCardProps {
   event: Event
   onClick?: (event: Event) => void
   onHide?: (event: Event) => void
+  onPosterHide?: (event: Event) => void
+  isAdmin?: boolean
   isSelected?: boolean
   distance?: number | null // meters from reference point
 }
@@ -69,7 +71,7 @@ function formatDistance(meters: number): string {
   return `${(meters / 1000).toFixed(1)}km`
 }
 
-export default function EventCard({ event, onClick, onHide, isSelected, distance }: EventCardProps) {
+export default function EventCard({ event, onClick, onHide, onPosterHide, isAdmin, isSelected, distance }: EventCardProps) {
   const [imgError, setImgError] = useState(false)
   const hasLocation = event.venue_address || (event.lat !== null && event.lng !== null)
   const hasPriceInfo = event.price_info && event.price_info.trim() !== ''
@@ -87,8 +89,8 @@ export default function EventCard({ event, onClick, onHide, isSelected, distance
       aria-label={`${event.name} 이벤트, ${event.category}`}
     >
       {/* Poster image or placeholder */}
-      {event.poster_url && !imgError ? (
-        <div className="w-full max-h-[750px] overflow-hidden bg-warm-100 flex items-center justify-center">
+      {event.poster_url && !imgError && !event.poster_hidden ? (
+        <div className="relative w-full max-h-[750px] overflow-hidden bg-warm-100 flex items-center justify-center">
           <img
             src={event.poster_url}
             alt={event.name}
@@ -96,6 +98,15 @@ export default function EventCard({ event, onClick, onHide, isSelected, distance
             loading="lazy"
             onError={() => setImgError(true)}
           />
+          {isAdmin && onPosterHide && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onPosterHide(event) }}
+              className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/50 text-white hover:bg-black/70 transition-colors"
+              aria-label="포스터 숨기기"
+            >
+              <ImageOff size={16} />
+            </button>
+          )}
         </div>
       ) : (
         <div className="w-full h-[200px] bg-gradient-to-br from-coral-100 to-coral-50 flex items-center justify-center">

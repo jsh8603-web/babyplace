@@ -12,7 +12,7 @@ import { test, expect } from '@playwright/test'
  * 6. Integration tests — UI interactions triggering APIs
  */
 
-test.describe.configure({ fullyParallel: false })
+test.describe.configure({ mode: 'serial' })
 
 // Mock data for testing
 const MOCK_BBOX = {
@@ -48,7 +48,7 @@ test.describe('API Routes — Module B', () => {
     expect(data).toHaveProperty('places')
     expect(data).toHaveProperty('nextCursor')
     expect(Array.isArray(data.places)).toBe(true)
-    expect(typeof data.nextCursor).toBe('string' || null)
+    expect(data.nextCursor === null || typeof data.nextCursor === 'string').toBe(true)
   })
 
   test('GET /api/places — missing bbox parameters returns 400', async ({ request }) => {

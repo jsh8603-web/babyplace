@@ -6,6 +6,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { EventDetailResponse } from '@/types'
 import EventDetail from '@/components/event/EventDetail'
 import BottomNav from '@/components/BottomNav'
+import { useAdmin } from '@/hooks/useAdmin'
 
 interface EventPageProps {
   params: Promise<{ id: string }>
@@ -96,6 +97,7 @@ export default function EventPage({ params }: EventPageProps) {
   const { id } = use(params)
   const router = useRouter()
   const queryClient = useQueryClient()
+  const isAdmin = useAdmin()
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['event', id],
@@ -118,6 +120,22 @@ export default function EventPage({ params }: EventPageProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ eventId: data.event.id }),
+      })
+      if (res.ok) {
+        queryClient.invalidateQueries({ queryKey: ['event', id] })
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  const handlePosterHideToggle = async () => {
+    if (!data) return
+    try {
+      const res = await fetch('/api/admin/events', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: data.event.id, poster_hidden: !data.event.poster_hidden }),
       })
       if (res.ok) {
         queryClient.invalidateQueries({ queryKey: ['event', id] })
@@ -173,9 +191,11 @@ export default function EventPage({ params }: EventPageProps) {
         topPosts={data.topPosts}
         isFavorited={data.isFavorited}
         isHidden={data.isHidden}
+        isAdmin={isAdmin}
         onBack={handleBack}
         onShare={handleShare}
         onHideToggle={handleHideToggle}
+        onPosterHideToggle={isAdmin ? handlePosterHideToggle : undefined}
         onFavoriteToggle={async () => {
           if (!data) return
           try {

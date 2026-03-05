@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Heart, Share2, Calendar, Clock, MapPin, DollarSign, Users, ExternalLink, EyeOff, Eye } from 'lucide-react'
+import { Heart, Share2, Calendar, Clock, MapPin, DollarSign, Users, ExternalLink, EyeOff, Eye, ImageOff, Image } from 'lucide-react'
 import type { Event, BlogMention } from '@/types'
 
 function formatPostDate(dateStr: string | null): string {
@@ -33,8 +33,10 @@ interface EventDetailProps {
   topPosts?: BlogMention[]
   isFavorited?: boolean
   isHidden?: boolean
+  isAdmin?: boolean
   onFavoriteToggle?: () => void
   onHideToggle?: () => void
+  onPosterHideToggle?: () => void
   onShare?: () => void
   onBack?: () => void
 }
@@ -91,8 +93,10 @@ export default function EventDetail({
   topPosts,
   isFavorited = false,
   isHidden = false,
+  isAdmin = false,
   onFavoriteToggle,
   onHideToggle,
+  onPosterHideToggle,
   onShare,
   onBack,
 }: EventDetailProps) {
@@ -132,18 +136,37 @@ export default function EventDetail({
 
       <div className="space-y-3 pb-8">
         {/* Poster image */}
-        {event.poster_url && !imgError ? (
-          <div className="w-full max-h-[750px] overflow-hidden bg-warm-100 flex items-center justify-center">
+        {event.poster_url && !imgError && !event.poster_hidden ? (
+          <div className="relative w-full max-h-[750px] overflow-hidden bg-warm-100 flex items-center justify-center">
             <img
               src={event.poster_url}
               alt={event.name}
               className="max-w-full max-h-[750px] object-contain"
               onError={() => setImgError(true)}
             />
+            {isAdmin && onPosterHideToggle && (
+              <button
+                onClick={onPosterHideToggle}
+                className="absolute top-3 right-3 p-2 rounded-lg bg-black/50 text-white hover:bg-black/70 transition-colors"
+                aria-label="포스터 숨기기"
+              >
+                <ImageOff size={18} />
+              </button>
+            )}
           </div>
         ) : (
-          <div className="w-full h-[200px] bg-gradient-to-br from-coral-100 to-coral-50 flex items-center justify-center">
+          <div className="relative w-full h-[200px] bg-gradient-to-br from-coral-100 to-coral-50 flex items-center justify-center">
             <span className="text-6xl opacity-50">{getCategoryEmoji(event.category)}</span>
+            {isAdmin && event.poster_url && event.poster_hidden && onPosterHideToggle && (
+              <button
+                onClick={onPosterHideToggle}
+                className="absolute top-3 right-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-500/80 text-white text-xs font-medium hover:bg-green-600/80 transition-colors"
+                aria-label="포스터 보이기"
+              >
+                <Image size={14} />
+                포스터 표시
+              </button>
+            )}
           </div>
         )}
 

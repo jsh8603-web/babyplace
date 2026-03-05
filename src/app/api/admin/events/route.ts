@@ -23,6 +23,8 @@ export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl
   const search = searchParams.get('search') || ''
   const status = searchParams.get('status') || ''
+  const source = searchParams.get('source') || ''
+  const poster = searchParams.get('poster') || ''
   const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10))
   const limit = Math.min(100, parseInt(searchParams.get('limit') || '20', 10))
   const offset = (page - 1) * limit
@@ -40,6 +42,18 @@ export async function GET(request: NextRequest) {
 
     if (status === 'hidden') {
       query = query.eq('is_hidden', true)
+    }
+
+    if (source) {
+      query = query.eq('source', source)
+    }
+
+    if (poster === 'with') {
+      query = query.not('poster_url', 'is', null).eq('poster_hidden', false)
+    } else if (poster === 'without') {
+      query = query.is('poster_url', null)
+    } else if (poster === 'hidden') {
+      query = query.eq('poster_hidden', true)
     }
 
     query = query.order('created_at', { ascending: false }).range(offset, offset + limit - 1)

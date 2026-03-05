@@ -22,7 +22,11 @@ export default function AdminSettingsPage() {
         const settings = data.settings as AppSetting[]
         const hideCountSetting = settings?.find((s) => s.key === 'event_auto_hide_count')
         if (hideCountSetting) {
-          setAutoHideCount(Number(hideCountSetting.value))
+          try {
+            setAutoHideCount(Number(JSON.parse(hideCountSetting.value as string)))
+          } catch {
+            setAutoHideCount(Number(hideCountSetting.value))
+          }
         }
       })
       .catch(() => setMessage('설정을 불러오지 못했습니다'))

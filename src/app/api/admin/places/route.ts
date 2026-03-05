@@ -160,3 +160,57 @@ export async function PATCH(request: NextRequest) {
     return errorResponse('Failed to update place', 500)
   }
 }
+
+/**
+ * DELETE /api/admin/places
+ * Delete a place by id
+ *
+ * Query params:
+ * - placeId: number
+ */
+export async function DELETE(request: NextRequest) {
+  const adminCheck = await verifyAdmin(request)
+  if (adminCheck.error) {
+    return errorResponse(adminCheck.error, adminCheck.status)
+  }
+
+  const { searchParams } = request.nextUrl
+  const idStr = searchParams.get('placeId')
+
+  if (!idStr) {
+    return errorResponse('Place id is required', 400)
+  }
+
+  const id = parseInt(idStr, 10)
+  if (isNaN(id)) {
+    return errorResponse('Place id must be a valid number', 400)
+  }
+
+  try {
+    const { data: place, error: fetchError } = await supabaseAdmin
+      .from('places')
+      .select('id, name')
+      .eq('id', id)
+      .single()
+
+    if (fetchError || !place) {
+      return errorResponse('Place not found', 404)
+    }
+
+    const { error: deleteError } = await supabaseAdmin
+      .from('places')
+      .delete()
+      .eq('id', id)
+
+    if (deleteError) throw deleteError
+
+    await logAuditAction(adminCheck.user!.id, 'delete_place', 'place', String(id), {
+      placeName: place.name,
+    })
+
+    return successResponse({ message: 'Place deleted' })
+  } catch (err) {
+    console.error('[DELETE /api/admin/places] Error:', err)
+    return errorResponse('Failed to delete place', 500)
+  }
+}

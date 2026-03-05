@@ -22,7 +22,8 @@ export default function UsersManagement() {
     queryFn: async () => {
       const res = await fetch('/api/admin/users')
       if (!res.ok) throw new Error('Failed to fetch users')
-      return res.json()
+      const data = await res.json()
+      return data.users ?? []
     },
   })
 
@@ -31,7 +32,7 @@ export default function UsersManagement() {
       const res = await fetch(`/api/admin/users`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ id: data.userId, role: data.role }),
       })
       if (!res.ok) throw new Error('Failed to update role')
       return res.json()

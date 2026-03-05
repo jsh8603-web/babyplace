@@ -22,7 +22,7 @@ import { test, expect } from '@playwright/test'
  *   - server/run.ts: Cron scheduling (19:00 UTC for events)
  */
 
-test.describe.configure({ fullyParallel: false })
+test.describe.configure({ mode: 'serial' })
 
 // ============================================================================
 // MODULE D: User Pages & Authentication Tests

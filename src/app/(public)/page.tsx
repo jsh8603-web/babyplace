@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useRef } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import dynamic from 'next/dynamic'
 import { Filter, MapPin, Plus } from 'lucide-react'
 import type {
@@ -24,6 +24,7 @@ import EmergencyOverlay, { EmergencyFAB } from '@/components/EmergencyOverlay'
 import WeatherBadge from '@/components/WeatherBadge'
 import SearchBar from '@/components/SearchBar'
 import BottomNav from '@/components/BottomNav'
+import { useAdmin } from '@/hooks/useAdmin'
 
 // KakaoMap must be loaded client-side only (requires window.kakao)
 const KakaoMap = dynamic(() => import('@/components/map/KakaoMap'), { ssr: false })
@@ -94,6 +95,8 @@ async function fetchRunningEvents(): Promise<EventsResponse> {
 }
 
 export default function HomePage() {
+  const isAdmin = useAdmin()
+  const queryClient = useQueryClient()
   const [mapBounds, setMapBounds] = useState<MapBounds | null>(null)
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number } | null>(null)
@@ -273,6 +276,21 @@ export default function HomePage() {
       setHiddenEventIds((prev) => { const s = new Set(prev); s.delete(event.id); return s })
     }
   }, [])
+
+  const handlePosterHide = useCallback(async (event: Event) => {
+    try {
+      const res = await fetch('/api/admin/events', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: event.id, poster_hidden: true }),
+      })
+      if (res.ok) {
+        queryClient.invalidateQueries({ queryKey: ['running-events'] })
+      }
+    } catch {
+      // ignore
+    }
+  }, [queryClient])
 
   const totalActiveFilters = filters.categories.length + filters.tags.length
 
@@ -566,10 +584,12 @@ export default function HomePage() {
                     key={event.id}
                     event={event}
                     distance={event._dist}
+                    isAdmin={isAdmin}
                     onClick={(e) => {
                       window.location.href = `/event/${e.id}`
                     }}
                     onHide={handleHideEvent}
+                    onPosterHide={isAdmin ? handlePosterHide : undefined}
                   />
                 ))}
               </div>
