@@ -298,6 +298,11 @@ async function evaluateCandidate(candidate: CandidateRow): Promise<boolean> {
   const hasPublicData = (candidate.source_metadata ?? []).some(
     (m: any) => ['data_go_kr', 'localdata', 'tour_api', 'seoul_gov'].includes(m.source_type)
   )
+  const sourceUrls = metadata.map((m: any, i: number) => ({
+    url: m.url || candidate.source_urls?.[i] || '',
+    title: m.title || '',
+    source_type: m.source_type || 'naver_blog',
+  }))
   await supabaseAdmin.from('candidate_promotion_audit_log').insert({
     place_id: newPlace?.id ?? null,
     candidate_id: candidate.id,
@@ -306,6 +311,9 @@ async function evaluateCandidate(candidate: CandidateRow): Promise<boolean> {
     source_count: candidate.source_count,
     kakao_similarity: candidate.kakao_best_score ?? null,
     promotion_reason: hasPublicData ? 'public_data' : 'multi_blog',
+    source_urls: sourceUrls,
+    kakao_name: kakaoResult.kakaoName ?? null,
+    kakao_address: kakaoResult.kakaoAddr ?? null,
   }).then(({ error: auditErr }) => {
     if (auditErr) console.error('[auto-promote] Audit log error:', auditErr.message)
   })

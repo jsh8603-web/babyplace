@@ -13,6 +13,7 @@
 import { createClient } from '@supabase/supabase-js'
 import * as fs from 'fs'
 import * as path from 'path'
+import { computePostRelevanceDetailed, parseAddressComponents } from '../utils/relevance'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -20,6 +21,7 @@ const supabase = createClient(
 )
 
 const CONFIG_PATH = path.join(__dirname, '..', 'config', 'mention-relevance-config.json')
+
 
 function loadConfig() {
   try {
@@ -49,7 +51,7 @@ async function sampleMentions(count = 30): Promise<void> {
 
     let query = supabase
       .from('blog_mentions')
-      .select('id, place_id, title, url, snippet, relevance_score, places!inner(id, name)')
+      .select('id, place_id, title, url, snippet, relevance_score, source_type, post_date, places!inner(id, name, address, is_common_name)')
       .eq('mention_locked', false)
 
     if (stratum.gte !== undefined) query = query.gte('relevance_score', stratum.gte)
@@ -75,6 +77,22 @@ async function sampleMentions(count = 30): Promise<void> {
       if (existingSet.has(row.id)) continue
 
       const place = (row as any).places
+      // Compute relevance breakdown for audit context
+      let relevanceBreakdown = null
+      let penaltyFlags: string[] = []
+      try {
+        const addrParts = parseAddressComponents(null, place?.address || '')
+        const detailed = computePostRelevanceDetailed(
+          place?.name || '',
+          addrParts,
+          !!place?.is_common_name,
+          row.title || '',
+          row.snippet || ''
+        )
+        relevanceBreakdown = detailed.breakdown
+        penaltyFlags = detailed.penalties
+      } catch { /* ignore — breakdown is best-effort */ }
+
       const { error: insertErr } = await supabase.from('mention_audit_log').insert({
         mention_id: row.id,
         place_id: row.place_id,
@@ -85,6 +103,10 @@ async function sampleMentions(count = 30): Promise<void> {
         relevance_score: row.relevance_score,
         audit_verdict: stratum.label,
         config_version: config.version,
+        relevance_breakdown: relevanceBreakdown,
+        penalty_flags: penaltyFlags.length > 0 ? penaltyFlags : null,
+        source_type: row.source_type || null,
+        post_date: row.post_date || null,
       })
 
       if (!insertErr) sampled++
@@ -116,7 +138,17 @@ async function listPending(limit = 50): Promise<void> {
     console.log(`  Place: "${row.place_name}" (place_id=${row.place_id})`)
     console.log(`  Title: ${row.mention_title || '(none)'}`)
     console.log(`  URL: ${row.mention_url || '(none)'}`)
-    console.log(`  Score: ${row.relevance_score?.toFixed(3) ?? '?'}`)
+    console.log(`  Score: ${row.relevance_score?.toFixed(3) ?? '?'}  Source: ${row.source_type || '?'}  Date: ${row.post_date || '?'}`)
+    if (row.relevance_breakdown) {
+      const bd = row.relevance_breakdown as Record<string, number>
+      const positives = Object.entries(bd).filter(([k, v]) => v > 0).map(([k, v]) => `${k}:+${v.toFixed(2)}`).join(', ')
+      const negatives = Object.entries(bd).filter(([k, v]) => v < 0).map(([k, v]) => `${k}:${v.toFixed(2)}`).join(', ')
+      if (positives) console.log(`  + ${positives}`)
+      if (negatives) console.log(`  - ${negatives}`)
+    }
+    if (row.penalty_flags?.length) {
+      console.log(`  Penalties: ${row.penalty_flags.join(', ')}`)
+    }
     console.log(`  Snippet: ${row.mention_snippet?.slice(0, 100) || ''}...`)
     console.log('')
   }

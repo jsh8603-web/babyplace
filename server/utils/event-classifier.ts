@@ -95,11 +95,31 @@ export function isBlacklisted(useTarget: string, title: string = ''): boolean {
   return BLACKLIST_TARGET_PATTERN.test(useTarget || '') || BLACKLIST_TITLE_PATTERN.test(title || '')
 }
 
+/** Returns matched blacklist pattern string, or null if not blacklisted */
+export function getBlacklistMatch(useTarget: string, title: string = ''): string | null {
+  const targetMatch = (useTarget || '').match(BLACKLIST_TARGET_PATTERN)
+  if (targetMatch) return `BLACKLIST_TARGET: ${targetMatch[0]}`
+  const titleMatch = (title || '').match(BLACKLIST_TITLE_PATTERN)
+  if (titleMatch) return `BLACKLIST_TITLE: ${titleMatch[0]}`
+  return null
+}
+
 /**
  * Step 2: Check if event is whitelisted (clearly baby-related).
  */
 export function isWhitelisted(useTarget: string, title?: string): boolean {
   return WHITELIST_PATTERN.test(useTarget || '') || (!!title && WHITELIST_TITLE_PATTERN.test(title))
+}
+
+/** Returns matched whitelist pattern string, or null if not whitelisted */
+export function getWhitelistMatch(useTarget: string, title?: string): string | null {
+  const targetMatch = (useTarget || '').match(WHITELIST_PATTERN)
+  if (targetMatch) return `WHITELIST_TARGET: ${targetMatch[0]}`
+  if (title) {
+    const titleMatch = title.match(WHITELIST_TITLE_PATTERN)
+    if (titleMatch) return `WHITELIST_TITLE: ${titleMatch[0]}`
+  }
+  return null
 }
 
 /**

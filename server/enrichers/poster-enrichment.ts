@@ -167,6 +167,9 @@ interface AuditLogEntry {
   llm_reason: string
   action: 'updated' | 'kept' | 'removed' | 'no_candidates'
   prompt_version: number
+  source_url?: string | null
+  venue_name?: string | null
+  event_dates?: { start_date?: string | null; end_date?: string | null } | null
 }
 
 async function writeAuditLog(entry: AuditLogEntry): Promise<void> {
@@ -181,6 +184,9 @@ async function writeAuditLog(entry: AuditLogEntry): Promise<void> {
       llm_reason: entry.llm_reason,
       action: entry.action,
       prompt_version: entry.prompt_version,
+      source_url: entry.source_url ?? null,
+      venue_name: entry.venue_name ?? null,
+      event_dates: entry.event_dates ?? null,
     })
   } catch (err) {
     console.error(`[poster-enrich] Audit log write error:`, err)
@@ -535,6 +541,9 @@ export async function runPosterEnrichment(): Promise<PosterEnrichmentResult> {
           llm_reason: llmResult.reason,
           action,
           prompt_version: promptConfig.version,
+          source_url: ev.source_url || null,
+          venue_name: ev.venue_name || null,
+          event_dates: { start_date: ev.start_date, end_date: ev.end_date },
         })
       } catch (err) {
         console.error(`[poster-enrich] Error processing ${ev.id}:`, err)

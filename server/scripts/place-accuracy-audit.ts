@@ -21,7 +21,7 @@ const supabase = createClient(
 async function samplePlaces(count = 15): Promise<void> {
   const { data, error } = await supabase
     .from('places')
-    .select('id, name, category, address, lat, lng, phone, source, kakao_place_id')
+    .select('id, name, category, address, lat, lng, phone, source, kakao_place_id, created_at')
     .eq('is_active', true)
     .order('id', { ascending: false })
     .limit(count * 2)
@@ -56,6 +56,8 @@ async function samplePlaces(count = 15): Promise<void> {
         source: place.source,
         kakao_place_id: place.kakao_place_id,
       },
+      place_source: place.source,
+      place_created_at: place.created_at,
     })
 
     if (!insertErr) sampled++

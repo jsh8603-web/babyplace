@@ -11,6 +11,7 @@
 import { createClient } from '@supabase/supabase-js'
 import * as fs from 'fs'
 import * as path from 'path'
+import { getBlacklistMatch, getWhitelistMatch } from '../utils/event-classifier'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -59,7 +60,7 @@ async function sampleIncluded(count = 20): Promise<void> {
     if (sampled >= count) break
 
     // Determine classifier step (heuristic — check patterns)
-    const step = detectClassifierStep(ev.name, ev.age_range)
+    const { step, matchedPattern } = detectClassifierStep(ev.name, ev.age_range)
 
     const { error: insertErr } = await supabase.from('classification_audit_log').insert({
       event_id: ev.id,
@@ -69,6 +70,7 @@ async function sampleIncluded(count = 20): Promise<void> {
       classifier_step: step,
       classifier_decision: 'included',
       prompt_version: config.version,
+      matched_pattern: matchedPattern,
     })
 
     if (!insertErr) sampled++
@@ -105,7 +107,7 @@ async function sampleExcluded(count = 20): Promise<void> {
     if (existingSet.has(ev.id)) continue
     if (sampled >= count) break
 
-    const step = detectClassifierStep(ev.name, ev.age_range)
+    const { step, matchedPattern } = detectClassifierStep(ev.name, ev.age_range)
 
     const { error: insertErr } = await supabase.from('classification_audit_log').insert({
       event_id: ev.id,
@@ -115,6 +117,7 @@ async function sampleExcluded(count = 20): Promise<void> {
       classifier_step: step,
       classifier_decision: 'excluded',
       prompt_version: config.version,
+      matched_pattern: matchedPattern,
     })
 
     if (!insertErr) sampled++
@@ -123,17 +126,14 @@ async function sampleExcluded(count = 20): Promise<void> {
   console.log(`Sampled ${sampled} excluded events for classification audit`)
 }
 
-function detectClassifierStep(name: string, useTarget?: string): string {
-  const config = loadConfig()
-  const combined = `${name} ${useTarget || ''}`.toLowerCase()
+function detectClassifierStep(name: string, useTarget?: string): { step: string; matchedPattern: string | null } {
+  const blMatch = getBlacklistMatch(useTarget || '', name)
+  if (blMatch) return { step: 'blacklist', matchedPattern: blMatch }
 
-  for (const pattern of config.blacklist_patterns || []) {
-    if (combined.includes(pattern.toLowerCase())) return 'blacklist'
-  }
-  for (const pattern of config.whitelist_title_patterns || []) {
-    if (new RegExp(pattern, 'i').test(combined)) return 'whitelist'
-  }
-  return 'llm'
+  const wlMatch = getWhitelistMatch(useTarget || '', name)
+  if (wlMatch) return { step: 'whitelist', matchedPattern: wlMatch }
+
+  return { step: 'llm', matchedPattern: null }
 }
 
 async function listPending(limit = 50): Promise<void> {
@@ -158,7 +158,7 @@ async function listPending(limit = 50): Promise<void> {
     console.log(`[${tag}] audit_id=${row.id} event=${row.event_id} (${row.event_source})`)
     console.log(`  Name: "${row.event_name}"`)
     console.log(`  Target: ${row.use_target || '(none)'}`)
-    console.log(`  Step: ${row.classifier_step}`)
+    console.log(`  Step: ${row.classifier_step}${row.matched_pattern ? ` — ${row.matched_pattern}` : ''}`)
     console.log('')
   }
 }

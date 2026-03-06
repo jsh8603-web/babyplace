@@ -28,6 +28,14 @@ import { naverLimiter, kakaoSearchLimiter } from '../rate-limiter'
 import { findMatchingPlace } from '../matchers/duplicate'
 import { normalizePlaceName } from '../matchers/similarity'
 import { searchKakaoPlaceDetailed, type KakaoSearchResult } from '../lib/kakao-search'
+import {
+  computePostRelevance,
+  computePostRelevanceDetailed,
+  parseAddressComponents,
+  type AddressComponents,
+  type RelevanceBreakdown,
+  type RelevanceResult,
+} from '../utils/relevance'
 import { isValidServiceAddress, isInServiceArea } from '../enrichers/region'
 import { evaluateKeywordCycle } from '../keywords/rotation-engine'
 
@@ -388,7 +396,7 @@ async function searchNaverBlog(
     if (!item.link) continue
     const title = stripHtml(item.title)
     const snippet = stripHtml(item.description).slice(0, 500)
-    const relevance = computePostRelevance(placeName, addr, isCommon, title, snippet)
+    const relevance = computePostRelevance(placeName, addr, isCommon, title, snippet, dynamicBlacklistTerms)
     if (relevance < 0.4) continue
 
     const postDate = parseNaverPostDate(item.postdate)
@@ -426,7 +434,7 @@ async function searchDaumBlog(
     if (!item.url) continue
     const title = stripHtml(item.title)
     const snippet = stripHtml(item.contents).slice(0, 500)
-    const relevance = computePostRelevance(placeName, addr, isCommon, title, snippet)
+    const relevance = computePostRelevance(placeName, addr, isCommon, title, snippet, dynamicBlacklistTerms)
     if (relevance < 0.4) continue
 
     const postDate = item.datetime ? item.datetime.slice(0, 10) : null // "2024-01-15"
@@ -448,65 +456,9 @@ async function searchDaumBlog(
   return { count, maxDate }
 }
 
-// ─── Layer 1: Address component parser ────────────────────────────────────────
-
-export interface AddressComponents {
-  city: string          // "서울" | "경기" | "인천"
-  district: string      // "중구" | "강남구" (접미사 포함)
-  dong: string | null   // "남창동" | "와부읍"
-  road: string | null   // "퇴계로" (숫자 제거)
-}
-
-const CITY_NORMALIZE: Record<string, string> = {
-  서울특별시: '서울', 서울시: '서울', 서울: '서울',
-  경기도: '경기', 경기: '경기',
-  인천광역시: '인천', 인천시: '인천', 인천: '인천',
-}
-
-function parseAddressComponents(
-  roadAddress: string | null,
-  address: string | null
-): AddressComponents {
-  const result: AddressComponents = { city: '', district: '', dong: null, road: null }
-  const raw = roadAddress || address || ''
-  if (!raw) return result
-
-  const tokens = raw.replace(/\(([^)]+)\)/g, ' $1 ').split(/\s+/)
-
-  for (const t of tokens) {
-    // City
-    if (!result.city && CITY_NORMALIZE[t]) {
-      result.city = CITY_NORMALIZE[t]
-      continue
-    }
-    // District (구/군/시 with suffix kept)
-    if (!result.district && /^[가-힣]{1,5}[구군시]$/.test(t) && !CITY_NORMALIZE[t]) {
-      result.district = t
-      continue
-    }
-    // Dong (동/읍/면/리)
-    if (!result.dong && /^[가-힣]{1,10}[동읍면리]$/.test(t)) {
-      result.dong = t
-      continue
-    }
-    // Road name (로/길 ending, strip trailing numbers)
-    if (!result.road && /[가-힣]+[로길]/.test(t)) {
-      result.road = t.replace(/[0-9가-]*$/, '').replace(/길$/, '').replace(/로$/, '') || t.replace(/[0-9가-]*$/, '')
-      // Keep the base road name (e.g. "퇴계로6가길" → "퇴계로" or "퇴계")
-      const roadMatch = t.match(/^([가-힣]+[로])/)
-      if (roadMatch) result.road = roadMatch[1]
-      continue
-    }
-  }
-
-  // Fallback dong from parentheses in road_address
-  if (!result.dong && roadAddress) {
-    const parenMatch = roadAddress.match(/\(([가-힣]+[동읍면리])\)/)
-    if (parenMatch) result.dong = parenMatch[1]
-  }
-
-  return result
-}
+// Re-export relevance types for backward compatibility
+export type { AddressComponents, RelevanceBreakdown, RelevanceResult } from '../utils/relevance'
+export { computePostRelevance, computePostRelevanceDetailed, parseAddressComponents } from '../utils/relevance'
 
 // ─── Layer 2: Common-word name detector ───────────────────────────────────────
 
@@ -536,18 +488,6 @@ function isCommonWordName(name: string): boolean {
   return false
 }
 
-// ─── Layer 2b: Generic place suffix detector ────────────────────────────────
-
-const GENERIC_PLACE_SUFFIXES = [
-  '어린이공원', '근린공원', '소공원', '체육공원',
-  '도시공원', '수변공원', '중앙공원',
-]
-
-function hasGenericPlaceSuffix(name: string): boolean {
-  const n = name.replace(/\s+/g, '')
-  return GENERIC_PLACE_SUFFIXES.some((s) => n.endsWith(s))
-}
-
 // ─── Layer 3: Search query builder ────────────────────────────────────────────
 
 function buildSearchTerm(
@@ -569,244 +509,7 @@ function buildSearchTerm(
   return name
 }
 
-// ─── Layer 4: Relevance scoring (rewritten) ───────────────────────────────────
-
-// Layer 5 helpers integrated below
-
-const COMPETING_LOCATIONS = new Set([
-  // Metro cities & provinces outside service area (서울/경기/인천)
-  '부산', '대구', '광주', '대전', '울산', '세종',
-  '강원', '충북', '충남', '충청', '전북', '전남', '전라', '경북', '경남', '경상', '제주',
-  // Major non-capital cities
-  '진주', '김해', '창원', '포항', '구미', '거제', '통영', '양산',
-  '여수', '순천', '목포', '군산', '전주', '익산',
-  '천안', '아산', '청주',
-  '춘천', '원주', '강릉', '속초', '동해',
-])
-
-// Cities/areas within the service area (경기도 시 단위 + 주요 상권명)
-// Used to detect competing branches of chain stores within 서울/경기/인천
-const SERVICE_AREA_CITIES = [
-  // 경기도 시/군 (3글자+ 우선, 2글자는 false positive 낮은 것만)
-  '시흥', '이천', '수원', '성남', '안양', '부천', '용인', '고양', '김포',
-  '하남', '구리', '광명', '안산', '평택', '파주', '양주', '포천', '여주',
-  '안성', '오산', '의왕', '군포', '과천', '양평', '가평', '동두천', '연천',
-  '남양주', '의정부',
-  // 경기도 주요 생활권명 (행정 시명과 다른 이름)
-  '판교', '분당', '동탄', '일산', '산본', '광교', '위례', '운정', '배곧',
-]
-
-const IRRELEVANT_CONTENT_TERMS = [
-  // Product reviews
-  '구매후기', '제품리뷰', '상품평', '배송후기', '가격비교', '할인코드',
-  '쿠팡', '네이버쇼핑', '11번가', '지마켓', '옥션',
-  '사용후기', '언박싱', '개봉기',
-  // Real estate (30% of noise)
-  '분양정보', '매매가', '시세차익', '전세가', '재건축', '모델하우스',
-  '평당가', '분양가', '청약', '입주자모집', '오피스텔분양', '빌라매매',
-  // Spam
-  '출장마사지', '출장안마', '홈타이',
-]
-
-function hasCompetingLocation(text: string, ownCity: string): boolean {
-  for (const loc of COMPETING_LOCATIONS) {
-    if (loc === ownCity) continue
-    if (text.includes(loc)) return true
-  }
-  return false
-}
-
-// Sub-area → parent city mapping (동탄→화성, 판교→성남, etc.)
-const SUB_AREA_TO_PARENT: Record<string, string> = {
-  '동탄': '화성', '병점': '화성', '봉담': '화성', '향남': '화성',
-  '판교': '성남', '분당': '성남', '야탑': '성남', '정자': '성남',
-  '일산': '고양', '화정': '고양', '행신': '고양', '삼송': '고양',
-  '산본': '군포', '광교': '수원', '영통': '수원',
-  '운정': '파주', '배곧': '시흥', '정왕': '시흥',
-  '위례': '하남',
-}
-
-/**
- * Detects if the blog post TITLE mentions a different city/area within the service area.
- * Only triggers when the title has a competing city AND does NOT mention the place's own location.
- * This catches chain-store branch misattributions (e.g. "시흥 담솥" for 담솥 왕십리역점).
- */
-function hasCompetingServiceAreaCity(
-  title: string, addr: AddressComponents
-): boolean {
-  const titleL = title.toLowerCase()
-  const fullAddr = `${addr.city} ${addr.district || ''} ${addr.dong || ''} ${addr.road || ''}`
-
-  // Resolve the place's parent city (e.g. addr.city="화성" → also covers "동탄","병점")
-  const ownCities = new Set<string>()
-  for (const token of [addr.city, addr.district, addr.dong]) {
-    if (token) ownCities.add(token)
-  }
-  // Add sub-area ↔ parent mappings for the place's city
-  for (const [sub, parent] of Object.entries(SUB_AREA_TO_PARENT)) {
-    if (ownCities.has(parent)) ownCities.add(sub) // 화성 → 동탄 also "own"
-    if (fullAddr.includes(sub)) ownCities.add(parent) // 동탄 in addr → 화성 also "own"
-  }
-
-  // Check if title mentions the place's own location (any addr component)
-  const ownTokens = [addr.city, addr.district, addr.dong, addr.road]
-    .filter((t): t is string => !!t && t.length >= 2)
-  const titleHasOwnLocation = ownTokens.some(t => titleL.includes(t.toLowerCase()))
-
-  // If title already mentions the place's location, not a competing branch
-  if (titleHasOwnLocation) return false
-
-  // Check if title mentions a different service-area city
-  for (const city of SERVICE_AREA_CITIES) {
-    if (ownCities.has(city)) continue // same city/sub-area as the place
-    if (titleL.includes(city)) return true
-  }
-  return false
-}
-
-// Short terms (<=2 chars) that commonly appear as substrings of valid compound words
-// (e.g. "카페" in "키즈카페", "전시" in "전시회") need word-boundary matching.
-// Longer terms (>=3 chars) are specific enough for substring matching.
-const SHORT_TERM_THRESHOLD = 2
-const KOREAN_CHAR_RE = /[\uAC00-\uD7AF]/
-
-function matchesAsStandaloneWord(text: string, term: string): boolean {
-  if (term.length > SHORT_TERM_THRESHOLD) return text.includes(term)
-  // For short terms: standalone = no Korean char immediately before AND after
-  // "키즈카페" → "카페" has 즈 before → compound → skip
-  // "강남 카페 추천" → "카페" has space before, space after → standalone → match
-  // "DDP 전시회" → "전시" has space before, 회 after → compound → skip
-  let idx = -1
-  while ((idx = text.indexOf(term, idx + 1)) !== -1) {
-    const before = idx > 0 ? text[idx - 1] : ''
-    const after = idx + term.length < text.length ? text[idx + term.length] : ''
-    if (!KOREAN_CHAR_RE.test(before) && !KOREAN_CHAR_RE.test(after)) return true
-  }
-  return false
-}
-
-function hasIrrelevantContentSignals(text: string): boolean {
-  if (IRRELEVANT_CONTENT_TERMS.some((t) => text.includes(t))) return true
-  if (dynamicBlacklistTerms.some((t) => matchesAsStandaloneWord(text, t))) return true
-  return false
-}
-
-// ─── Layer 4b: Landmark reference detector ──────────────────────────────────
-
-const LANDMARK_MARKERS = ['근처', '옆에', '앞에', '뒤에', '인근', '부근', '바로 옆', '맞은편']
-
-function isLandmarkReference(placeName: string, text: string): boolean {
-  const nameL = placeName.toLowerCase().replace(/\s+/g, '')
-  for (const marker of LANDMARK_MARKERS) {
-    if (text.includes(nameL + ' ' + marker) || text.includes(nameL + marker)) return true
-    if (text.includes(marker + ' ' + nameL) || text.includes(marker + nameL)) return true
-  }
-  return false
-}
-
-/**
- * Compute relevance score (0~1) for a blog post relative to a specific place.
- * Uses address verification and negative signals to filter false positives.
- */
-export function computePostRelevance(
-  placeName: string,
-  addr: AddressComponents,
-  isCommon: boolean,
-  title: string,
-  snippet: string
-): number {
-  const text = `${title} ${snippet}`.toLowerCase()
-  const nameL = placeName.toLowerCase()
-  let score = 0
-
-  // --- Positive signals ---
-
-  // Place name in title (expected from search, reduced weight)
-  if (title.toLowerCase().includes(nameL)) {
-    score += 0.25
-  } else if (text.includes(nameL)) {
-    score += 0.15
-  } else {
-    // Partial name match for multi-word names
-    const nameWords = nameL.split(/\s+/).filter((w) => w.length >= 2)
-    const matchedWords = nameWords.filter((w) => text.includes(w))
-    if (matchedWords.length > 0) {
-      score += 0.10 * (matchedWords.length / nameWords.length)
-    }
-  }
-
-  // Address component matches (strong location verification)
-  if (addr.dong && text.includes(addr.dong)) {
-    score += 0.30
-  }
-  if (addr.road && text.includes(addr.road)) {
-    score += 0.20
-  }
-  if (addr.district && text.includes(addr.district)) {
-    score += 0.10
-  }
-
-  // Baby/kids content bonus
-  const babyTerms = ['아기', '유아', '아이', '키즈', '어린이', '유모차', '수유']
-  if (babyTerms.some((t) => text.includes(t))) {
-    score += 0.10
-  }
-
-  // Visit intent bonus (actual visit vs mere location reference)
-  const VISIT_INTENT_TERMS = ['다녀왔', '방문했', '갔다왔', '놀러갔', '산책했', '나들이', '데리고 갔', '다녀온']
-  if (VISIT_INTENT_TERMS.some((t) => text.includes(t))) {
-    score += 0.10
-  }
-
-  // --- Negative signals ---
-
-  // Mentions a different city/province (outside service area)
-  if (hasCompetingLocation(text, addr.city)) {
-    score -= 0.50
-  }
-
-  // Competing branch within service area (e.g. "시흥 담솥" for 담솥 왕십리역점)
-  if (hasCompetingServiceAreaCity(title, addr)) {
-    score -= 0.30
-  }
-
-  // Irrelevant content patterns (product reviews, real estate, spam)
-  if (hasIrrelevantContentSignals(text)) {
-    score -= 0.20
-  }
-
-  // Landmark reference pattern (place used as location marker, not visit target)
-  const isLandmarkRef = isLandmarkReference(placeName, text)
-  if (isLandmarkRef) {
-    score -= 0.20
-  }
-
-  // Generic suffix places (어린이공원, 근린공원, etc.)
-  const hasGenericSuffix = hasGenericPlaceSuffix(placeName)
-  const hasDongMatch = addr.dong ? text.includes(addr.dong) : false
-  const hasRoadMatch = addr.road ? text.includes(addr.road) : false
-
-  if (hasGenericSuffix) {
-    // Generic suffix + no address verification = likely noise
-    if (!hasDongMatch && !hasRoadMatch) score -= 0.15
-    // Landmark reference is extra damaging for generic-suffix places
-    if (isLandmarkRef) score -= 0.20
-  }
-
-  // Common-word name without address verification
-  if (isCommon && !addr.dong?.length && !addr.road?.length) {
-    // No address components to verify — can't penalize for missing match
-    // but also can't trust name-only match
-    score = Math.min(score, 0.20)
-  } else if (isCommon) {
-    // Have address data but post doesn't mention dong or road
-    if (!hasDongMatch && !hasRoadMatch) {
-      score -= 0.25
-    }
-  }
-
-  return Math.max(0, Math.min(score, 1.0))
-}
+// ─── Relevance scoring delegated to ../utils/relevance.ts ───────────────────
 
 /**
  * Atomically increments mention_count for a place.

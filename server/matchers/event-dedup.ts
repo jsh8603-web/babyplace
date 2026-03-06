@@ -396,6 +396,11 @@ async function mergeEvents(event1: any, event2: any, processed: Set<number>): Pr
     removed_event_name: del.name,
     similarity_score: nameSim,
     match_reason: matchReason,
+    kept_source: keep.source,
+    removed_source: del.source,
+    kept_dates: { start_date: keep.start_date, end_date: keep.end_date },
+    removed_dates: { start_date: del.start_date, end_date: del.end_date },
+    venue_name: keep.venue_name || del.venue_name || null,
   }).then(({ error: auditErr }) => {
     if (auditErr) console.error('[event-dedup] Audit log error:', auditErr.message)
   })
