@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { Filter, MapPin, Plus } from 'lucide-react'
 import type {
@@ -97,10 +98,16 @@ async function fetchRunningEvents(): Promise<EventsResponse> {
 export default function HomePage() {
   const isAdmin = useAdmin()
   const queryClient = useQueryClient()
+  const router = useRouter()
   const [mapBounds, setMapBounds] = useState<MapBounds | null>(null)
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number } | null>(null)
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null)
+  // Read ?selected= from URL on mount (client-only)
+  const [selectedIdFromUrl] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null
+    return new URLSearchParams(window.location.search).get('selected')
+  })
   const [searchQuery, setSearchQuery] = useState('')
   const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [isEmergencyOpen, setIsEmergencyOpen] = useState(false)
@@ -117,6 +124,18 @@ export default function HomePage() {
   const [snapPoint, setSnapPoint] = useState<SnapPoint>(DEFAULT_SNAP)
   const listScrollRef = useRef<HTMLDivElement>(null)
   const pointerDownRef = useRef<{ x: number; y: number } | null>(null)
+
+  // Sync selectedPlace ↔ URL ?selected= param
+  const selectPlace = useCallback((place: Place | null) => {
+    setSelectedPlace(place)
+    const url = new URL(window.location.href)
+    if (place) {
+      url.searchParams.set('selected', String(place.id))
+    } else {
+      url.searchParams.delete('selected')
+    }
+    window.history.replaceState(null, '', url.toString())
+  }, [])
 
   // Fetch places when map bounds change
   const {
@@ -138,6 +157,18 @@ export default function HomePage() {
     enabled: !!mapBounds,
     staleTime: 30_000,
   })
+
+  // Restore selected place from URL param after places load
+  useEffect(() => {
+    if (!selectedIdFromUrl || selectedPlace) return
+    const id = parseInt(selectedIdFromUrl, 10)
+    if (isNaN(id)) return
+    const found = placesData?.places?.find((p) => p.id === id)
+    if (found) {
+      setSelectedPlace(found)
+      setSnapPoint(LIST_SNAP)
+    }
+  }, [selectedIdFromUrl, selectedPlace, placesData?.places])
 
   // Fetch running events
   const { data: eventsData, isLoading: isEventsLoading } = useQuery({
@@ -217,11 +248,11 @@ export default function HomePage() {
   }, [])
 
   const handlePlaceClick = useCallback((place: Place) => {
-    setSelectedPlace(place)
+    selectPlace(place)
     setSnapPoint(LIST_SNAP)
     // Scroll list to top on map marker click
     listScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
-  }, [])
+  }, [selectPlace])
 
   const handleGetLocation = () => {
     if (!navigator.geolocation) return
@@ -230,7 +261,7 @@ export default function HomePage() {
         const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude }
         setUserLocation(loc)
         setMapCenter(loc)
-        setSelectedPlace(null)
+        selectPlace(null)
       },
       () => {
         // Fallback: Seoul city hall
@@ -302,7 +333,7 @@ export default function HomePage() {
           selectedPlaceId={selectedPlace?.id}
           onBoundsChanged={handleBoundsChanged}
           onPlaceClick={handlePlaceClick}
-          onMapClick={useCallback(() => setSelectedPlace(null), [])}
+          onMapClick={useCallback(() => selectPlace(null), [selectPlace])}
           center={mapCenter}
         />
       </div>
@@ -448,7 +479,7 @@ export default function HomePage() {
               </span>
               {selectedPlace && (
                 <button
-                  onClick={() => setSelectedPlace(null)}
+                  onClick={() => selectPlace(null)}
                   className="text-[12px] text-coral-500 font-medium min-h-[36px] px-2"
                 >
                   전체보기
@@ -483,7 +514,7 @@ export default function HomePage() {
                 // Ignore drags/scrolls
                 const down = pointerDownRef.current
                 if (down && (Math.abs(e.clientX - down.x) > 5 || Math.abs(e.clientY - down.y) > 5)) return
-                setSelectedPlace(null)
+                selectPlace(null)
               }}
             >
               {isPlacesLoading ? (
@@ -517,7 +548,7 @@ export default function HomePage() {
                       isSelected={true}
                       label="현재장소"
                       onClick={(p) => {
-                        window.location.href = `/place/${p.id}`
+                        router.push(`/place/${p.id}`)
                       }}
                       onHide={handleHidePlace}
                     />
@@ -529,8 +560,8 @@ export default function HomePage() {
                       place={place}
                       distance={'_distFromSelected' in place ? (place as Place & { _distFromSelected: number })._distFromSelected : undefined}
                       onClick={(p) => {
-                        setSelectedPlace(p)
-                        window.location.href = `/place/${p.id}`
+                        selectPlace(p)
+                        router.push(`/place/${p.id}`)
                       }}
                       onHide={handleHidePlace}
                     />
@@ -585,7 +616,7 @@ export default function HomePage() {
                     distance={event._dist}
                     isAdmin={isAdmin}
                     onClick={(e) => {
-                      window.location.href = `/event/${e.id}`
+                      router.push(`/event/${e.id}`)
                     }}
                     onHide={handleHideEvent}
                     onPosterHide={isAdmin ? handlePosterHide : undefined}
