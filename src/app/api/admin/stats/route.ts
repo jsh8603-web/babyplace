@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
       supabase.from('events').select('*', { count: 'exact', head: true }).gte('end_date', todayISO).eq('is_hidden', false),
       supabase.from('events').select('*', { count: 'exact', head: true }).gte('end_date', todayISO).lte('end_date', new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)).eq('is_hidden', false),
       supabase.from('blog_mentions').select('*', { count: 'exact', head: true }),
-      supabase.from('blog_mentions').select('*', { count: 'exact', head: true }).gte('created_at', sevenDaysAgo),
+      supabase.from('blog_mentions').select('*', { count: 'exact', head: true }).gte('collected_at', sevenDaysAgo),
       supabase.from('profiles').select('*', { count: 'exact', head: true }),
       supabase.from('places').select('*', { count: 'exact', head: true }).gte('created_at', todayStartISO),
       supabase.from('favorites').select('*', { count: 'exact', head: true }).gte('created_at', todayStartISO),

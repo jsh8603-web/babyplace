@@ -278,5 +278,15 @@ export function computePostRelevanceDetailed(
     }
   }
 
+  // Name-absent cap: if place name is not found anywhere in text, cap score at 0.25
+  // Address-only matches (dong/road/district) without any name match are unreliable
+  const hasAnyNameMatch = bd.name_title > 0 || bd.name_snippet > 0
+  if (!hasAnyNameMatch && score > 0.25) {
+    const excess = score - 0.25
+    bd.penalty_generic_suffix += -excess
+    score = 0.25
+    penalties.push('name_absent_cap')
+  }
+
   return { score: Math.max(0, Math.min(score, 1.0)), breakdown: bd, penalties }
 }

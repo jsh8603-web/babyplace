@@ -1,6 +1,6 @@
 {
-  "version": 1,
-  "updated_at": "2026-03-05",
+  "version": 2,
+  "updated_at": "2026-03-06",
   "weights": {
     "title_match": 0.3,
     "place_name_in_content": 0.25,
@@ -14,6 +14,7 @@
     "reject": 0.3
   },
   "changelog": [
+    { "version": 2, "date": "2026-03-06", "change": "name_absent_cap 추가: 장소명 미매칭 시 점수 상한 0.25 (1000건 감사 결과: 정확률 30.9%, 어린이공원/놀이터 오매칭 476건 → 주소 일치만으로 0.4~0.55 받는 문제 해결)" },
     { "version": 1, "date": "2026-03-05", "change": "초기 가중치 설정 — 포스터 감사 패턴 적용" }
   ]
 }

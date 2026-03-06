@@ -38,6 +38,11 @@ const CATEGORY_TEMPLATES: Record<string, string[]> = {
     '아기 유아놀이',
     '어린이 재미있는 곳',
     '아기 음악학원',
+    '돌아기 키즈카페 추천',
+    '아기 볼풀장',
+    '유아 키즈파크',
+    '아기 놀이공간 추천',
+    '24개월 실내놀이',
   ],
   '공원/놀이터': [
     '아기 공원',
@@ -45,6 +50,9 @@ const CATEGORY_TEMPLATES: Record<string, string[]> = {
     '유아 숲',
     '아기 산책',
     '아기 어린이공원',
+    '유아숲체험원 후기',
+    '유모차 산책 추천',
+    '아기 모래놀이터',
   ],
   '전시/체험': [
     '아기 박물관',
@@ -52,6 +60,10 @@ const CATEGORY_TEMPLATES: Record<string, string[]> = {
     '유아 체험',
     '아기 전시',
     '영아 교육',
+    '어린이 미술관 추천',
+    '키즈 체험관 후기',
+    '유아 요리 체험',
+    '아기 만들기 체험',
   ],
   '동물/자연': [
     '아기 동물원',
@@ -59,6 +71,9 @@ const CATEGORY_TEMPLATES: Record<string, string[]> = {
     '아기 자연',
     '유아 생태',
     '아기 팜스테이',
+    '유아 동물 먹이주기',
+    '아기 곤충체험',
+    '아기 토끼카페',
   ],
   '식당/카페': [
     '아기 카페',
@@ -71,12 +86,6 @@ const CATEGORY_TEMPLATES: Record<string, string[]> = {
     '아기 뷔페',
     '이유식 맛집',
     '유아 브런치',
-    '아기 돌잔치식당',
-    '아기 백일잔치',
-    '수유실 있는 식당',
-    '유아 한정식',
-    '아기 돈까스',
-    '키즈 세트메뉴',
   ],
   도서관: [
     '아기 도서관',
@@ -84,6 +93,9 @@ const CATEGORY_TEMPLATES: Record<string, string[]> = {
     '그림책 도서관',
     '아기 책',
     '영아 프로그램',
+    '어린이 도서관 추천',
+    '유아 책읽기 프로그램',
+    '아기 책방',
   ],
   '수영/물놀이': [
     '아기 수영장',
@@ -91,6 +103,9 @@ const CATEGORY_TEMPLATES: Record<string, string[]> = {
     '유아 워터파크',
     '아기 수영',
     '영아 수영',
+    '베이비 스위밍',
+    '키즈풀 추천',
+    '아기 수영 교실',
   ],
   문화행사: [
     '아기 축제',
@@ -99,12 +114,15 @@ const CATEGORY_TEMPLATES: Record<string, string[]> = {
     '어린이 뮤지컬',
     '아기 인형극',
   ],
-  편의시설: [
-    '아기 수유실',
-    '기저귀 갈기',
-    '아기 화장실',
-    '아기 유모차',
-    '아기 쉬는곳',
+  '의료/편의': [
+    '소아과 추천',
+    '아기 소아과',
+    '수유실 추천',
+    '기저귀갈이대',
+    '아기 치과',
+    '유아 안과',
+    '소아청소년과',
+    '아기 예방접종',
   ],
 }
 
@@ -199,19 +217,25 @@ const KAKAO_SEASONAL_TEMPLATES: { keyword: string; group: string; isIndoor: bool
   { keyword: '실내트램폴린', group: '놀이', isIndoor: true, months: [12, 1, 2] },
 ]
 
-// ─── Location × pattern templates for restaurant/cafe keywords ──────────────
+// ─── Location × category pattern templates ──────────────────────────────────
 
-const LOCATION_PATTERNS = [
-  '{loc} 아기랑 식당',
-  '{loc} 키즈존 카페',
-  '{loc} 유아 외식',
-  '{loc} 아기 밥 먹이기 좋은 곳',
-  '{loc} 아이랑 브런치',
-]
+const LOCATION_PATTERNS_BY_CATEGORY: Record<string, string[]> = {
+  '식당/카페': ['{loc} 아기랑 식당', '{loc} 키즈존 카페'],
+  '놀이': ['{loc} 키즈카페 추천', '{loc} 아기 놀곳'],
+  '전시/체험': ['{loc} 아기 체험', '{loc} 어린이 박물관'],
+  '의료/편의': ['{loc} 소아과 추천', '{loc} 수유실'],
+}
 
 const KEY_LOCATIONS = [
-  '왕십리역', '성수동', '건대입구역', '합정역', '홍대입구역',
-  '잠실역', '여의도역', '판교역', '수원역', '일산',
+  // 서울 (25)
+  '강남역', '잠실역', '홍대입구역', '건대입구역', '성수동',
+  '여의도역', '용산역', '합정역', '왕십리역', '목동',
+  '노원역', '송파역', '영등포역', '이태원역', '신촌역',
+  '사당역', '천호역', '구로디지털단지역', '종로', '압구정역',
+  '서울숲', '마곡역', '상봉역', '창동역', '화곡역',
+  // 경기 (10)
+  '분당', '판교역', '수원역', '용인', '고양',
+  '일산', '김포', '광명역', '하남', '안양',
 ]
 
 /** Baby/parenting related keywords for text mining. */
@@ -403,6 +427,14 @@ const KEYWORD_GROUP_HINTS: { pattern: string; group: string; isIndoor: boolean |
   { pattern: '베이커리', group: '식당/카페', isIndoor: true },
   { pattern: '레스토랑', group: '식당/카페', isIndoor: true },
   { pattern: '뷔페', group: '식당/카페', isIndoor: true },
+  { pattern: '소아과', group: '의료/편의', isIndoor: true },
+  { pattern: '수유실', group: '의료/편의', isIndoor: true },
+  { pattern: '기저귀', group: '의료/편의', isIndoor: true },
+  { pattern: '치과', group: '의료/편의', isIndoor: true },
+  { pattern: '안과', group: '의료/편의', isIndoor: true },
+  { pattern: '한의원', group: '의료/편의', isIndoor: true },
+  { pattern: '예방접종', group: '의료/편의', isIndoor: true },
+  { pattern: '피부과', group: '의료/편의', isIndoor: true },
 ]
 
 /**
@@ -510,7 +542,7 @@ async function extractFromBlogMentions(
 /**
  * Generate keyword candidates from category templates.
  * Creates combinations like "아기 + category_type".
- * Also generates location×pattern combos for 식당/카페 category.
+ * Also generates location×category pattern combos (35 locations × 4 categories).
  */
 function generateFromTemplates(): GeneratedKeywordCandidate[] {
   const candidates: GeneratedKeywordCandidate[] = []
@@ -537,20 +569,23 @@ function generateFromTemplates(): GeneratedKeywordCandidate[] {
 }
 
 /**
- * Generate location × pattern keyword combos for restaurant/cafe category.
- * 10 locations × 5 patterns = 50 candidates.
+ * Generate location × category pattern keyword combos.
+ * 35 locations × 4 categories × 2 patterns = 280 candidates.
  */
 function generateLocationKeywords(): GeneratedKeywordCandidate[] {
   const candidates: GeneratedKeywordCandidate[] = []
 
   for (const loc of KEY_LOCATIONS) {
-    for (const pattern of LOCATION_PATTERNS) {
-      candidates.push({
-        keyword: pattern.replace('{loc}', loc),
-        source: 'template',
-        estimatedRelevance: 0.80,
-        provider: 'naver',
-      })
+    for (const [group, patterns] of Object.entries(LOCATION_PATTERNS_BY_CATEGORY)) {
+      for (const pattern of patterns) {
+        candidates.push({
+          keyword: pattern.replace('{loc}', loc),
+          source: 'template',
+          estimatedRelevance: 0.80,
+          provider: 'naver',
+          keywordGroup: group,
+        })
+      }
     }
   }
 
@@ -660,14 +695,24 @@ ${JSON.stringify(existingList)}
 
 위 키워드와 중복되지 않는 새로운 검색 키워드 50개를 생성하세요.
 
-다양성 기준 (각 카테고리에서 골고루):
-1. 활동 유형: 식당, 카페, 놀이터, 체험, 공연, 수영, 캠핑, 산책 등
-2. 연령대: 신생아, 100일, 돌아기, 2세, 3세, 유치원생 등
-3. 상황: 비 오는 날, 주말, 평일, 생일파티, 돌잔치 등
-4. 계절: 봄나들이, 여름물놀이, 가을단풍, 겨울실내 등
-5. 지역 특화: 서울/경기 주요 지역명 + 장소 유형
+카테고리별 분배 (필수):
+- 놀이/키즈카페: 최소 5개
+- 공원/놀이터: 최소 5개
+- 전시/체험: 최소 5개
+- 동물/자연: 최소 5개
+- 수영/물놀이: 최소 5개
+- 도서관: 최소 3개
+- 의료/편의(소아과/수유실): 최소 5개
+- 식당/카페: 최대 5개 (이미 충분히 많음)
+
+다양성 기준:
+1. 연령대: 신생아, 100일, 돌아기, 2세, 3세, 유치원생 등
+2. 상황: 비 오는 날, 주말, 평일, 생일파티, 돌잔치 등
+3. 계절: 봄나들이, 여름물놀이, 가을단풍, 겨울실내 등
+4. 지역 특화: 서울/경기 주요 지역명 + 장소 유형
 
 형태적 변형(조사만 다른 키워드)은 생성하지 마세요.
+모든 키워드에 아기 시그널(아기/유아/키즈/베이비/수유/어린이 등) 최소 1개 포함.
 실제 부모가 네이버에 검색할 자연스러운 표현을 사용하세요.
 
 JSON 배열로 응답: ["키워드1", "키워드2", ...]`
