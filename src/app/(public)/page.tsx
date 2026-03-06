@@ -56,6 +56,7 @@ interface SavedHomeState {
   mapCenter: { lat: number; lng: number } | null
   mapZoom: number | null
   snapPoint: SnapPoint
+  categories: PlaceCategory[]
 }
 
 function saveHomeState(state: SavedHomeState) {
@@ -148,7 +149,7 @@ export default function HomePage() {
   const [activeTab, setActiveTab] = useState<'places' | 'events'>('places')
   const [eventSort, setEventSort] = useState<'ending_soon' | 'distance' | 'popularity'>('ending_soon')
   const [filters, setFilters] = useState<FilterState>({
-    categories: [],
+    categories: savedState?.categories ?? [],
     tags: [],
     sort: 'distance',
   })
@@ -175,9 +176,10 @@ export default function HomePage() {
       mapCenter: map.center,
       mapZoom: map.zoom,
       snapPoint,
+      categories: filters.categories,
     })
     router.push(path)
-  }, [selectedPlace, snapPoint, router])
+  }, [selectedPlace, snapPoint, filters.categories, router])
 
   // Fetch places when map bounds change
   const {
