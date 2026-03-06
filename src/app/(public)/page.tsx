@@ -174,7 +174,7 @@ export default function HomePage() {
   const places = placesData?.places ?? []
 
   // When a place is selected, sort remaining places by distance from it
-  // and only show places within 2km radius
+  // Shows all places visible in current viewport (zoom level controls density)
   const filteredPlaces = selectedPlace
     ? places
         .filter((p) => p.id !== selectedPlace.id)
@@ -182,7 +182,6 @@ export default function HomePage() {
           ...p,
           _distFromSelected: haversineMeters(selectedPlace.lat, selectedPlace.lng, p.lat, p.lng),
         }))
-        .filter((p) => p._distFromSelected <= 2000) // 2km radius
         .sort((a, b) => a._distFromSelected - b._distFromSelected)
     : places
 
@@ -444,8 +443,8 @@ export default function HomePage() {
                 {isPlacesLoading
                   ? '장소 불러오는 중...'
                   : selectedPlace
-                    ? `${selectedPlace.name} 주변 ${filteredPlaces.length}개 장소`
-                    : `주변 ${filteredPlaces.length.toLocaleString()}개 장소`}
+                    ? `${selectedPlace.name} 근처 ${filteredPlaces.length}개 장소`
+                    : `지도 내 ${filteredPlaces.length.toLocaleString()}개 장소`}
               </span>
               {selectedPlace && (
                 <button
