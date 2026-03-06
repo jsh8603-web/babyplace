@@ -485,15 +485,18 @@ export async function runPosterEnrichment(): Promise<PosterEnrichmentResult> {
     let offset = 0
     const PAGE = 1000
 
-    // Fetch unlocked events
+    // Fetch unlocked events (exclude official sources at DB level for efficiency)
     while (true) {
-      const { data, error } = await supabaseAdmin
+      let query = supabaseAdmin
         .from('events')
         .select('id, name, venue_name, poster_url, poster_hidden, poster_locked, source, source_url')
         .or(`end_date.gte.${today},end_date.is.null`)
         .eq('poster_hidden', false)
         .eq('poster_locked', false)
-        .range(offset, offset + PAGE - 1)
+      for (const src of OFFICIAL_POSTER_SOURCES) {
+        query = query.neq('source', src)
+      }
+      const { data, error } = await query.range(offset, offset + PAGE - 1)
       if (error) throw new Error(`Failed to fetch events: ${error.message}`)
       if (!data || data.length === 0) break
       allEvents.push(...data)
@@ -501,16 +504,19 @@ export async function runPosterEnrichment(): Promise<PosterEnrichmentResult> {
       offset += PAGE
     }
 
-    // Fetch locked events (search_only mode — search but don't replace)
+    // Fetch locked events (search_only mode — exclude official sources at DB level)
     offset = 0
     while (true) {
-      const { data, error } = await supabaseAdmin
+      let query = supabaseAdmin
         .from('events')
         .select('id, name, venue_name, poster_url, poster_hidden, poster_locked, source, source_url')
         .or(`end_date.gte.${today},end_date.is.null`)
         .eq('poster_hidden', false)
         .eq('poster_locked', true)
-        .range(offset, offset + PAGE - 1)
+      for (const src of OFFICIAL_POSTER_SOURCES) {
+        query = query.neq('source', src)
+      }
+      const { data, error } = await query.range(offset, offset + PAGE - 1)
       if (error) throw new Error(`Failed to fetch locked events: ${error.message}`)
       if (!data || data.length === 0) break
       lockedEvents.push(...data)

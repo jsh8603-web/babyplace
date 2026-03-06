@@ -56,6 +56,7 @@ export interface SeoulEventsCollectorResult {
   llmClassified: number
   newEvents: number
   duplicates: number
+  postersRestored: number
   errors: number
 }
 
@@ -81,6 +82,7 @@ export async function runSeoulEventsCollector(): Promise<SeoulEventsCollectorRes
     llmClassified: 0,
     newEvents: 0,
     duplicates: 0,
+    postersRestored: 0,
     errors: 0,
   }
 
@@ -122,6 +124,41 @@ export async function runSeoulEventsCollector(): Promise<SeoulEventsCollectorRes
     })
     const knownSkipped = currentEvents.length - unknownEvents.length
     console.log(`[seoul-events] Step 0.5 known filter: ${knownSkipped} already in DB, ${unknownEvents.length} to classify`)
+
+    // Step 0.6: Restore official posters for existing events whose poster_url was overwritten
+    const knownApiEvents = currentEvents.filter((e) => {
+      const sourceId = extractCultCode(e.HMPG_ADDR) || `${e.TITLE}_${e.DATE}`
+      return knownSourceIds.has(sourceId) && e.MAIN_IMG
+    })
+    if (knownApiEvents.length > 0) {
+      const sourceIds = knownApiEvents.map((e) => extractCultCode(e.HMPG_ADDR) || `${e.TITLE}_${e.DATE}`)
+      const { data: dbEvents } = await supabaseAdmin
+        .from('events')
+        .select('id, source_id, poster_url')
+        .eq('source', 'seoul_events')
+        .in('source_id', sourceIds)
+      if (dbEvents) {
+        const dbMap = new Map(dbEvents.map((e) => [e.source_id, e]))
+        for (const apiEvent of knownApiEvents) {
+          const sourceId = extractCultCode(apiEvent.HMPG_ADDR) || `${apiEvent.TITLE}_${apiEvent.DATE}`
+          const dbEvent = dbMap.get(sourceId)
+          if (!dbEvent) continue
+          const officialUrl = apiEvent.MAIN_IMG.replace(/[&?]thumb=Y/i, '')
+          if (dbEvent.poster_url !== officialUrl) {
+            const { error: updateErr } = await supabaseAdmin
+              .from('events')
+              .update({ poster_url: officialUrl })
+              .eq('id', dbEvent.id)
+            if (!updateErr) {
+              result.postersRestored++
+            }
+          }
+        }
+        if (result.postersRestored > 0) {
+          console.log(`[seoul-events] Step 0.6 poster restore: ${result.postersRestored} posters restored to official`)
+        }
+      }
+    }
 
     // Step 1: Blacklist filter (immediate exclude)
     const afterBlacklist = unknownEvents.filter((e) => {
