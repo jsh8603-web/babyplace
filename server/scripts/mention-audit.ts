@@ -35,7 +35,7 @@ function loadConfig() {
 
 async function sampleMentions(randomCount = 10): Promise<void> {
   const config = loadConfig()
-  const SELECT = 'id, place_id, title, url, snippet, relevance_score, source_type, post_date, places!inner(id, name, address, is_common_name)'
+  const SELECT = 'id, place_id, title, url, snippet, relevance_score, source_type, post_date, places!inner(id, name, address)'
 
   // Find the highest mention_id already audited — everything above is "new"
   const { data: maxRow } = await supabase
@@ -45,27 +45,52 @@ async function sampleMentions(randomCount = 10): Promise<void> {
     .limit(1)
   const lastAuditedId = maxRow?.[0]?.mention_id ?? 0
 
-  // --- 1) New mentions (전수): all mentions with id > lastAuditedId ---
+  // --- 1) New mentions (전수 배치): id > lastAuditedId ---
   let newSampled = 0
-  let page = 0
-  const PAGE_SIZE = 200
+  const BATCH = 200
+
+  // Pre-fetch already-audited mention_ids for fast skip
+  const auditedIds = new Set<number>()
+  let aOffset = 0
   while (true) {
-    const { data: newBatch, error } = await supabase
+    const { data: aRows } = await supabase
+      .from('mention_audit_log')
+      .select('mention_id')
+      .gt('mention_id', lastAuditedId)
+      .range(aOffset, aOffset + 999)
+    if (!aRows || aRows.length === 0) break
+    for (const r of aRows) auditedIds.add(r.mention_id)
+    if (aRows.length < 1000) break
+    aOffset += 1000
+  }
+
+  let page = 0
+  while (true) {
+    const { data: batch, error } = await supabase
       .from('blog_mentions')
       .select(SELECT)
       .eq('mention_locked', false)
       .gt('id', lastAuditedId)
       .order('id', { ascending: true })
-      .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
+      .range(page * BATCH, (page + 1) * BATCH - 1)
 
     if (error) { console.error('Error fetching new mentions:', error.message); break }
-    if (!newBatch || newBatch.length === 0) break
+    if (!batch || batch.length === 0) break
 
-    for (const row of newBatch) {
-      const inserted = await insertAuditEntry(row, config, 'new')
-      if (inserted) newSampled++
+    // Batch insert: skip already-audited, collect entries
+    const toInsert: any[] = []
+    for (const row of batch) {
+      if (auditedIds.has(row.id)) continue
+      const entry = buildAuditEntry(row, config, 'new')
+      if (entry) toInsert.push(entry)
     }
-    if (newBatch.length < PAGE_SIZE) break
+    if (toInsert.length > 0) {
+      const { error: insertErr } = await supabase.from('mention_audit_log').insert(toInsert)
+      if (insertErr) console.error('Batch insert error:', insertErr.message)
+      else newSampled += toInsert.length
+    }
+
+    if (batch.length < BATCH) break
     page++
   }
 
@@ -124,15 +149,7 @@ async function sampleMentions(randomCount = 10): Promise<void> {
   console.log(`Mention audit: ${newSampled} new (전수) + ${existingSampled} existing (랜덤) = ${newSampled + existingSampled} total (config v${config.version})`)
 }
 
-async function insertAuditEntry(row: any, config: any, verdict: string): Promise<boolean> {
-  // Check if already audited
-  const { data: exists } = await supabase
-    .from('mention_audit_log')
-    .select('id')
-    .eq('mention_id', row.id)
-    .limit(1)
-  if (exists && exists.length > 0) return false
-
+function buildAuditEntry(row: any, config: any, verdict: string): any | null {
   const place = (row as any).places
   let relevanceBreakdown = null
   let penaltyFlags: string[] = []
@@ -141,7 +158,7 @@ async function insertAuditEntry(row: any, config: any, verdict: string): Promise
     const detailed = computePostRelevanceDetailed(
       place?.name || '',
       addrParts,
-      !!place?.is_common_name,
+      false, // is_common_name not tracked in DB
       row.title || '',
       row.snippet || ''
     )
@@ -149,7 +166,7 @@ async function insertAuditEntry(row: any, config: any, verdict: string): Promise
     penaltyFlags = detailed.penalties
   } catch { /* ignore */ }
 
-  const { error } = await supabase.from('mention_audit_log').insert({
+  return {
     mention_id: row.id,
     place_id: row.place_id,
     place_name: place?.name ?? '(unknown)',
@@ -163,7 +180,21 @@ async function insertAuditEntry(row: any, config: any, verdict: string): Promise
     penalty_flags: penaltyFlags.length > 0 ? penaltyFlags : null,
     source_type: row.source_type || null,
     post_date: row.post_date || null,
-  })
+  }
+}
+
+async function insertAuditEntry(row: any, config: any, verdict: string): Promise<boolean> {
+  // Check if already audited
+  const { data: exists } = await supabase
+    .from('mention_audit_log')
+    .select('id')
+    .eq('mention_id', row.id)
+    .limit(1)
+  if (exists && exists.length > 0) return false
+
+  const entry = buildAuditEntry(row, config, verdict)
+  if (!entry) return false
+  const { error } = await supabase.from('mention_audit_log').insert(entry)
   return !error
 }
 

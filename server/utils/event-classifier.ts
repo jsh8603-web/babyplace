@@ -20,7 +20,7 @@ export interface EventForClassification {
 // Step 1: Blacklist — adult/senior-only events (USE_TRGT + TITLE)
 const BLACKLIST_TARGET_PATTERN =
   /성인|미취학.*입장불가|14세\s*이상|13세\s*이상|12세\s*이상|만\s*19세|시니어|65세/
-const BLACKLIST_TITLE_PATTERN = /개인전/
+const BLACKLIST_TITLE_PATTERN = /개인전|1\+1|할인\s*이벤트|세일\s*이벤트|구매.*이벤트|프로모션|특가\s*이벤트/
 
 // Step 2: Whitelist — clearly baby/child-related events
 const WHITELIST_PATTERN =

@@ -187,6 +187,25 @@ async function showSummary(): Promise<void> {
 }
 
 async function approveAudit(auditId: number): Promise<void> {
+  // Check if this is a recovery audit — if so, apply poster + unhide
+  const { data: audit } = await supabase
+    .from('poster_audit_log')
+    .select('action, after_url, event_id')
+    .eq('id', auditId)
+    .maybeSingle()
+
+  if (audit?.action === 'recovery' && audit.after_url) {
+    const { error: evError } = await supabase
+      .from('events')
+      .update({ poster_url: audit.after_url, poster_hidden: false })
+      .eq('id', audit.event_id)
+    if (evError) {
+      console.error(`Error updating event #${audit.event_id}:`, evError.message)
+      return
+    }
+    console.log(`Recovery approved — unhiding event #${audit.event_id} with new poster: ${audit.after_url}`)
+  }
+
   const { error } = await supabase
     .from('poster_audit_log')
     .update({ audit_status: 'approved' })
@@ -200,13 +219,25 @@ async function rejectAudit(auditId: number, note?: string): Promise<void> {
   const update: Record<string, string> = { audit_status: 'rejected' }
   if (note) update.audit_notes = note
 
+  // Check if recovery — log that event stays hidden
+  const { data: audit } = await supabase
+    .from('poster_audit_log')
+    .select('action, event_id')
+    .eq('id', auditId)
+    .maybeSingle()
+
   const { error } = await supabase
     .from('poster_audit_log')
     .update(update)
     .eq('id', auditId)
 
   if (error) console.error('Error:', error.message)
-  else console.log(`Rejected audit #${auditId}${note ? ` (note: ${note})` : ''}`)
+  else {
+    console.log(`Rejected audit #${auditId}${note ? ` (note: ${note})` : ''}`)
+    if (audit?.action === 'recovery' || audit?.action === 'recovery_failed') {
+      console.log(`Recovery rejected — event #${audit.event_id} stays hidden`)
+    }
+  }
 }
 
 async function flagAudit(auditId: number, note?: string): Promise<void> {
@@ -413,6 +444,156 @@ async function listLocked(limit = 50): Promise<void> {
   console.log('')
 }
 
+// ─── Hidden Poster Recovery ───────────────────────────────────────────────────
+
+async function listHiddenRecovery(limit = 50): Promise<void> {
+  const { data, error } = await supabase
+    .from('poster_audit_log')
+    .select('*')
+    .in('action', ['recovery', 'recovery_failed'])
+    .eq('audit_status', 'pending')
+    .order('created_at', { ascending: false })
+    .limit(limit)
+
+  if (error) { console.error('Error:', error.message); return }
+  const rows = (data || []) as AuditRow[]
+
+  const { count } = await supabase
+    .from('poster_audit_log')
+    .select('id', { count: 'exact', head: true })
+    .in('action', ['recovery', 'recovery_failed'])
+    .eq('audit_status', 'pending')
+
+  console.log(`\n=== Hidden Poster Recovery — Pending (${count ?? rows.length}건) ===\n`)
+
+  for (const row of rows) {
+    const candidateCount = row.candidates?.length ?? 0
+    const tag = row.action === 'recovery' ? 'RECOVERY' : 'RECOVERY_FAILED'
+
+    console.log(`[${tag}] event #${row.event_id} "${row.event_name}" (${row.event_source})`)
+    console.log(`  Hidden poster: ${row.before_url || '(none)'}`)
+    if (row.action === 'recovery') {
+      console.log(`  New candidate:  ${row.after_url}`)
+      console.log(`  Reason: ${row.llm_reason}`)
+    } else {
+      console.log(`  No suitable candidate found`)
+      console.log(`  Reason: ${row.llm_reason}`)
+    }
+    console.log(`  Candidates: ${candidateCount}개`)
+    console.log(`  audit_id: ${row.id}`)
+    console.log('')
+  }
+
+  const recovered = rows.filter(r => r.action === 'recovery').length
+  const failed = rows.filter(r => r.action === 'recovery_failed').length
+  console.log(`Summary: ${recovered} with candidates, ${failed} failed\n`)
+}
+
+async function reviewRecovery(limit = 10, offset = 0): Promise<void> {
+  const { data, error } = await supabase
+    .from('poster_audit_log')
+    .select('*')
+    .in('action', ['recovery', 'recovery_failed'])
+    .eq('audit_status', 'pending')
+    .order('created_at', { ascending: true })
+    .range(offset, offset + limit - 1)
+
+  if (error) { console.error('Error:', error.message); return }
+  const rows = (data || []) as AuditRow[]
+
+  const { count } = await supabase
+    .from('poster_audit_log')
+    .select('id', { count: 'exact', head: true })
+    .in('action', ['recovery', 'recovery_failed'])
+    .eq('audit_status', 'pending')
+
+  console.log(`\n=== Hidden Poster Recovery Review (${count ?? 0}건 pending, showing ${offset + 1}~${offset + rows.length}) ===`)
+  console.log('STRICT: Only approve if new poster is clearly an official poster.')
+  console.log('Actions: --approve <id> | --reject <id> | --replace <id> --poster <url>\n')
+
+  for (const row of rows) {
+    const candidates = row.candidates || []
+
+    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
+    console.log(`#${row.event_id} "${row.event_name}" [${row.event_source}] — ${row.action === 'recovery' ? 'CANDIDATE FOUND' : 'NO CANDIDATE'}`)
+    console.log(`audit_id: ${row.id}`)
+    console.log(``)
+    console.log(`  숨긴 포스터: ${row.before_url || '(없음)'}`)
+    if (row.action === 'recovery') {
+      console.log(`  새 후보:     ${row.after_url}`)
+      console.log(`  LLM 이유:    ${row.llm_reason}`)
+    } else {
+      console.log(`  새 후보:     (없음)`)
+      console.log(`  LLM 이유:    ${row.llm_reason}`)
+    }
+    console.log(``)
+    console.log(`  전체 후보 (${candidates.length}개):`)
+    for (const [i, c] of candidates.entries()) {
+      const url = c.link || ''
+      const title = c.title || ''
+      const domain = c.domain || ''
+      const source = c.source || ''
+      const tag = source === 'og:image' ? '[공식]'
+        : ['culture.seoul.go.kr', 'kopis.or.kr', 'sac.or.kr', 'sejongpac.or.kr',
+           'ticketlink.co.kr', 'interpark.com', 'yes24.com', 'museum.go.kr',
+           'mmca.go.kr', 'sema.seoul.go.kr', 'visitkorea.or.kr', 'mediahub.seoul.go.kr'
+          ].some(d => url.includes(d)) ? '[신뢰]' : ''
+      const selected = url === row.after_url ? ' ← LLM선택' : ''
+      console.log(`    ${i + 1}. ${tag} [${domain}] "${title}"${selected}`)
+      console.log(`       ${url}`)
+    }
+    console.log('')
+  }
+
+  if (rows.length > 0) {
+    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
+    console.log(`\n다음 페이지: --review-recovery --offset ${offset + limit}`)
+  }
+}
+
+async function replaceAudit(auditId: number, posterUrl: string): Promise<void> {
+  // Get the event_id from audit log
+  const { data: audit, error: fetchError } = await supabase
+    .from('poster_audit_log')
+    .select('event_id, action')
+    .eq('id', auditId)
+    .maybeSingle()
+
+  if (fetchError || !audit) {
+    console.error(`Error: audit #${auditId} not found`)
+    return
+  }
+
+  // Update event: set new poster + unhide
+  const { error: evError } = await supabase
+    .from('events')
+    .update({ poster_url: posterUrl, poster_hidden: false })
+    .eq('id', audit.event_id)
+
+  if (evError) {
+    console.error(`Error updating event #${audit.event_id}:`, evError.message)
+    return
+  }
+
+  // Update audit log
+  const { error: auditError } = await supabase
+    .from('poster_audit_log')
+    .update({
+      audit_status: 'approved',
+      audit_notes: 'replaced by opus',
+      after_url: posterUrl,
+    })
+    .eq('id', auditId)
+
+  if (auditError) {
+    console.error(`Error updating audit #${auditId}:`, auditError.message)
+    return
+  }
+
+  console.log(`Replaced poster for event #${audit.event_id} → ${posterUrl}`)
+  console.log(`Audit #${auditId} approved, event unhidden`)
+}
+
 // ─── CLI Parser ──────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
@@ -469,6 +650,24 @@ async function main(): Promise<void> {
     const limitIdx = args.indexOf('--limit')
     const limit = limitIdx >= 0 ? parseInt(args[limitIdx + 1]) || 50 : 50
     await listSearchOnly(limit)
+  } else if (args.includes('--hidden')) {
+    const limitIdx = args.indexOf('--limit')
+    const limit = limitIdx >= 0 ? parseInt(args[limitIdx + 1]) || 50 : 50
+    await listHiddenRecovery(limit)
+  } else if (args.includes('--review-recovery')) {
+    const limitIdx = args.indexOf('--limit')
+    const limit = limitIdx >= 0 ? parseInt(args[limitIdx + 1]) || 10 : 10
+    const offsetIdx = args.indexOf('--offset')
+    const offset = offsetIdx >= 0 ? parseInt(args[offsetIdx + 1]) || 0 : 0
+    await reviewRecovery(limit, offset)
+  } else if (args.includes('--replace')) {
+    const idx = args.indexOf('--replace')
+    const auditId = parseInt(args[idx + 1])
+    if (isNaN(auditId)) { console.error('Usage: --replace <audit_id> --poster <url>'); return }
+    const posterIdx = args.indexOf('--poster')
+    const posterUrl = posterIdx >= 0 ? args[posterIdx + 1] : undefined
+    if (!posterUrl) { console.error('Usage: --replace <audit_id> --poster <url>'); return }
+    await replaceAudit(auditId, posterUrl)
   } else if (args.includes('--locked')) {
     const limitIdx = args.indexOf('--limit')
     const limit = limitIdx >= 0 ? parseInt(args[limitIdx + 1]) || 50 : 50
@@ -483,14 +682,17 @@ Commands:
   --list [--limit N]           Pending audit entries (default: 50)
   --review [--limit N] [--offset N]  Opus visual review: UPDATED entries with all candidate URLs (default: 10)
   --summary                    Statistics and pattern analysis
-  --approve <audit_id>         Approve a poster decision
-  --reject <audit_id> [--note] Reject with optional reason
+  --approve <audit_id>         Approve a poster decision (recovery: auto-unhide + apply poster)
+  --reject <audit_id> [--note] Reject with optional reason (recovery: stays hidden)
   --flag <audit_id> [--note]   Flag for further review
   --bulk-approve [--action X]  Approve all pending (optionally filter by action)
   --search-only [--limit N]    Show LLM search results for locked events
   --lock <event_id> [--poster <url>]  Lock poster (set URL + lock + approve)
   --unlock <event_id>          Unlock poster for re-enrichment
   --locked [--limit N]         List locked events
+  --hidden [--limit N]         List recovery pending for hidden posters
+  --review-recovery [--limit N] [--offset N]  Opus strict review: recovery candidates
+  --replace <audit_id> --poster <url>  Replace poster + unhide (Opus direct pick)
   --prompt                     Show current prompt config
 
 Examples:

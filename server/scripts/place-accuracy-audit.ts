@@ -29,21 +29,66 @@ async function samplePlaces(randomCount = 10): Promise<void> {
     .limit(1)
   const lastAuditedId = maxRow?.[0]?.place_id ?? 0
 
-  // --- 1) New places (전수): all places with id > lastAuditedId ---
+  // --- 1) New places (전수 배치): id > lastAuditedId ---
   let newSampled = 0
-  const { data: newPlaces, error } = await supabase
-    .from('places')
-    .select(SELECT)
-    .eq('is_active', true)
-    .gt('id', lastAuditedId)
-    .order('id', { ascending: true })
-    .limit(500)
+  const BATCH = 200
 
-  if (error) { console.error('Error:', error.message); return }
+  // Pre-fetch already-audited place_ids for fast skip
+  const auditedPlaceIds = new Set<number>()
+  let aOffset = 0
+  while (true) {
+    const { data: aRows } = await supabase
+      .from('place_accuracy_audit_log')
+      .select('place_id')
+      .gt('place_id', lastAuditedId)
+      .range(aOffset, aOffset + 999)
+    if (!aRows || aRows.length === 0) break
+    for (const r of aRows) auditedPlaceIds.add(r.place_id)
+    if (aRows.length < 1000) break
+    aOffset += 1000
+  }
 
-  for (const place of newPlaces || []) {
-    const inserted = await insertPlaceAuditEntry(place)
-    if (inserted) newSampled++
+  let page = 0
+  while (true) {
+    const { data: batch, error } = await supabase
+      .from('places')
+      .select(SELECT)
+      .eq('is_active', true)
+      .gt('id', lastAuditedId)
+      .order('id', { ascending: true })
+      .range(page * BATCH, (page + 1) * BATCH - 1)
+
+    if (error) { console.error('Error fetching new places:', error.message); break }
+    if (!batch || batch.length === 0) break
+
+    const toInsert: any[] = []
+    for (const place of batch) {
+      if (auditedPlaceIds.has(place.id)) continue
+      toInsert.push({
+        place_id: place.id,
+        place_name: place.name,
+        place_category: place.category,
+        check_type: 'data_accuracy',
+        check_result: {
+          address: place.address,
+          lat: place.lat,
+          lng: place.lng,
+          phone: place.phone,
+          source: place.source,
+          kakao_place_id: place.kakao_place_id,
+        },
+        place_source: place.source,
+        place_created_at: place.created_at,
+      })
+    }
+    if (toInsert.length > 0) {
+      const { error: insertErr } = await supabase.from('place_accuracy_audit_log').insert(toInsert)
+      if (insertErr) console.error('Batch insert error:', insertErr.message)
+      else newSampled += toInsert.length
+    }
+
+    if (batch.length < BATCH) break
+    page++
   }
 
   // --- 2) Existing places (기존 랜덤 샘플): random from id <= lastAuditedId ---

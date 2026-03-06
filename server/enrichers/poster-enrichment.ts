@@ -100,7 +100,7 @@ const POSTER_BLOCKED_DOMAINS = [
   'i.namu.wiki', 'www.wevity.com',
   'naverbooking-phinf.pstatic.net', 'www.archives.go.kr',
   'influencer-phinf.pstatic.net', 'www.bucheonphil.or.kr',
-  'www.forest.go.kr', 't1.daumcdn.net/cafeattach',
+  'www.forest.go.kr', 't1.daumcdn.net/cafeattach', 't1.daumcdn.net/brunch',
   'search.pstatic.net/common', 'www.idfac.or.kr',
   'kakaotv/kakaoaccount', 'img.tumblbug.com', 'www.gokseong.go.kr',
   'st3.depositphotos.com', 'st2.depositphotos.com', 'st.depositphotos.com',
@@ -112,6 +112,8 @@ const POSTER_BLOCKED_DOMAINS = [
   'bbscdn.df.nexon.com', 'kream-phinf.pstatic.net',
   'd3kxs6kpbh59hp.cloudfront.net', 'down.humoruniv.com',
   'images.unsplash.com', 'page-images.kakaoentcdn.com',
+  'imgnews.naver.net', 'res.klook.com', 'item.kakaocdn.net',
+  'imgprism.ehyundai.com',
 ]
 
 const POSTER_TRUSTED_DOMAINS = [
@@ -169,7 +171,7 @@ interface AuditLogEntry {
   after_url: string | null
   candidates: { title: string; link: string; domain: string; source: string }[]
   llm_reason: string
-  action: 'updated' | 'kept' | 'removed' | 'no_candidates' | 'search_only'
+  action: 'updated' | 'kept' | 'removed' | 'no_candidates' | 'search_only' | 'recovery' | 'recovery_failed'
   prompt_version: number
   source_url?: string | null
   venue_name?: string | null
@@ -224,10 +226,12 @@ export function extractCoreKeywords(name: string): string {
 
 export function hasStaleYear(url: string): boolean {
   const currentYear = new Date().getFullYear()
-  const yearMatches = url.match(/\/(20[0-2]\d)\//g)
+  // Match /YYYY/ or /YYYYMM/ or /YYYYMMDD/ patterns in URL paths
+  const yearMatches = url.match(/\/(20[0-2]\d)(?:\d{0,4})\//g)
   if (!yearMatches) return false
   return yearMatches.some((m) => {
-    const year = parseInt(m.replace(/\//g, ''))
+    const digits = m.replace(/\//g, '')
+    const year = parseInt(digits.slice(0, 4))
     return year < currentYear - 1
   })
 }
@@ -308,6 +312,11 @@ export function preFilter(images: NaverImageItem[]): ImageCandidate[] {
       const w = parseInt(img.sizewidth) || 0
       const h = parseInt(img.sizeheight) || 0
       if (w < 200 || h < 200) return false
+      // Extreme aspect ratio filter (e.g., very tall editor-uploaded images)
+      if (w > 0 && h > 0) {
+        const ratio = h / w
+        if (ratio > 5 || ratio < 0.1) return false
+      }
       return true
     })
     .map(img => ({
@@ -624,6 +633,92 @@ export async function runPosterEnrichment(): Promise<PosterEnrichmentResult> {
     })
   } catch (err) {
     console.error('[poster-enrich] Fatal error:', err)
+    result.errors++
+  }
+
+  return result
+}
+
+// ─── Hidden Poster Recovery ─────────────────────────────────────────────────
+
+export interface HiddenPosterRecoveryResult {
+  processed: number
+  recovered: number
+  failed: number
+  errors: number
+}
+
+export async function runHiddenPosterRecovery(): Promise<HiddenPosterRecoveryResult> {
+  const result: HiddenPosterRecoveryResult = { processed: 0, recovered: 0, failed: 0, errors: 0 }
+
+  try {
+    const today = new Date().toISOString().split('T')[0]
+    const hiddenEvents: any[] = []
+    let offset = 0
+    const PAGE = 1000
+
+    while (true) {
+      const { data, error } = await supabaseAdmin
+        .from('events')
+        .select('id, name, venue_name, poster_url, source, source_url, start_date, end_date')
+        .eq('poster_hidden', true)
+        .or(`end_date.gte.${today},end_date.is.null`)
+        .range(offset, offset + PAGE - 1)
+      if (error) throw new Error(`Failed to fetch hidden events: ${error.message}`)
+      if (!data || data.length === 0) break
+      hiddenEvents.push(...data)
+      if (data.length < PAGE) break
+      offset += PAGE
+    }
+
+    const eligible = hiddenEvents.filter(e => !OFFICIAL_POSTER_SOURCES.includes(e.source))
+    const promptConfig = loadPromptConfig()
+
+    console.log(`[poster-recovery] ${eligible.length} hidden events eligible for recovery (prompt v${promptConfig.version})`)
+
+    for (const ev of eligible) {
+      result.processed++
+
+      try {
+        const candidates = await collectImages(ev.name, ev.venue_name || '', ev.source_url || null)
+        // Pass null as currentPosterUrl — hidden poster should not appear as [현재]
+        const llmResult = await selectPosterWithLLM(candidates, ev.name, ev.venue_name || '', null)
+
+        const action: AuditLogEntry['action'] = llmResult.url ? 'recovery' : 'recovery_failed'
+
+        if (llmResult.url) {
+          result.recovered++
+          console.log(`[poster-recovery] Found candidate for #${ev.id} "${ev.name}" → ${llmResult.url}`)
+        } else {
+          result.failed++
+        }
+
+        // Log to audit table — DB is NOT updated (approval required)
+        await writeAuditLog({
+          event_id: ev.id,
+          event_name: ev.name,
+          event_source: ev.source,
+          before_url: ev.poster_url || null,
+          after_url: llmResult.url || null,
+          candidates: llmResult.candidatesSummary,
+          llm_reason: llmResult.reason,
+          action,
+          prompt_version: promptConfig.version,
+          source_url: ev.source_url || null,
+          venue_name: ev.venue_name || null,
+          event_dates: { start_date: ev.start_date, end_date: ev.end_date },
+        })
+      } catch (err) {
+        console.error(`[poster-recovery] Error processing #${ev.id}:`, err)
+        result.errors++
+      }
+
+      await new Promise(r => setTimeout(r, 2000))
+    }
+
+    console.log(`[poster-recovery] Complete: ${result.processed} processed, ${result.recovered} recovered, ${result.failed} failed, ${result.errors} errors`)
+  } catch (err) {
+    console.error('[poster-recovery] Fatal error:', err)
     result.errors++
   }
 

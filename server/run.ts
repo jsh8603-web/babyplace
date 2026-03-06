@@ -51,7 +51,7 @@ import { runEventBlogSearch } from './collectors/event-blog-search'
 import { runFullBlogAudit } from './utils/blog-full-audit'
 import { runBabygoCollector, fetchBabygoEvents } from './collectors/babygo'
 import { runInterparkCollector } from './collectors/interpark'
-import { runPosterEnrichment } from './enrichers/poster-enrichment'
+import { runPosterEnrichment, runHiddenPosterRecovery } from './enrichers/poster-enrichment'
 import { runDataLabTrendDetection } from './keywords/datalab'
 import { initializeAllLimiters, flushAllLimiters } from './rate-limiter'
 import { supabaseAdmin } from './lib/supabase-admin'
@@ -127,6 +127,12 @@ async function main(): Promise<void> {
         console.log('[run] Manual mode — Poster enrichment')
         const posterManualResult = await runPosterEnrichment()
         console.log('[run] Poster enrichment result:', JSON.stringify(posterManualResult, null, 2))
+        break
+
+      case 'manual-poster-recovery':
+        console.log('[run] Manual mode — Hidden poster recovery')
+        const posterRecoveryResult = await runHiddenPosterRecovery()
+        console.log('[run] Hidden poster recovery:', JSON.stringify(posterRecoveryResult, null, 2))
         break
 
       case 'manual-audit':
@@ -305,6 +311,11 @@ async function runEventsJob(): Promise<void> {
   console.log('[run] Running poster enrichment...')
   const posterResult = await runPosterEnrichment()
   console.log('[run] Poster enrichment result:', JSON.stringify(posterResult, null, 2))
+
+  // Hidden poster recovery (search for replacements, don't apply — approval required)
+  console.log('[run] Running hidden poster recovery...')
+  const recoveryResult = await runHiddenPosterRecovery()
+  console.log('[run] Hidden poster recovery:', JSON.stringify(recoveryResult, null, 2))
 }
 
 async function runScoringJob(): Promise<void> {
