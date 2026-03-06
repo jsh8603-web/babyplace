@@ -5,11 +5,11 @@
  *   - tour_api (공공데이터 공식 포스터)
  *   - interpark (CDN 포스터)
  *   - babygo (BabyGo API 썸네일)
+ *   - seoul_events (서울시 공식 API 포스터)
  *
  * Runs multi-source image collection + Gemini LLM selection for:
  *   - blog_discovery
  *   - exhibition_extraction
- *   - seoul_events (공식 API 포스터 있지만 품질 검증)
  */
 
 import { supabaseAdmin } from '../lib/supabase-admin'
@@ -24,7 +24,7 @@ const NAVER_IMAGE_URL = 'https://openapi.naver.com/v1/search/image'
 const NAVER_WEB_URL = 'https://openapi.naver.com/v1/search/webkr'
 
 // Sources that already have official posters — skip enrichment
-const OFFICIAL_POSTER_SOURCES = ['tour_api', 'interpark', 'babygo']
+const OFFICIAL_POSTER_SOURCES = ['tour_api', 'interpark', 'babygo', 'seoul_events']
 
 interface ImageCandidate {
   title: string
@@ -87,6 +87,7 @@ const POSTER_BLOCKED_DOMAINS = [
   'cdn.imweb.me', 'www.e-redpoint.com', 'www.theteams.kr',
   'overseas.mofa.go.kr', 'www.traveli.co.kr', 'www.youthnavi.net',
   'pds.saramin.co.kr', 'ldb-phinf.pstatic.net', 'dbscthumb-phinf.pstatic.net',
+  'dthumb-phinf.pstatic.net', 'blog.kakaocdn.net',
   'lh7-rt.googleusercontent.com',
   'cdninstagram.com', 'inaturalist-open-data.s3.amazonaws.com',
   'gall-img.com', '3.gall-img.com',
@@ -108,6 +109,9 @@ const POSTER_BLOCKED_DOMAINS = [
   'image.shutterstock.com', 'thumb.ac-illust.com',
   'img.designhouse.co.kr', 'e7.pngegg.com', 'pngegg.com',
   'play-lh.googleusercontent.com', 'lh3.googleusercontent.com',
+  'bbscdn.df.nexon.com', 'kream-phinf.pstatic.net',
+  'd3kxs6kpbh59hp.cloudfront.net', 'down.humoruniv.com',
+  'images.unsplash.com', 'page-images.kakaoentcdn.com',
 ]
 
 const POSTER_TRUSTED_DOMAINS = [
@@ -165,7 +169,7 @@ interface AuditLogEntry {
   after_url: string | null
   candidates: { title: string; link: string; domain: string; source: string }[]
   llm_reason: string
-  action: 'updated' | 'kept' | 'removed' | 'no_candidates'
+  action: 'updated' | 'kept' | 'removed' | 'no_candidates' | 'search_only'
   prompt_version: number
   source_url?: string | null
   venue_name?: string | null
@@ -465,11 +469,14 @@ export async function runPosterEnrichment(): Promise<PosterEnrichmentResult> {
   try {
     console.log('[poster-enrich] Starting daily poster enrichment')
 
-    // Fetch active events that need poster enrichment
+    // Fetch active events that need poster enrichment (unlocked + locked separately)
     const today = new Date().toISOString().split('T')[0]
     const allEvents: any[] = []
+    const lockedEvents: any[] = []
     let offset = 0
     const PAGE = 1000
+
+    // Fetch unlocked events
     while (true) {
       const { data, error } = await supabaseAdmin
         .from('events')
@@ -485,16 +492,34 @@ export async function runPosterEnrichment(): Promise<PosterEnrichmentResult> {
       offset += PAGE
     }
 
+    // Fetch locked events (search_only mode — search but don't replace)
+    offset = 0
+    while (true) {
+      const { data, error } = await supabaseAdmin
+        .from('events')
+        .select('id, name, venue_name, poster_url, poster_hidden, poster_locked, source, source_url')
+        .or(`end_date.gte.${today},end_date.is.null`)
+        .eq('poster_hidden', false)
+        .eq('poster_locked', true)
+        .range(offset, offset + PAGE - 1)
+      if (error) throw new Error(`Failed to fetch locked events: ${error.message}`)
+      if (!data || data.length === 0) break
+      lockedEvents.push(...data)
+      if (data.length < PAGE) break
+      offset += PAGE
+    }
+
     // Filter: only non-official sources, and events without poster or needing re-evaluation
     const eligible = allEvents.filter(e => !OFFICIAL_POSTER_SOURCES.includes(e.source))
     const needsPoster = eligible.filter(e => !e.poster_url) // priority: no poster
     const hasPoster = eligible.filter(e => e.poster_url)
+    const lockedEligible = lockedEvents.filter(e => !OFFICIAL_POSTER_SOURCES.includes(e.source))
 
     // Process no-poster events first, then existing posters for quality check
     const toProcess = [...needsPoster, ...hasPoster]
 
     const promptConfig = loadPromptConfig()
-    console.log(`[poster-enrich] ${allEvents.length} active events, ${eligible.length} eligible (excl official), ${needsPoster.length} missing posters, prompt v${promptConfig.version}`)
+    console.log(`[poster-enrich] ${allEvents.length} active events, ${eligible.length} eligible (excl official), ${needsPoster.length} missing posters, ${lockedEligible.length} locked (search_only), prompt v${promptConfig.version}`)
 
     for (const ev of toProcess) {
       result.processed++
@@ -556,6 +581,37 @@ export async function runPosterEnrichment(): Promise<PosterEnrichmentResult> {
       if (result.processed % 20 === 0) {
         console.log(`[poster-enrich] Progress: ${result.processed}/${toProcess.length} (updated: ${result.updated})`)
       }
+    }
+
+    // Process locked events in search_only mode (search + log, no DB update)
+    if (lockedEligible.length > 0) {
+      console.log(`[poster-enrich] Processing ${lockedEligible.length} locked events (search_only)`)
+      for (const ev of lockedEligible) {
+        try {
+          const candidates = await collectImages(ev.name, ev.venue_name || '', ev.source_url || null)
+          const llmResult = await selectPosterWithLLM(candidates, ev.name, ev.venue_name || '', ev.poster_url)
+
+          await writeAuditLog({
+            event_id: ev.id,
+            event_name: ev.name,
+            event_source: ev.source,
+            before_url: ev.poster_url || null,
+            after_url: llmResult.url || null,
+            candidates: llmResult.candidatesSummary,
+            llm_reason: llmResult.reason,
+            action: 'search_only',
+            prompt_version: promptConfig.version,
+            source_url: ev.source_url || null,
+            venue_name: ev.venue_name || null,
+            event_dates: { start_date: ev.start_date, end_date: ev.end_date },
+          })
+
+          await new Promise(r => setTimeout(r, 2000))
+        } catch (err) {
+          console.error(`[poster-enrich] Error processing locked ${ev.id}:`, err)
+        }
+      }
+      console.log(`[poster-enrich] Locked events search_only complete: ${lockedEligible.length}`)
     }
 
     console.log(`[poster-enrich] Complete: ${result.processed} processed, ${result.updated} updated, ${result.errors} errors`)

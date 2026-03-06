@@ -285,6 +285,112 @@ async function unlockPoster(eventId: number): Promise<void> {
   else console.log(`Unlocked poster for event #${eventId}`)
 }
 
+async function listSearchOnly(limit = 50): Promise<void> {
+  const { data, error } = await supabase
+    .from('poster_audit_log')
+    .select('*')
+    .eq('action', 'search_only')
+    .eq('audit_status', 'pending')
+    .order('created_at', { ascending: false })
+    .limit(limit)
+
+  if (error) { console.error('Error:', error.message); return }
+  const rows = (data || []) as AuditRow[]
+
+  const { count } = await supabase
+    .from('poster_audit_log')
+    .select('id', { count: 'exact', head: true })
+    .eq('action', 'search_only')
+    .eq('audit_status', 'pending')
+
+  console.log(`\n=== Search-Only Results for Locked Events (${count ?? rows.length}건) ===`)
+  console.log('These events have poster_locked=true. LLM searched but did not replace.\n')
+
+  for (const row of rows) {
+    const candidateCount = row.candidates?.length ?? 0
+    const llmPick = row.after_url
+    const current = row.before_url
+    const different = llmPick && llmPick !== current
+
+    console.log(`[SEARCH_ONLY] event #${row.event_id} "${row.event_name}" (${row.event_source})`)
+    console.log(`  Current (locked): ${current || '(none)'}`)
+    if (different) {
+      console.log(`  LLM would pick:   ${llmPick}`)
+      console.log(`  Reason: ${row.llm_reason}`)
+    } else {
+      console.log(`  LLM agrees with current poster`)
+    }
+    console.log(`  Candidates: ${candidateCount}개`)
+    console.log(`  audit_id: ${row.id}`)
+    console.log('')
+  }
+
+  // Summary: how many have a better candidate vs agree
+  const agreeCount = rows.filter(r => !r.after_url || r.after_url === r.before_url).length
+  const betterCount = rows.filter(r => r.after_url && r.after_url !== r.before_url).length
+  console.log(`Summary: ${agreeCount} agree with current, ${betterCount} found potentially better`)
+}
+
+async function reviewUpdated(limit = 50, offset = 0): Promise<void> {
+  // Fetch UPDATED entries for Opus visual review
+  // Output format matches iteration script: event info + all candidate URLs for inspection
+  const { data, error } = await supabase
+    .from('poster_audit_log')
+    .select('*')
+    .eq('action', 'updated')
+    .eq('audit_status', 'pending')
+    .order('created_at', { ascending: true })
+    .range(offset, offset + limit - 1)
+
+  if (error) { console.error('Error:', error.message); return }
+  const rows = (data || []) as AuditRow[]
+
+  const { count } = await supabase
+    .from('poster_audit_log')
+    .select('id', { count: 'exact', head: true })
+    .eq('action', 'updated')
+    .eq('audit_status', 'pending')
+
+  console.log(`\n=== Poster Review — UPDATED (${count ?? 0}건 pending, showing ${offset + 1}~${offset + rows.length}) ===`)
+  console.log('Review each entry: check if LLM selection is the best poster for this event.')
+  console.log('Actions: --approve <id> | --reject <id> | --lock <event_id> --poster <url>\n')
+
+  for (const row of rows) {
+    const candidates = row.candidates || []
+
+    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
+    console.log(`#${row.event_id} "${row.event_name}" [${row.event_source}]`)
+    console.log(`audit_id: ${row.id}`)
+    console.log(``)
+    console.log(`  이전: ${row.before_url || '(없음)'}`)
+    console.log(`  선택: ${row.after_url}`)
+    console.log(`  이유: ${row.llm_reason}`)
+    console.log(``)
+    console.log(`  후보 (${candidates.length}개):`)
+    for (const [i, c] of candidates.entries()) {
+      const url = c.link || ''
+      const title = c.title || ''
+      const domain = c.domain || ''
+      const source = c.source || ''
+      const tag = source === 'current' ? '[현재]'
+        : source === 'og:image' ? '[공식]'
+        : ['culture.seoul.go.kr', 'kopis.or.kr', 'sac.or.kr', 'sejongpac.or.kr',
+           'ticketlink.co.kr', 'interpark.com', 'yes24.com', 'museum.go.kr',
+           'mmca.go.kr', 'sema.seoul.go.kr', 'visitkorea.or.kr', 'mediahub.seoul.go.kr'
+          ].some(d => url.includes(d)) ? '[신뢰]' : ''
+      const selected = url === row.after_url ? ' ← LLM선택' : ''
+      console.log(`    ${i + 1}. ${tag} [${domain}] "${title}"${selected}`)
+      console.log(`       ${url}`)
+    }
+    console.log('')
+  }
+
+  if (rows.length > 0) {
+    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
+    console.log(`\n다음 페이지: --review --offset ${offset + limit}`)
+  }
+}
+
 async function listLocked(limit = 50): Promise<void> {
   const { data, error } = await supabase
     .from('events')
@@ -353,6 +459,16 @@ async function main(): Promise<void> {
     const eventId = parseInt(args[idx + 1])
     if (isNaN(eventId)) { console.error('Usage: --unlock <event_id>'); return }
     await unlockPoster(eventId)
+  } else if (args.includes('--review')) {
+    const limitIdx = args.indexOf('--limit')
+    const limit = limitIdx >= 0 ? parseInt(args[limitIdx + 1]) || 10 : 10
+    const offsetIdx = args.indexOf('--offset')
+    const offset = offsetIdx >= 0 ? parseInt(args[offsetIdx + 1]) || 0 : 0
+    await reviewUpdated(limit, offset)
+  } else if (args.includes('--search-only')) {
+    const limitIdx = args.indexOf('--limit')
+    const limit = limitIdx >= 0 ? parseInt(args[limitIdx + 1]) || 50 : 50
+    await listSearchOnly(limit)
   } else if (args.includes('--locked')) {
     const limitIdx = args.indexOf('--limit')
     const limit = limitIdx >= 0 ? parseInt(args[limitIdx + 1]) || 50 : 50
@@ -365,11 +481,13 @@ Poster Audit CLI
 
 Commands:
   --list [--limit N]           Pending audit entries (default: 50)
+  --review [--limit N] [--offset N]  Opus visual review: UPDATED entries with all candidate URLs (default: 10)
   --summary                    Statistics and pattern analysis
   --approve <audit_id>         Approve a poster decision
   --reject <audit_id> [--note] Reject with optional reason
   --flag <audit_id> [--note]   Flag for further review
   --bulk-approve [--action X]  Approve all pending (optionally filter by action)
+  --search-only [--limit N]    Show LLM search results for locked events
   --lock <event_id> [--poster <url>]  Lock poster (set URL + lock + approve)
   --unlock <event_id>          Unlock poster for re-enrichment
   --locked [--limit N]         List locked events

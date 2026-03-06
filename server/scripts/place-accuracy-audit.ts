@@ -18,52 +18,97 @@ const supabase = createClient(
 
 // ─── Commands ────────────────────────────────────────────────────────────────
 
-async function samplePlaces(count = 15): Promise<void> {
-  const { data, error } = await supabase
-    .from('places')
-    .select('id, name, category, address, lat, lng, phone, source, kakao_place_id, created_at')
-    .eq('is_active', true)
-    .order('id', { ascending: false })
-    .limit(count * 2)
+async function samplePlaces(randomCount = 10): Promise<void> {
+  const SELECT = 'id, name, category, address, lat, lng, phone, source, kakao_place_id, created_at'
 
-  if (error) { console.error('Error:', error.message); return }
-  if (!data || data.length === 0) { console.log('No active places found.'); return }
-
-  // Exclude already audited
-  const placeIds = data.map((d: any) => d.id)
-  const { data: existing } = await supabase
+  // Find the highest place_id already audited — everything above is "new"
+  const { data: maxRow } = await supabase
     .from('place_accuracy_audit_log')
     .select('place_id')
-    .in('place_id', placeIds)
+    .order('place_id', { ascending: false })
+    .limit(1)
+  const lastAuditedId = maxRow?.[0]?.place_id ?? 0
 
-  const existingSet = new Set((existing || []).map((a: any) => a.place_id))
+  // --- 1) New places (전수): all places with id > lastAuditedId ---
+  let newSampled = 0
+  const { data: newPlaces, error } = await supabase
+    .from('places')
+    .select(SELECT)
+    .eq('is_active', true)
+    .gt('id', lastAuditedId)
+    .order('id', { ascending: true })
+    .limit(500)
 
-  let sampled = 0
-  for (const place of data) {
-    if (existingSet.has(place.id)) continue
-    if (sampled >= count) break
+  if (error) { console.error('Error:', error.message); return }
 
-    const { error: insertErr } = await supabase.from('place_accuracy_audit_log').insert({
-      place_id: place.id,
-      place_name: place.name,
-      place_category: place.category,
-      check_type: 'data_accuracy',
-      check_result: {
-        address: place.address,
-        lat: place.lat,
-        lng: place.lng,
-        phone: place.phone,
-        source: place.source,
-        kakao_place_id: place.kakao_place_id,
+  for (const place of newPlaces || []) {
+    const inserted = await insertPlaceAuditEntry(place)
+    if (inserted) newSampled++
+  }
+
+  // --- 2) Existing places (기존 랜덤 샘플): random from id <= lastAuditedId ---
+  let existingSampled = 0
+  if (randomCount > 0 && lastAuditedId > 0) {
+    const { count: total } = await supabase
+      .from('places')
+      .select('id', { count: 'exact', head: true })
+      .eq('is_active', true)
+      .lte('id', lastAuditedId)
+
+    if (total && total > 0) {
+      const offsets = new Set<number>()
+      const attempts = randomCount * 3
+      while (offsets.size < Math.min(attempts, total)) {
+        offsets.add(Math.floor(Math.random() * total))
+      }
+
+      for (const offset of Array.from(offsets)) {
+        if (existingSampled >= randomCount) break
+        const { data: rRow } = await supabase
+          .from('places')
+          .select(SELECT)
+          .eq('is_active', true)
+          .lte('id', lastAuditedId)
+          .order('id', { ascending: false })
+          .range(offset, offset)
+          .limit(1)
+        if (rRow && rRow.length > 0) {
+          const inserted = await insertPlaceAuditEntry(rRow[0])
+          if (inserted) existingSampled++
+        }
+      }
+    }
+  }
+
+  console.log(`Place audit: ${newSampled} new (전수) + ${existingSampled} existing (랜덤) = ${newSampled + existingSampled} total`)
+}
+
+async function insertPlaceAuditEntry(place: any): Promise<boolean> {
+  // Check if already audited
+  const { data: exists } = await supabase
+    .from('place_accuracy_audit_log')
+    .select('id')
+    .eq('place_id', place.id)
+    .limit(1)
+  if (exists && exists.length > 0) return false
+
+  const { error } = await supabase.from('place_accuracy_audit_log').insert({
+    place_id: place.id,
+    place_name: place.name,
+    place_category: place.category,
+    check_type: 'data_accuracy',
+    check_result: {
+      address: place.address,
+      lat: place.lat,
+      lng: place.lng,
+      phone: place.phone,
+      source: place.source,
+      kakao_place_id: place.kakao_place_id,
       },
       place_source: place.source,
       place_created_at: place.created_at,
     })
-
-    if (!insertErr) sampled++
-  }
-
-  console.log(`Sampled ${sampled} places for accuracy audit`)
+  return !error
 }
 
 async function checkDuplicates(count = 15): Promise<void> {
@@ -98,7 +143,7 @@ async function checkDuplicates(count = 15): Promise<void> {
         // Check name similarity (simple token overlap)
         const tokens1 = new Set(p1.name.replace(/[^가-힣a-zA-Z0-9]/g, ' ').toLowerCase().split(/\s+/))
         const tokens2 = new Set(p2.name.replace(/[^가-힣a-zA-Z0-9]/g, ' ').toLowerCase().split(/\s+/))
-        const overlap = [...tokens1].filter(t => tokens2.has(t)).length
+        const overlap = Array.from(tokens1).filter(t => tokens2.has(t)).length
         const maxLen = Math.max(tokens1.size, tokens2.size)
         if (maxLen > 0 && overlap / maxLen > 0.5) {
           suspects.push({ p1, p2, distance: Math.round(dist) })
@@ -298,9 +343,9 @@ async function main(): Promise<void> {
   const args = process.argv.slice(2)
 
   if (args.includes('--sample')) {
-    const countIdx = args.indexOf('--count')
-    const count = countIdx >= 0 ? parseInt(args[countIdx + 1]) || 15 : 15
-    await samplePlaces(count)
+    const countIdx = args.indexOf('--random')
+    const randomCount = countIdx >= 0 ? parseInt(args[countIdx + 1]) || 10 : 10
+    await samplePlaces(randomCount)
   } else if (args.includes('--revalidate')) {
     const idx = args.indexOf('--revalidate')
     const placeId = parseInt(args[idx + 1])
@@ -344,7 +389,7 @@ async function main(): Promise<void> {
 Place Accuracy Audit CLI
 
 Commands:
-  --sample [--count N]         Random active places (default: 15)
+  --sample [--random N]        New places (전수) + existing random (default: 10)
   --revalidate <place_id>      Kakao API re-verify (폐업/이전 check)
   --check-dupes [--count N]    Find duplicate suspects (<100m, similar name)
   --list [--limit N]           Pending audit entries

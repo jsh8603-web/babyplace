@@ -277,6 +277,8 @@ export async function runBabygoCollector(): Promise<BabygoResult> {
     // Create event entry regardless of place dedup (events are independent)
     if (place.event_starts_at && place.event_ends_at) {
       await createBabygoEvent(place, result)
+      // Event-only items: don't insert into places table
+      continue
     }
 
     // Fast source_id skip (already imported from babygo before)

@@ -33,87 +33,138 @@ function loadConfig() {
 
 // ─── Commands ────────────────────────────────────────────────────────────────
 
-async function sampleMentions(count = 30): Promise<void> {
+async function sampleMentions(randomCount = 10): Promise<void> {
   const config = loadConfig()
+  const SELECT = 'id, place_id, title, url, snippet, relevance_score, source_type, post_date, places!inner(id, name, address, is_common_name)'
 
-  // Stratified sampling: high≥0.7 20%, medium 0.5~0.7 40%, border 0.4~0.5 30%, low<0.4 10%
-  const strata = [
-    { label: 'high (≥0.7)', gte: 0.7, lt: undefined as number | undefined, ratio: 0.2 },
-    { label: 'medium (0.5~0.7)', gte: 0.5, lt: 0.7, ratio: 0.4 },
-    { label: 'border (0.4~0.5)', gte: 0.4, lt: 0.5, ratio: 0.3 },
-    { label: 'low (<0.4)', gte: undefined as number | undefined, lt: 0.4, ratio: 0.1 },
-  ]
+  // Find the highest mention_id already audited — everything above is "new"
+  const { data: maxRow } = await supabase
+    .from('mention_audit_log')
+    .select('mention_id')
+    .order('mention_id', { ascending: false })
+    .limit(1)
+  const lastAuditedId = maxRow?.[0]?.mention_id ?? 0
 
-  let sampled = 0
-
-  for (const stratum of strata) {
-    const stratumCount = Math.max(1, Math.round(count * stratum.ratio))
-
-    let query = supabase
+  // --- 1) New mentions (전수): all mentions with id > lastAuditedId ---
+  let newSampled = 0
+  let page = 0
+  const PAGE_SIZE = 200
+  while (true) {
+    const { data: newBatch, error } = await supabase
       .from('blog_mentions')
-      .select('id, place_id, title, url, snippet, relevance_score, source_type, post_date, places!inner(id, name, address, is_common_name)')
+      .select(SELECT)
       .eq('mention_locked', false)
+      .gt('id', lastAuditedId)
+      .order('id', { ascending: true })
+      .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
 
-    if (stratum.gte !== undefined) query = query.gte('relevance_score', stratum.gte)
-    if (stratum.lt !== undefined) query = query.lt('relevance_score', stratum.lt)
+    if (error) { console.error('Error fetching new mentions:', error.message); break }
+    if (!newBatch || newBatch.length === 0) break
 
-    const { data, error } = await query
-      .order('id', { ascending: false })
-      .limit(stratumCount)
+    for (const row of newBatch) {
+      const inserted = await insertAuditEntry(row, config, 'new')
+      if (inserted) newSampled++
+    }
+    if (newBatch.length < PAGE_SIZE) break
+    page++
+  }
 
-    if (error) { console.error(`Error sampling ${stratum.label}:`, error.message); continue }
-    if (!data || data.length === 0) continue
+  // --- 2) Existing mentions (기존 랜덤 샘플): stratified random from id <= lastAuditedId ---
+  // Already-audited mentions are excluded by the existingSet check in insertAuditEntry
+  let existingSampled = 0
+  if (randomCount > 0 && lastAuditedId > 0) {
+    const strata = [
+      { label: 'high (≥0.7)', gte: 0.7, lt: undefined as number | undefined, ratio: 0.2 },
+      { label: 'medium (0.5~0.7)', gte: 0.5, lt: 0.7, ratio: 0.4 },
+      { label: 'border (0.4~0.5)', gte: 0.4, lt: 0.5, ratio: 0.3 },
+      { label: 'low (<0.4)', gte: undefined as number | undefined, lt: 0.4, ratio: 0.1 },
+    ]
 
-    // Check which mentions already have audit entries
-    const mentionIds = data.map((d: any) => d.id)
-    const { data: existingAudits } = await supabase
-      .from('mention_audit_log')
-      .select('mention_id')
-      .in('mention_id', mentionIds)
+    for (const stratum of strata) {
+      const stratumCount = Math.max(1, Math.round(randomCount * stratum.ratio))
 
-    const existingSet = new Set((existingAudits || []).map((a: any) => a.mention_id))
+      // Get total in this stratum (existing only)
+      let cq = supabase
+        .from('blog_mentions')
+        .select('id', { count: 'exact', head: true })
+        .eq('mention_locked', false)
+        .lte('id', lastAuditedId)
+      if (stratum.gte !== undefined) cq = cq.gte('relevance_score', stratum.gte)
+      if (stratum.lt !== undefined) cq = cq.lt('relevance_score', stratum.lt)
+      const { count: total } = await cq
 
-    for (const row of data) {
-      if (existingSet.has(row.id)) continue
+      if (!total || total === 0) continue
 
-      const place = (row as any).places
-      // Compute relevance breakdown for audit context
-      let relevanceBreakdown = null
-      let penaltyFlags: string[] = []
-      try {
-        const addrParts = parseAddressComponents(null, place?.address || '')
-        const detailed = computePostRelevanceDetailed(
-          place?.name || '',
-          addrParts,
-          !!place?.is_common_name,
-          row.title || '',
-          row.snippet || ''
-        )
-        relevanceBreakdown = detailed.breakdown
-        penaltyFlags = detailed.penalties
-      } catch { /* ignore — breakdown is best-effort */ }
+      // Pick random offsets
+      const offsets = new Set<number>()
+      const attempts = stratumCount * 3 // over-sample to account for already-audited
+      while (offsets.size < Math.min(attempts, total)) {
+        offsets.add(Math.floor(Math.random() * total))
+      }
 
-      const { error: insertErr } = await supabase.from('mention_audit_log').insert({
-        mention_id: row.id,
-        place_id: row.place_id,
-        place_name: place?.name ?? '(unknown)',
-        mention_title: row.title,
-        mention_url: row.url,
-        mention_snippet: row.snippet?.slice(0, 200),
-        relevance_score: row.relevance_score,
-        audit_verdict: stratum.label,
-        config_version: config.version,
-        relevance_breakdown: relevanceBreakdown,
-        penalty_flags: penaltyFlags.length > 0 ? penaltyFlags : null,
-        source_type: row.source_type || null,
-        post_date: row.post_date || null,
-      })
-
-      if (!insertErr) sampled++
+      let added = 0
+      for (const offset of Array.from(offsets)) {
+        if (added >= stratumCount) break
+        let rq = supabase
+          .from('blog_mentions')
+          .select(SELECT)
+          .eq('mention_locked', false)
+          .lte('id', lastAuditedId)
+        if (stratum.gte !== undefined) rq = rq.gte('relevance_score', stratum.gte)
+        if (stratum.lt !== undefined) rq = rq.lt('relevance_score', stratum.lt)
+        const { data: rRow } = await rq.order('id', { ascending: false }).range(offset, offset).limit(1)
+        if (rRow && rRow.length > 0) {
+          const inserted = await insertAuditEntry(rRow[0], config, stratum.label)
+          if (inserted) { added++; existingSampled++ }
+        }
+      }
     }
   }
 
-  console.log(`Sampled ${sampled} mentions for audit (config v${config.version})`)
+  console.log(`Mention audit: ${newSampled} new (전수) + ${existingSampled} existing (랜덤) = ${newSampled + existingSampled} total (config v${config.version})`)
+}
+
+async function insertAuditEntry(row: any, config: any, verdict: string): Promise<boolean> {
+  // Check if already audited
+  const { data: exists } = await supabase
+    .from('mention_audit_log')
+    .select('id')
+    .eq('mention_id', row.id)
+    .limit(1)
+  if (exists && exists.length > 0) return false
+
+  const place = (row as any).places
+  let relevanceBreakdown = null
+  let penaltyFlags: string[] = []
+  try {
+    const addrParts = parseAddressComponents(null, place?.address || '')
+    const detailed = computePostRelevanceDetailed(
+      place?.name || '',
+      addrParts,
+      !!place?.is_common_name,
+      row.title || '',
+      row.snippet || ''
+    )
+    relevanceBreakdown = detailed.breakdown
+    penaltyFlags = detailed.penalties
+  } catch { /* ignore */ }
+
+  const { error } = await supabase.from('mention_audit_log').insert({
+    mention_id: row.id,
+    place_id: row.place_id,
+    place_name: place?.name ?? '(unknown)',
+    mention_title: row.title,
+    mention_url: row.url,
+    mention_snippet: row.snippet?.slice(0, 200),
+    relevance_score: row.relevance_score,
+    audit_verdict: verdict,
+    config_version: config.version,
+    relevance_breakdown: relevanceBreakdown,
+    penalty_flags: penaltyFlags.length > 0 ? penaltyFlags : null,
+    source_type: row.source_type || null,
+    post_date: row.post_date || null,
+  })
+  return !error
 }
 
 async function listPending(limit = 50): Promise<void> {
@@ -274,9 +325,9 @@ async function main(): Promise<void> {
   const args = process.argv.slice(2)
 
   if (args.includes('--sample')) {
-    const countIdx = args.indexOf('--count')
-    const count = countIdx >= 0 ? parseInt(args[countIdx + 1]) || 30 : 30
-    await sampleMentions(count)
+    const countIdx = args.indexOf('--random')
+    const randomCount = countIdx >= 0 ? parseInt(args[countIdx + 1]) || 10 : 10
+    await sampleMentions(randomCount)
   } else if (args.includes('--list')) {
     const limitIdx = args.indexOf('--limit')
     const limit = limitIdx >= 0 ? parseInt(args[limitIdx + 1]) || 50 : 50
@@ -325,7 +376,7 @@ async function main(): Promise<void> {
 Mention Audit CLI
 
 Commands:
-  --sample [--count N]          Stratified sampling (default: 30)
+  --sample [--random N]         New (전수) + existing random (default: 10)
   --list [--limit N]            Pending audit entries
   --summary                     Statistics
   --correct <audit_id> [--note] Mark as correct match

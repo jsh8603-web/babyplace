@@ -261,7 +261,7 @@ export function computePostRelevanceDetailed(
 
   if (genericSuffix) {
     if (!hasDongMatch && !hasRoadMatch) {
-      bd.penalty_generic_suffix += -0.15; score -= 0.15; penalties.push('generic_suffix_no_addr')
+      bd.penalty_generic_suffix += -0.30; score -= 0.30; penalties.push('generic_suffix_no_addr')
     }
     if (isLandmarkRef) {
       bd.penalty_generic_suffix += -0.20; score -= 0.20; penalties.push('generic_suffix_landmark')
