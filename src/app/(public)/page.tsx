@@ -49,6 +49,35 @@ type SnapPoint = number | string
 const DEFAULT_SNAP: SnapPoint = 0.12
 const LIST_SNAP: SnapPoint = 0.5
 
+const SESSION_KEY = 'babyplace_home_state'
+
+interface SavedHomeState {
+  selectedPlace: Place | null
+  mapCenter: { lat: number; lng: number } | null
+  mapZoom: number | null
+  snapPoint: SnapPoint
+}
+
+function saveHomeState(state: SavedHomeState) {
+  try {
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(state))
+  } catch { /* quota exceeded etc */ }
+}
+
+function loadHomeState(): SavedHomeState | null {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY)
+    if (!raw) return null
+    return JSON.parse(raw) as SavedHomeState
+  } catch {
+    return null
+  }
+}
+
+function clearHomeState() {
+  try { sessionStorage.removeItem(SESSION_KEY) } catch { /* */ }
+}
+
 async function fetchPlaces(
   bounds: MapBounds,
   filters: FilterState,
@@ -99,15 +128,19 @@ export default function HomePage() {
   const isAdmin = useAdmin()
   const queryClient = useQueryClient()
   const router = useRouter()
+
+  // Restore state from sessionStorage on mount
+  const [savedState] = useState<SavedHomeState | null>(() => {
+    if (typeof window === 'undefined') return null
+    const state = loadHomeState()
+    clearHomeState() // one-time restore
+    return state
+  })
+
   const [mapBounds, setMapBounds] = useState<MapBounds | null>(null)
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number } | null>(null)
-  const [selectedPlace, setSelectedPlace] = useState<Place | null>(null)
-  // Read ?selected= from URL on mount (client-only)
-  const [selectedIdFromUrl] = useState<string | null>(() => {
-    if (typeof window === 'undefined') return null
-    return new URLSearchParams(window.location.search).get('selected')
-  })
+  const [selectedPlace, setSelectedPlace] = useState<Place | null>(savedState?.selectedPlace ?? null)
   const [searchQuery, setSearchQuery] = useState('')
   const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [isEmergencyOpen, setIsEmergencyOpen] = useState(false)
@@ -121,21 +154,30 @@ export default function HomePage() {
   })
   const [hiddenPlaceIds, setHiddenPlaceIds] = useState<Set<number>>(new Set())
   const [hiddenEventIds, setHiddenEventIds] = useState<Set<number>>(new Set())
-  const [snapPoint, setSnapPoint] = useState<SnapPoint>(DEFAULT_SNAP)
+  const [snapPoint, setSnapPoint] = useState<SnapPoint>(savedState?.snapPoint ?? DEFAULT_SNAP)
   const listScrollRef = useRef<HTMLDivElement>(null)
   const pointerDownRef = useRef<{ x: number; y: number } | null>(null)
+  // Track current map center/zoom for saving
+  const mapStateRef = useRef<{ center: { lat: number; lng: number } | null; zoom: number | null }>({
+    center: savedState?.mapCenter ?? null,
+    zoom: savedState?.mapZoom ?? null,
+  })
 
-  // Sync selectedPlace ↔ URL ?selected= param
-  const selectPlace = useCallback((place: Place | null) => {
-    setSelectedPlace(place)
-    const url = new URL(window.location.href)
-    if (place) {
-      url.searchParams.set('selected', String(place.id))
-    } else {
-      url.searchParams.delete('selected')
-    }
-    window.history.replaceState(null, '', url.toString())
-  }, [])
+  // Restored initial map position from session (used only on mount)
+  const restoredCenter = savedState?.mapCenter ?? undefined
+  const restoredZoom = savedState?.mapZoom ?? undefined
+
+  // Navigate to detail page, saving state for back-navigation
+  const navigateToDetail = useCallback((path: string) => {
+    const map = mapStateRef.current
+    saveHomeState({
+      selectedPlace,
+      mapCenter: map.center,
+      mapZoom: map.zoom,
+      snapPoint,
+    })
+    router.push(path)
+  }, [selectedPlace, snapPoint, router])
 
   // Fetch places when map bounds change
   const {
@@ -157,18 +199,6 @@ export default function HomePage() {
     enabled: !!mapBounds,
     staleTime: 30_000,
   })
-
-  // Restore selected place from URL param after places load
-  useEffect(() => {
-    if (!selectedIdFromUrl || selectedPlace) return
-    const id = parseInt(selectedIdFromUrl, 10)
-    if (isNaN(id)) return
-    const found = placesData?.places?.find((p) => p.id === id)
-    if (found) {
-      setSelectedPlace(found)
-      setSnapPoint(LIST_SNAP)
-    }
-  }, [selectedIdFromUrl, selectedPlace, placesData?.places])
 
   // Fetch running events
   const { data: eventsData, isLoading: isEventsLoading } = useQuery({
@@ -245,14 +275,22 @@ export default function HomePage() {
 
   const handleBoundsChanged = useCallback((bounds: MapBounds) => {
     setMapBounds(bounds)
+    // Track center/zoom for saving later
+    mapStateRef.current = {
+      center: {
+        lat: (bounds.swLat + bounds.neLat) / 2,
+        lng: (bounds.swLng + bounds.neLng) / 2,
+      },
+      zoom: bounds.zoom,
+    }
   }, [])
 
   const handlePlaceClick = useCallback((place: Place) => {
-    selectPlace(place)
+    setSelectedPlace(place)
     setSnapPoint(LIST_SNAP)
     // Scroll list to top on map marker click
     listScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
-  }, [selectPlace])
+  }, [])
 
   const handleGetLocation = () => {
     if (!navigator.geolocation) return
@@ -261,7 +299,7 @@ export default function HomePage() {
         const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude }
         setUserLocation(loc)
         setMapCenter(loc)
-        selectPlace(null)
+        setSelectedPlace(null)
       },
       () => {
         // Fallback: Seoul city hall
@@ -333,8 +371,10 @@ export default function HomePage() {
           selectedPlaceId={selectedPlace?.id}
           onBoundsChanged={handleBoundsChanged}
           onPlaceClick={handlePlaceClick}
-          onMapClick={useCallback(() => selectPlace(null), [selectPlace])}
+          onMapClick={useCallback(() => setSelectedPlace(null), [])}
           center={mapCenter}
+          initialCenter={restoredCenter ?? undefined}
+          initialZoom={restoredZoom ?? undefined}
         />
       </div>
 
@@ -479,7 +519,7 @@ export default function HomePage() {
               </span>
               {selectedPlace && (
                 <button
-                  onClick={() => selectPlace(null)}
+                  onClick={() => setSelectedPlace(null)}
                   className="text-[12px] text-coral-500 font-medium min-h-[36px] px-2"
                 >
                   전체보기
@@ -514,7 +554,7 @@ export default function HomePage() {
                 // Ignore drags/scrolls
                 const down = pointerDownRef.current
                 if (down && (Math.abs(e.clientX - down.x) > 5 || Math.abs(e.clientY - down.y) > 5)) return
-                selectPlace(null)
+                setSelectedPlace(null)
               }}
             >
               {isPlacesLoading ? (
@@ -548,7 +588,7 @@ export default function HomePage() {
                       isSelected={true}
                       label="현재장소"
                       onClick={(p) => {
-                        router.push(`/place/${p.id}`)
+                        navigateToDetail(`/place/${p.id}`)
                       }}
                       onHide={handleHidePlace}
                     />
@@ -560,8 +600,7 @@ export default function HomePage() {
                       place={place}
                       distance={'_distFromSelected' in place ? (place as Place & { _distFromSelected: number })._distFromSelected : undefined}
                       onClick={(p) => {
-                        selectPlace(p)
-                        router.push(`/place/${p.id}`)
+                        navigateToDetail(`/place/${p.id}`)
                       }}
                       onHide={handleHidePlace}
                     />
@@ -616,7 +655,7 @@ export default function HomePage() {
                     distance={event._dist}
                     isAdmin={isAdmin}
                     onClick={(e) => {
-                      router.push(`/event/${e.id}`)
+                      navigateToDetail(`/event/${e.id}`)
                     }}
                     onHide={handleHideEvent}
                     onPosterHide={isAdmin ? handlePosterHide : undefined}
