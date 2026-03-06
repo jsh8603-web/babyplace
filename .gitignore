@@ -42,4 +42,8 @@ next-env.d.ts
 # claude
 .claude/
 
+# test outputs
+test-output/
+testsprite_tests/
+
 .vercel
