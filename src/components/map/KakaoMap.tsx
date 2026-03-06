@@ -163,11 +163,12 @@ export default function KakaoMap({
   useEffect(() => {
     if (!mapReady || !mapRef.current || !center) return
     const map = mapRef.current
-    map.panTo(new window.kakao.maps.LatLng(center.lat, center.lng))
-    // Zoom in to neighborhood level if currently zoomed out
-    if (map.getLevel() > 5) {
+    const needsZoom = map.getLevel() > 5
+    if (needsZoom) {
+      // setLevel before panTo — panTo animation gets interrupted by setLevel
       map.setLevel(5)
     }
+    map.panTo(new window.kakao.maps.LatLng(center.lat, center.lng))
   }, [mapReady, center?.lat, center?.lng])
 
   // Render place overlays

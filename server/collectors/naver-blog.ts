@@ -253,41 +253,55 @@ async function runReverseSearch(
   stats: PipelineBResult['reverseSearch']
 ): Promise<void> {
   // Phase 1: never-crawled places first (initial coverage)
-  const { data: uncrawled, error: err1 } = await supabaseAdmin
-    .from('places')
-    .select('id, name, road_address, address')
-    .eq('is_active', true)
-    .is('last_crawled_at', null)
-    .order('id', { ascending: true })
-    .limit(REVERSE_SEARCH_BATCH)
+  // Supabase free tier limits to 1000 rows per query — paginate to reach REVERSE_SEARCH_BATCH
+  const uncrawledPlaces: Array<{ id: number; name: string; road_address: string | null; address: string | null }> = []
+  const PAGE_SIZE = 1000
+  while (uncrawledPlaces.length < REVERSE_SEARCH_BATCH) {
+    const { data, error: err1 } = await supabaseAdmin
+      .from('places')
+      .select('id, name, road_address, address')
+      .eq('is_active', true)
+      .is('last_crawled_at', null)
+      .order('id', { ascending: true })
+      .range(uncrawledPlaces.length, uncrawledPlaces.length + PAGE_SIZE - 1)
 
-  if (err1) {
-    console.error('[pipeline-b] Failed to fetch uncrawled places:', err1)
-    stats.errors++
-    return
+    if (err1) {
+      console.error('[pipeline-b] Failed to fetch uncrawled places:', err1)
+      stats.errors++
+      return
+    }
+    if (!data?.length) break
+    uncrawledPlaces.push(...data)
   }
+  // Trim to batch size
+  if (uncrawledPlaces.length > REVERSE_SEARCH_BATCH) uncrawledPlaces.length = REVERSE_SEARCH_BATCH
 
-  const uncrawledPlaces = uncrawled ?? []
   const remaining = REVERSE_SEARCH_BATCH - uncrawledPlaces.length
 
   // Phase 2: already-crawled places, oldest crawl first (round-robin)
   // Removes popularity bias — all places get equal crawl frequency
   let popularPlaces: Array<{ id: number; name: string; road_address: string | null; address: string | null }> = []
   if (remaining > 0) {
-    const { data, error: err2 } = await supabaseAdmin
-      .from('places')
-      .select('id, name, road_address, address')
-      .eq('is_active', true)
-      .not('last_crawled_at', 'is', null)
-      .order('last_crawled_at', { ascending: true })
-      .limit(remaining)
+    const tempPopular: typeof popularPlaces = []
+    while (tempPopular.length < remaining) {
+      const { data, error: err2 } = await supabaseAdmin
+        .from('places')
+        .select('id, name, road_address, address')
+        .eq('is_active', true)
+        .not('last_crawled_at', 'is', null)
+        .order('last_crawled_at', { ascending: true })
+        .range(tempPopular.length, tempPopular.length + PAGE_SIZE - 1)
 
-    if (err2) {
-      console.error('[pipeline-b] Failed to fetch popular places:', err2)
-      stats.errors++
-    } else {
-      popularPlaces = data ?? []
+      if (err2) {
+        console.error('[pipeline-b] Failed to fetch popular places:', err2)
+        stats.errors++
+        break
+      }
+      if (!data?.length) break
+      tempPopular.push(...data)
     }
+    if (tempPopular.length > remaining) tempPopular.length = remaining
+    popularPlaces = tempPopular
   }
 
   const allPlaces = [...uncrawledPlaces, ...popularPlaces]
@@ -650,9 +664,30 @@ function hasCompetingServiceAreaCity(
   return false
 }
 
+// Short terms (<=2 chars) that commonly appear as substrings of valid compound words
+// (e.g. "카페" in "키즈카페", "전시" in "전시회") need word-boundary matching.
+// Longer terms (>=3 chars) are specific enough for substring matching.
+const SHORT_TERM_THRESHOLD = 2
+const KOREAN_CHAR_RE = /[\uAC00-\uD7AF]/
+
+function matchesAsStandaloneWord(text: string, term: string): boolean {
+  if (term.length > SHORT_TERM_THRESHOLD) return text.includes(term)
+  // For short terms: standalone = no Korean char immediately before AND after
+  // "키즈카페" → "카페" has 즈 before → compound → skip
+  // "강남 카페 추천" → "카페" has space before, space after → standalone → match
+  // "DDP 전시회" → "전시" has space before, 회 after → compound → skip
+  let idx = -1
+  while ((idx = text.indexOf(term, idx + 1)) !== -1) {
+    const before = idx > 0 ? text[idx - 1] : ''
+    const after = idx + term.length < text.length ? text[idx + term.length] : ''
+    if (!KOREAN_CHAR_RE.test(before) && !KOREAN_CHAR_RE.test(after)) return true
+  }
+  return false
+}
+
 function hasIrrelevantContentSignals(text: string): boolean {
   if (IRRELEVANT_CONTENT_TERMS.some((t) => text.includes(t))) return true
-  if (dynamicBlacklistTerms.some((t) => text.includes(t))) return true
+  if (dynamicBlacklistTerms.some((t) => matchesAsStandaloneWord(text, t))) return true
   return false
 }
 
