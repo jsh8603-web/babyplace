@@ -274,35 +274,54 @@ async function compareRounds(): Promise<void> {
 }
 
 async function runFull(): Promise<void> {
-  console.log('[audit-all] Starting full audit cycle (6 types)\n')
+  console.log('[audit-all] Starting integrated full audit pipeline\n')
 
   const { execSync } = await import('child_process')
   const env = { ...process.env }
-
-  const audits = [
-    { name: 'poster', cmd: 'server/scripts/poster-audit.ts --summary' },
-    { name: 'mention', cmd: 'server/scripts/mention-audit.ts --sample --count 30' },
-    { name: 'classification', cmd: 'server/scripts/classification-audit.ts --sample-included --count 20' },
-    { name: 'place', cmd: 'server/scripts/place-accuracy-audit.ts --sample --count 15' },
-    { name: 'event-dedup', cmd: 'server/scripts/event-dedup-audit.ts --list --limit 20' },
-    { name: 'candidate', cmd: 'server/scripts/candidate-audit.ts --sample --count 10' },
-  ]
-
-  for (const audit of audits) {
-    console.log(`\n── ${audit.name} ──────────────────────────────────`)
+  const tsx = (cmd: string, timeout = 120000) => {
     try {
-      const output = execSync(
-        `npx tsx -r dotenv/config ${audit.cmd}`,
-        { env, encoding: 'utf-8', timeout: 60000, cwd: process.cwd() }
-      )
-      console.log(output)
+      return execSync(`npx tsx -r dotenv/config ${cmd}`, { env, encoding: 'utf-8', timeout, cwd: process.cwd() })
     } catch (err: any) {
-      console.error(`[${audit.name}] Error:`, err.message?.slice(0, 200))
+      console.error(`  Error:`, err.message?.slice(0, 200))
+      return ''
     }
   }
 
-  // Final report
+  // Phase 1: Sample & Register — all new data gets audit entries
+  console.log('── Phase 1: Sample & Register ──────────────────────────')
+
+  console.log('\n[mention] Registering all new mentions + 30 random existing...')
+  console.log(tsx('server/scripts/mention-audit.ts --sample --random 30'))
+
+  console.log('[poster] Summary...')
+  console.log(tsx('server/scripts/poster-audit.ts --summary'))
+
+  console.log('[classification] Sampling included + excluded...')
+  console.log(tsx('server/scripts/classification-audit.ts --sample-included --count 20'))
+  console.log(tsx('server/scripts/classification-audit.ts --sample-excluded --count 10'))
+
+  console.log('[place] Sampling...')
+  console.log(tsx('server/scripts/place-accuracy-audit.ts --sample --count 15'))
+
+  console.log('[event-dedup] Listing...')
+  console.log(tsx('server/scripts/event-dedup-audit.ts --list --limit 20'))
+
+  console.log('[candidate] Sampling...')
+  console.log(tsx('server/scripts/candidate-audit.ts --sample --count 10'))
+
+  // Phase 2: Automated Judging — bulk-judge + vision-check
+  console.log('\n── Phase 2: Automated Judging ──────────────────────────')
+
+  console.log('\n[mention] Running bulk-judge on all pending...')
+  console.log(tsx('server/scripts/mention-audit.ts --bulk-judge', 300000))
+
+  console.log('[poster] Running vision-check on UPDATED posters...')
+  console.log(tsx('server/scripts/poster-audit.ts --vision-check --limit 20', 180000))
+
+  // Phase 3: Report
+  console.log('\n── Phase 3: Report ────────────────────────────────────')
   await runReport()
+  await runAnalysis()
 }
 
 async function runQuick(): Promise<void> {
@@ -453,6 +472,150 @@ async function compareWithConfig(): Promise<void> {
   }
 }
 
+// #13: Automated 4th-stage analysis — systemic quality insights
+async function runAnalysis(): Promise<void> {
+  console.log('\n=== Automated Analysis (#13) ===\n')
+
+  // 1. Penalty flags distribution (mention)
+  console.log('--- Mention Penalty Flags Distribution ---')
+  const BATCH = 1000
+  let cursor = 0
+  const flagDist: Record<string, number> = {}
+  let totalWithFlags = 0
+  let totalNull = 0
+
+  while (true) {
+    const { data, error } = await supabase
+      .from('mention_audit_log')
+      .select('id, penalty_flags')
+      .order('id', { ascending: true })
+      .gt('id', cursor)
+      .limit(BATCH)
+    if (error || !data || data.length === 0) break
+    for (const row of data) {
+      cursor = row.id
+      const flags = (row.penalty_flags || []) as string[]
+      if (flags.length === 0) { totalNull++; continue }
+      totalWithFlags++
+      for (const f of flags) flagDist[f] = (flagDist[f] || 0) + 1
+    }
+    if (data.length < BATCH) break
+  }
+
+  console.log(`  Total with flags: ${totalWithFlags}, without: ${totalNull}`)
+  const sortedFlags = Object.entries(flagDist).sort((a, b) => b[1] - a[1])
+  for (const [flag, cnt] of sortedFlags.slice(0, 10)) {
+    const pct = totalWithFlags > 0 ? Math.round(cnt / totalWithFlags * 100) : 0
+    console.log(`  ${flag}: ${cnt} (${pct}%)`)
+  }
+
+  // 2. Mention coverage
+  console.log('\n--- Mention Audit Coverage ---')
+  const { count: totalMentions } = await supabase
+    .from('blog_mentions')
+    .select('id', { count: 'exact', head: true })
+  const { count: auditedMentions } = await supabase
+    .from('mention_audit_log')
+    .select('id', { count: 'exact', head: true })
+  const coverage = totalMentions && totalMentions > 0
+    ? Math.round((auditedMentions ?? 0) / totalMentions * 100)
+    : 0
+  console.log(`  Total mentions: ${totalMentions ?? 0}`)
+  console.log(`  Audited: ${auditedMentions ?? 0} (${coverage}%)`)
+
+  // 3. Place audit coverage
+  const { count: totalPlaces } = await supabase
+    .from('places')
+    .select('id', { count: 'exact', head: true })
+    .eq('is_active', true)
+  const { count: auditedPlaces } = await supabase
+    .from('place_accuracy_audit_log')
+    .select('id', { count: 'exact', head: true })
+  const placeCoverage = totalPlaces && totalPlaces > 0
+    ? Math.round((auditedPlaces ?? 0) / totalPlaces * 100)
+    : 0
+  console.log(`\n--- Place Audit Coverage ---`)
+  console.log(`  Active places: ${totalPlaces ?? 0}`)
+  console.log(`  Audited: ${auditedPlaces ?? 0} (${placeCoverage}%)`)
+
+  // 4. Vision check usage
+  console.log('\n--- Poster Vision Check Usage ---')
+  const { count: visionApproved } = await supabase
+    .from('poster_audit_log')
+    .select('id', { count: 'exact', head: true })
+    .like('audit_notes', 'vision:%')
+    .eq('audit_status', 'approved')
+  const { count: visionRejected } = await supabase
+    .from('poster_audit_log')
+    .select('id', { count: 'exact', head: true })
+    .like('audit_notes', 'vision:%')
+    .eq('audit_status', 'rejected')
+  console.log(`  Vision approved: ${visionApproved ?? 0}`)
+  console.log(`  Vision rejected: ${visionRejected ?? 0}`)
+  console.log(`  Total vision-checked: ${(visionApproved ?? 0) + (visionRejected ?? 0)}`)
+
+  // 5. Score accuracy check — how many audit_log scores diverge from blog_mentions
+  console.log('\n--- Score Divergence (audit_log vs blog_mentions) ---')
+  let divergeCount = 0
+  let checkCount = 0
+  let scoreCursor = Number.MAX_SAFE_INTEGER
+  while (checkCount < 500) {
+    const { data, error } = await supabase
+      .from('mention_audit_log')
+      .select('id, mention_id, relevance_score')
+      .lt('id', scoreCursor)
+      .order('id', { ascending: false })
+      .limit(200)
+    if (error || !data || data.length === 0) break
+    scoreCursor = data[data.length - 1].id
+
+    const ids = data.map(r => r.mention_id)
+    const { data: mentions } = await supabase
+      .from('blog_mentions')
+      .select('id, relevance_score')
+      .in('id', ids)
+    const currentMap = new Map<number, number>()
+    for (const m of mentions || []) currentMap.set(m.id, m.relevance_score ?? 0)
+
+    for (const row of data) {
+      checkCount++
+      const current = currentMap.get(row.mention_id)
+      if (current !== undefined && Math.abs(current - (row.relevance_score ?? 0)) > 0.05) {
+        divergeCount++
+      }
+    }
+    if (data.length < 200) break
+  }
+  const divergePct = checkCount > 0 ? Math.round(divergeCount / checkCount * 100) : 0
+  console.log(`  Checked: ${checkCount}, diverged (>0.05): ${divergeCount} (${divergePct}%)`)
+
+  // 6. Category-level accuracy (place)
+  console.log('\n--- Place Category Accuracy ---')
+  const { data: catData } = await supabase
+    .from('place_accuracy_audit_log')
+    .select('category, audit_status')
+    .in('audit_status', ['approved', 'rejected'])
+
+  if (catData && catData.length > 0) {
+    const catStats: Record<string, { approved: number; rejected: number }> = {}
+    for (const r of catData) {
+      const cat = r.category || 'unknown'
+      if (!catStats[cat]) catStats[cat] = { approved: 0, rejected: 0 }
+      catStats[cat][r.audit_status as 'approved' | 'rejected']++
+    }
+    const sortedCats = Object.entries(catStats).sort((a, b) => (b[1].rejected / (b[1].approved + b[1].rejected)) - (a[1].rejected / (a[1].approved + a[1].rejected)))
+    for (const [cat, stats] of sortedCats) {
+      const total = stats.approved + stats.rejected
+      if (total < 3) continue
+      const rate = Math.round(stats.rejected / total * 100)
+      const warn = rate > 30 ? ' ⚠' : ''
+      console.log(`  ${cat}: ${rate}% rejected (${stats.rejected}/${total})${warn}`)
+    }
+  }
+
+  console.log('')
+}
+
 // ─── CLI Parser ──────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
@@ -466,6 +629,8 @@ async function main(): Promise<void> {
     await saveSnapshot('quick')
   } else if (args.includes('--report')) {
     await runReport()
+  } else if (args.includes('--analysis')) {
+    await runAnalysis()
   } else if (args.includes('--compare')) {
     await compareWithConfig()
   } else if (args.includes('--snapshot')) {
@@ -477,9 +642,10 @@ async function main(): Promise<void> {
 Audit Orchestrator CLI
 
 Commands:
-  --full      Run all 6 audit types (sample + report) + save snapshot
+  --full      Integrated pipeline: sample → bulk-judge → vision-check → report + snapshot
   --quick     Poster + mention only (daily check) + save snapshot
   --report    Summary report + cross-audit quality signals + source dashboard
+  --analysis  Automated 4th-stage analysis (penalty distribution, coverage, divergence)
   --compare   Round-over-round change tracking + config version changes
   --snapshot  Save audit metadata snapshot manually
 `)
