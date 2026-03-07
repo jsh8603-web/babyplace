@@ -309,11 +309,11 @@ async function evaluateCandidate(candidate: CandidateRow): Promise<boolean> {
     place_name: kakaoResult.kakaoName!,
     place_category: category,
     source_count: candidate.source_count,
-    kakao_similarity: candidate.kakao_best_score ?? null,
+    kakao_similarity: kakaoResult.similarityScore ?? null,
     promotion_reason: hasPublicData ? 'public_data' : 'multi_blog',
     source_urls: sourceUrls,
     kakao_name: kakaoResult.kakaoName ?? null,
-    kakao_address: kakaoResult.kakaoAddr ?? null,
+    kakao_address: kakaoResult.address ?? null,
   }).then(({ error: auditErr }) => {
     if (auditErr) console.error('[auto-promote] Audit log error:', auditErr.message)
   })

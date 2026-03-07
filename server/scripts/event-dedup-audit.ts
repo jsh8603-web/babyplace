@@ -101,6 +101,42 @@ async function missedDupes(count = 10): Promise<void> {
   console.log(`Found ${sampled} potential missed duplicates (similarity 0.6~0.8, cross-source)`)
 }
 
+async function flagLowSimilarity(threshold = 0.75): Promise<void> {
+  // Flag existing merges with low similarity for manual review
+  const { data, error } = await supabase
+    .from('event_dedup_audit_log')
+    .select('id, kept_event_name, removed_event_name, similarity_score, match_reason')
+    .eq('audit_status', 'pending')
+    .lt('similarity_score', threshold)
+    .neq('match_reason', 'missed_scan')
+    .order('similarity_score', { ascending: true })
+
+  if (error) { console.error('Error:', error.message); return }
+  if (!data || data.length === 0) {
+    console.log(`No low-similarity merges found below ${threshold}`)
+    return
+  }
+
+  console.log(`\n=== Low-Similarity Merges (< ${threshold}) — ${data.length}건 ===\n`)
+
+  for (const row of data) {
+    console.log(`  audit_id=${row.id} sim=${row.similarity_score?.toFixed(3)} (${row.match_reason})`)
+    console.log(`    Kept: "${row.kept_event_name}"`)
+    console.log(`    Removed: "${row.removed_event_name}"`)
+    console.log('')
+  }
+
+  // Auto-flag these for review
+  const ids = data.map(r => r.id)
+  const { error: updateErr } = await supabase
+    .from('event_dedup_audit_log')
+    .update({ audit_status: 'flagged', audit_notes: `low_similarity < ${threshold}` })
+    .in('id', ids)
+
+  if (updateErr) console.error('Error flagging:', updateErr.message)
+  else console.log(`Flagged ${ids.length} low-similarity merges for review`)
+}
+
 async function showSummary(): Promise<void> {
   const statusCounts: Record<string, number> = {}
   for (const status of ['pending', 'approved', 'rejected']) {
@@ -167,6 +203,10 @@ async function main(): Promise<void> {
     const countIdx = args.indexOf('--count')
     const count = countIdx >= 0 ? parseInt(args[countIdx + 1]) || 10 : 10
     await missedDupes(count)
+  } else if (args.includes('--flag-low-sim')) {
+    const threshIdx = args.indexOf('--threshold')
+    const threshold = threshIdx >= 0 ? parseFloat(args[threshIdx + 1]) || 0.75 : 0.75
+    await flagLowSimilarity(threshold)
   } else if (args.includes('--summary')) {
     await showSummary()
   } else if (args.includes('--correct')) {
@@ -193,6 +233,7 @@ Event Dedup Audit CLI
 Commands:
   --list [--limit N]           Pending merge records
   --missed-dupes [--count N]   Scan for missed duplicates (sim 0.6~0.8)
+  --flag-low-sim [--threshold] Flag low-similarity merges for review (default: 0.75)
   --summary                    Statistics
   --correct <audit_id>         Confirm correct merge
   --false-merge <audit_id>     Mark as false merge [--note]

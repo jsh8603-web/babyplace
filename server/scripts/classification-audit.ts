@@ -82,7 +82,48 @@ async function sampleIncluded(count = 20): Promise<void> {
 async function sampleExcluded(count = 20): Promise<void> {
   const config = loadConfig()
 
-  // Sample expired events (excluded — past events for false negative check)
+  // Sample events from excluded_events table (events that were filtered out by classifier)
+  const { data: excludedData, error: excludedErr } = await supabase
+    .from('excluded_events')
+    .select('id, name, source, use_target, classifier_step, matched_pattern')
+    .order('created_at', { ascending: false })
+    .limit(count * 2)
+
+  if (!excludedErr && excludedData && excludedData.length > 0) {
+    const eventIds = excludedData.map((d: any) => d.id)
+    const { data: existing } = await supabase
+      .from('classification_audit_log')
+      .select('event_id')
+      .in('event_id', eventIds)
+
+    const existingSet = new Set((existing || []).map((a: any) => a.event_id))
+
+    let sampled = 0
+    for (const ev of excludedData) {
+      if (existingSet.has(ev.id)) continue
+      if (sampled >= count) break
+
+      const { error: insertErr } = await supabase.from('classification_audit_log').insert({
+        event_id: ev.id,
+        event_name: ev.name,
+        event_source: ev.source,
+        use_target: ev.use_target,
+        classifier_step: ev.classifier_step || 'unknown',
+        classifier_decision: 'excluded',
+        prompt_version: config.version,
+        matched_pattern: ev.matched_pattern || null,
+      })
+
+      if (!insertErr) sampled++
+    }
+
+    if (sampled > 0) {
+      console.log(`Sampled ${sampled} excluded events from excluded_events table`)
+      return
+    }
+  }
+
+  // Fallback: sample expired events from events table
   const today = new Date().toISOString().split('T')[0]
   const { data, error } = await supabase
     .from('events')

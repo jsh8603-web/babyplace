@@ -35,7 +35,7 @@ function loadConfig() {
 
 async function sampleMentions(randomCount = 10): Promise<void> {
   const config = loadConfig()
-  const SELECT = 'id, place_id, title, url, snippet, relevance_score, source_type, post_date, places!inner(id, name, address)'
+  const SELECT = 'id, place_id, title, url, snippet, relevance_score, source_type, post_date, places!inner(id, name, address, is_common_name)'
 
   // Find the highest mention_id already audited — everything above is "new"
   const { data: maxRow } = await supabase
@@ -158,9 +158,11 @@ function buildAuditEntry(row: any, config: any, verdict: string): any | null {
     const detailed = computePostRelevanceDetailed(
       place?.name || '',
       addrParts,
-      false, // is_common_name not tracked in DB
+      place?.is_common_name ?? false,
       row.title || '',
-      row.snippet || ''
+      row.snippet || '',
+      [],
+      row.post_date || null
     )
     relevanceBreakdown = detailed.breakdown
     penaltyFlags = detailed.penalties
@@ -180,6 +182,7 @@ function buildAuditEntry(row: any, config: any, verdict: string): any | null {
     penalty_flags: penaltyFlags.length > 0 ? penaltyFlags : null,
     source_type: row.source_type || null,
     post_date: row.post_date || null,
+    blog_url: row.url || null,
   }
 }
 
@@ -350,12 +353,319 @@ function showConfig(): void {
   console.log('')
 }
 
+async function bulkJudge(): Promise<void> {
+  // Auto-judge pending entries using documented criteria:
+  // 1. name_title + score >= 0.45 → approve (correct)
+  // 2. name_snippet (no name_title) + score >= 0.5 → approve (correct)
+  // 3. name_absent_cap penalty (no name match) → reject (wrong_match) + exclude
+  // 4. generic_suffix penalty + no name_title + score < 0.5 → reject (wrong_match) + exclude
+  // 5. Everything else → flag (borderline)
+
+  const BATCH = 500
+  let cursor = 0
+  let approved = 0, rejected = 0, flagged = 0, excludedIds: number[] = []
+
+  while (true) {
+    const { data, error } = await supabase
+      .from('mention_audit_log')
+      .select('id, mention_id, relevance_score, relevance_breakdown, penalty_flags')
+      .eq('audit_status', 'pending')
+      .order('id', { ascending: true })
+      .gt('id', cursor)
+      .limit(BATCH)
+
+    if (error) { console.error('Error:', error.message); break }
+    if (!data || data.length === 0) break
+
+    const approveRows: number[] = []
+    const rejectRows: number[] = []
+    const flagRows: number[] = []
+
+    for (const row of data) {
+      cursor = row.id
+      const bd = (row.relevance_breakdown || {}) as Record<string, number>
+      const penalties = (row.penalty_flags || []) as string[]
+      const score = row.relevance_score ?? 0
+      const hasNameTitle = (bd.name_title ?? 0) > 0
+      const hasNameSnippet = (bd.name_snippet ?? 0) > 0
+      const hasNameAbsentCap = penalties.includes('name_absent_cap')
+      const hasGenericSuffix = (bd.penalty_generic_suffix ?? 0) < 0
+
+      const hasChainMismatch = penalties.includes('chain_region_mismatch')
+      const hasCompetingBranch = penalties.includes('competing_branch')
+      const hasCompetingLocation = penalties.includes('competing_location')
+      const hasStalePost = penalties.includes('stale_post_3y')
+
+      if (hasNameAbsentCap && !hasNameTitle) {
+        rejectRows.push(row.id)
+        excludedIds.push(row.mention_id)
+      } else if (hasGenericSuffix && !hasNameTitle && score < 0.5) {
+        rejectRows.push(row.id)
+        excludedIds.push(row.mention_id)
+      } else if (hasChainMismatch || hasCompetingLocation) {
+        // #1/#10: chain/region mismatch → reject regardless of name match
+        rejectRows.push(row.id)
+        excludedIds.push(row.mention_id)
+      } else if (hasNameTitle && score >= 0.45) {
+        approveRows.push(row.id)
+      } else if (hasNameSnippet && !hasNameTitle && score >= 0.5) {
+        approveRows.push(row.id)
+      } else {
+        flagRows.push(row.id)
+      }
+    }
+
+    // Batch updates
+    if (approveRows.length > 0) {
+      await supabase.from('mention_audit_log').update({ audit_status: 'approved', audit_verdict: 'correct', audit_notes: 'bulk-judge: name match' }).in('id', approveRows)
+      approved += approveRows.length
+    }
+    if (rejectRows.length > 0) {
+      await supabase.from('mention_audit_log').update({ audit_status: 'rejected', audit_verdict: 'wrong_match', audit_notes: 'bulk-judge: no name match' }).in('id', rejectRows)
+      rejected += rejectRows.length
+    }
+    if (flagRows.length > 0) {
+      await supabase.from('mention_audit_log').update({ audit_status: 'flagged', audit_verdict: 'borderline', audit_notes: 'bulk-judge: uncertain' }).in('id', flagRows)
+      flagged += flagRows.length
+    }
+
+    if (data.length < BATCH) break
+  }
+
+  // Exclude rejected mentions (score=0 + lock)
+  if (excludedIds.length > 0) {
+    const EXCL_BATCH = 200
+    for (let i = 0; i < excludedIds.length; i += EXCL_BATCH) {
+      const batch = excludedIds.slice(i, i + EXCL_BATCH)
+      await supabase.from('blog_mentions').update({ relevance_score: 0, mention_locked: true }).in('id', batch)
+    }
+  }
+
+  console.log(`\nBulk judge complete:`)
+  console.log(`  Approved (correct): ${approved}`)
+  console.log(`  Rejected (wrong_match): ${rejected} (${excludedIds.length} mentions excluded)`)
+  console.log(`  Flagged (borderline): ${flagged}`)
+  console.log(`  Total: ${approved + rejected + flagged}`)
+}
+
+// ─── #2: Analyze flagged mentions — penalty_flags distribution ────────────────
+
+async function analyzeFlagged(): Promise<void> {
+  const BATCH = 500
+  let cursor = 0
+  const flagCounts: Record<string, number> = {}
+  const scoreBuckets: Record<string, number> = { 'low(<0.4)': 0, 'border(0.4-0.5)': 0, 'mid(0.5-0.7)': 0, 'high(≥0.7)': 0 }
+  let total = 0
+
+  while (true) {
+    const { data, error } = await supabase
+      .from('mention_audit_log')
+      .select('id, relevance_score, penalty_flags, relevance_breakdown')
+      .eq('audit_status', 'flagged')
+      .order('id', { ascending: true })
+      .gt('id', cursor)
+      .limit(BATCH)
+
+    if (error) { console.error('Error:', error.message); break }
+    if (!data || data.length === 0) break
+
+    for (const row of data) {
+      cursor = row.id
+      total++
+      const score = row.relevance_score ?? 0
+      if (score >= 0.7) scoreBuckets['high(≥0.7)']++
+      else if (score >= 0.5) scoreBuckets['mid(0.5-0.7)']++
+      else if (score >= 0.4) scoreBuckets['border(0.4-0.5)']++
+      else scoreBuckets['low(<0.4)']++
+
+      const penalties = (row.penalty_flags || []) as string[]
+      for (const p of penalties) {
+        flagCounts[p] = (flagCounts[p] || 0) + 1
+      }
+      if (penalties.length === 0) {
+        flagCounts['(no_penalty)'] = (flagCounts['(no_penalty)'] || 0) + 1
+      }
+    }
+
+    if (data.length < BATCH) break
+  }
+
+  console.log(`\n=== Flagged Mention Analysis (${total}건) ===\n`)
+
+  console.log('Score distribution:')
+  for (const [bucket, cnt] of Object.entries(scoreBuckets)) {
+    const pct = total > 0 ? Math.round(cnt / total * 100) : 0
+    console.log(`  ${bucket}: ${cnt} (${pct}%)`)
+  }
+
+  console.log('\nPenalty flag distribution:')
+  const sorted = Object.entries(flagCounts).sort((a, b) => b[1] - a[1])
+  for (const [flag, cnt] of sorted) {
+    const pct = total > 0 ? Math.round(cnt / total * 100) : 0
+    console.log(`  ${flag}: ${cnt} (${pct}%)`)
+  }
+
+  // Suggest rules for most common patterns
+  console.log('\nSuggested auto-rules:')
+  for (const [flag, cnt] of sorted.slice(0, 5)) {
+    if (cnt > total * 0.1) {
+      console.log(`  ${flag} (${cnt}건) → Consider adding to bulkJudge reject/approve rules`)
+    }
+  }
+  console.log('')
+}
+
+// ─── #4: Verify blog content — check if place name actually appears ──────────
+
+async function verifyMention(auditId: number): Promise<void> {
+  const { data: audit } = await supabase
+    .from('mention_audit_log')
+    .select('id, mention_id, place_name, blog_url, mention_title, relevance_score')
+    .eq('id', auditId)
+    .maybeSingle()
+
+  if (!audit) { console.error(`Audit #${auditId} not found`); return }
+  if (!audit.blog_url) { console.log(`Audit #${auditId} has no blog_url`); return }
+
+  console.log(`\nVerifying audit #${auditId}:`)
+  console.log(`  Place: "${audit.place_name}"`)
+  console.log(`  URL: ${audit.blog_url}`)
+  console.log(`  Score: ${audit.relevance_score}`)
+
+  try {
+    const response = await fetch(audit.blog_url, {
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+      signal: AbortSignal.timeout(10000),
+    })
+    if (!response.ok) {
+      console.log(`  ⚠ HTTP ${response.status} — cannot verify`)
+      return
+    }
+    const html = await response.text()
+    const text = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ')
+
+    // Check if place name appears in blog content
+    const placeName = audit.place_name || ''
+    const nameTokens = placeName.replace(/[^가-힣a-zA-Z0-9]/g, ' ').split(/\s+/).filter(t => t.length >= 2)
+
+    let found = 0
+    for (const token of nameTokens) {
+      if (text.includes(token)) found++
+    }
+
+    const matchRate = nameTokens.length > 0 ? found / nameTokens.length : 0
+    if (matchRate >= 0.5) {
+      console.log(`  ✓ Place name found in blog (${found}/${nameTokens.length} tokens matched)`)
+    } else {
+      console.log(`  ✗ Place name NOT found in blog (${found}/${nameTokens.length} tokens matched)`)
+      console.log(`  → Likely false match — consider rejecting`)
+    }
+  } catch (err: any) {
+    console.log(`  ⚠ Fetch error: ${err.message}`)
+  }
+}
+
+async function verifyRandomApproved(count = 5): Promise<void> {
+  // Sample random high-score approved mentions for verification
+  const { count: total } = await supabase
+    .from('mention_audit_log')
+    .select('id', { count: 'exact', head: true })
+    .eq('audit_status', 'approved')
+    .gte('relevance_score', 0.6)
+
+  if (!total || total === 0) { console.log('No approved high-score mentions to verify'); return }
+
+  console.log(`\nVerifying ${count} random approved mentions (score ≥ 0.6)...\n`)
+
+  const offsets = new Set<number>()
+  while (offsets.size < Math.min(count * 2, total)) {
+    offsets.add(Math.floor(Math.random() * total))
+  }
+
+  let verified = 0
+  for (const offset of offsets) {
+    if (verified >= count) break
+    const { data } = await supabase
+      .from('mention_audit_log')
+      .select('id')
+      .eq('audit_status', 'approved')
+      .gte('relevance_score', 0.6)
+      .order('id', { ascending: true })
+      .range(offset, offset)
+      .limit(1)
+
+    if (data && data.length > 0) {
+      await verifyMention(data[0].id)
+      verified++
+    }
+  }
+}
+
+// ─── #7: Validate bulk judge rules — random sample check ─────────────────────
+
+async function validateBulk(count = 10): Promise<void> {
+  // Sample recent bulk-judged entries for manual verification
+  const { data, error } = await supabase
+    .from('mention_audit_log')
+    .select('id, mention_id, place_name, mention_title, mention_url, relevance_score, penalty_flags, audit_verdict, audit_notes')
+    .like('audit_notes', 'bulk-judge%')
+    .order('id', { ascending: false })
+    .limit(count * 3)
+
+  if (error) { console.error('Error:', error.message); return }
+  if (!data || data.length === 0) { console.log('No bulk-judged entries found'); return }
+
+  // Random sample
+  const shuffled = data.sort(() => Math.random() - 0.5).slice(0, count)
+
+  console.log(`\n=== Bulk Judge Validation (${shuffled.length}건) ===`)
+  console.log('Review each entry to check if the auto-judgment was correct.\n')
+
+  const ruleStats: Record<string, number> = {}
+
+  for (const row of shuffled) {
+    const rule = (row.audit_notes || '').replace('bulk-judge: ', '')
+    ruleStats[rule] = (ruleStats[rule] || 0) + 1
+
+    console.log(`[${row.audit_verdict?.toUpperCase()}] audit_id=${row.id} (rule: ${rule})`)
+    console.log(`  Place: "${row.place_name}"`)
+    console.log(`  Title: ${row.mention_title || '(none)'}`)
+    console.log(`  Score: ${row.relevance_score?.toFixed(3) ?? '?'}`)
+    if (row.penalty_flags?.length) console.log(`  Penalties: ${(row.penalty_flags as string[]).join(', ')}`)
+    console.log(`  URL: ${row.mention_url || '(none)'}`)
+    console.log('')
+  }
+
+  console.log('Rule distribution in sample:')
+  for (const [rule, cnt] of Object.entries(ruleStats).sort((a, b) => b[1] - a[1])) {
+    console.log(`  ${rule}: ${cnt}`)
+  }
+  console.log('')
+}
+
 // ─── CLI Parser ──────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2)
 
-  if (args.includes('--sample')) {
+  if (args.includes('--analyze-flagged')) {
+    await analyzeFlagged()
+  } else if (args.includes('--verify')) {
+    const idx = args.indexOf('--verify')
+    const id = parseInt(args[idx + 1])
+    if (isNaN(id)) {
+      // No specific ID — verify random approved
+      const countIdx = args.indexOf('--count')
+      const count = countIdx >= 0 ? parseInt(args[countIdx + 1]) || 5 : 5
+      await verifyRandomApproved(count)
+    } else {
+      await verifyMention(id)
+    }
+  } else if (args.includes('--validate-bulk')) {
+    const countIdx = args.indexOf('--count')
+    const count = countIdx >= 0 ? parseInt(args[countIdx + 1]) || 10 : 10
+    await validateBulk(count)
+  } else if (args.includes('--sample')) {
     const countIdx = args.indexOf('--random')
     const randomCount = countIdx >= 0 ? parseInt(args[countIdx + 1]) || 10 : 10
     await sampleMentions(randomCount)
@@ -398,6 +708,8 @@ async function main(): Promise<void> {
     const mentionId = parseInt(args[idx + 1])
     if (isNaN(mentionId)) { console.error('Usage: --exclude <mention_id>'); return }
     await excludeMention(mentionId)
+  } else if (args.includes('--bulk-judge')) {
+    await bulkJudge()
   } else if (args.includes('--patterns')) {
     await showPatterns()
   } else if (args.includes('--config')) {
@@ -415,7 +727,12 @@ Commands:
   --wrong-place <audit_id>      Mark as wrong place
   --borderline <audit_id>       Mark as borderline
   --exclude <mention_id>        Score=0 + lock (pipeline exclusion)
+  --bulk-judge                  Auto-judge pending by documented rules
   --patterns                    Analyze wrong-match patterns
+  --analyze-flagged             Penalty distribution of flagged mentions (#2)
+  --verify [<audit_id>]         Verify blog content for place name (#4)
+  --verify [--count N]          Verify N random approved (score≥0.6)
+  --validate-bulk [--count N]   Validate bulk-judge accuracy (#7)
   --config                      Show relevance config
 `)
   }

@@ -114,6 +114,14 @@ const POSTER_BLOCKED_DOMAINS = [
   'images.unsplash.com', 'page-images.kakaoentcdn.com',
   'imgnews.naver.net', 'res.klook.com', 'item.kakaocdn.net',
   'imgprism.ehyundai.com',
+  'cdn3.wadiz.kr', 'cdn.wadiz.kr',
+  'cdn.maily.so',
+  'image2.1004gundam.com', '1004gundam.com',
+  'img.gigglehd.com',
+  'bookmouse.co.kr',
+  'image6.yanolja.com', 'image.yanolja.com',
+  'contents.lotteon.com',
+  'cdn.crowdpic.net',
 ]
 
 const POSTER_TRUSTED_DOMAINS = [
@@ -666,7 +674,7 @@ export async function runHiddenPosterRecovery(): Promise<HiddenPosterRecoveryRes
     while (true) {
       const { data, error } = await supabaseAdmin
         .from('events')
-        .select('id, name, venue_name, poster_url, source, source_url, start_date, end_date')
+        .select('id, name, venue_name, poster_url, source, source_url, start_date, end_date, recovery_attempts')
         .eq('poster_hidden', true)
         .or(`end_date.gte.${today},end_date.is.null`)
         .range(offset, offset + PAGE - 1)
@@ -677,7 +685,11 @@ export async function runHiddenPosterRecovery(): Promise<HiddenPosterRecoveryRes
       offset += PAGE
     }
 
-    const eligible = hiddenEvents.filter(e => !OFFICIAL_POSTER_SOURCES.includes(e.source))
+    const MAX_RECOVERY_ATTEMPTS = 3
+    const eligible = hiddenEvents.filter(e =>
+      !OFFICIAL_POSTER_SOURCES.includes(e.source) &&
+      (e.recovery_attempts ?? 0) < MAX_RECOVERY_ATTEMPTS
+    )
     const promptConfig = loadPromptConfig()
 
     console.log(`[poster-recovery] ${eligible.length} hidden events eligible for recovery (prompt v${promptConfig.version})`)
@@ -698,6 +710,12 @@ export async function runHiddenPosterRecovery(): Promise<HiddenPosterRecoveryRes
         } else {
           result.failed++
         }
+
+        // Increment recovery_attempts counter
+        await supabaseAdmin
+          .from('events')
+          .update({ recovery_attempts: (ev.recovery_attempts ?? 0) + 1 })
+          .eq('id', ev.id)
 
         // Log to audit table — DB is NOT updated (approval required)
         await writeAuditLog({

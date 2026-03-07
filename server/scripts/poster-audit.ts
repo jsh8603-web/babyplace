@@ -12,6 +12,7 @@
 import { createClient } from '@supabase/supabase-js'
 import * as fs from 'fs'
 import * as path from 'path'
+import { verifyPosterImage } from '../utils/poster-vision'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -215,9 +216,10 @@ async function approveAudit(auditId: number): Promise<void> {
   else console.log(`Approved audit #${auditId}`)
 }
 
-async function rejectAudit(auditId: number, note?: string): Promise<void> {
+async function rejectAudit(auditId: number, note?: string, rejectionCode?: string): Promise<void> {
   const update: Record<string, string> = { audit_status: 'rejected' }
   if (note) update.audit_notes = note
+  if (rejectionCode) update.rejection_code = rejectionCode
 
   // Check if recovery — log that event stays hidden
   const { data: audit } = await supabase
@@ -286,7 +288,7 @@ function showPromptInfo(): void {
 }
 
 async function lockPoster(eventId: number, posterUrl?: string): Promise<void> {
-  const update: Record<string, any> = { poster_locked: true }
+  const update: Record<string, any> = { poster_locked: true, poster_locked_at: new Date().toISOString() }
   if (posterUrl) update.poster_url = posterUrl
 
   const { error } = await supabase
@@ -594,6 +596,158 @@ async function replaceAudit(auditId: number, posterUrl: string): Promise<void> {
   console.log(`Audit #${auditId} approved, event unhidden`)
 }
 
+// ─── #5: Vision-based poster verification ────────────────────────────────────
+
+async function visionCheck(limit = 10): Promise<void> {
+  // Check UPDATED posters using Gemini Vision
+  const { data, error } = await supabase
+    .from('poster_audit_log')
+    .select('id, event_id, event_name, after_url, audit_status')
+    .eq('action', 'updated')
+    .eq('audit_status', 'pending')
+    .not('after_url', 'is', null)
+    .order('created_at', { ascending: true })
+    .limit(limit)
+
+  if (error) { console.error('Error:', error.message); return }
+  if (!data || data.length === 0) { console.log('No pending UPDATED posters to check'); return }
+
+  console.log(`\n=== Vision Check — ${data.length} posters ===\n`)
+
+  let passed = 0, failed = 0, skipped = 0
+
+  for (const row of data) {
+    if (!row.after_url) { skipped++; continue }
+
+    // Get event dates
+    const { data: ev } = await supabase
+      .from('events')
+      .select('start_date, end_date')
+      .eq('id', row.event_id)
+      .maybeSingle()
+
+    const dateStr = ev ? `${ev.start_date || '?'} ~ ${ev.end_date || '?'}` : undefined
+
+    console.log(`#${row.event_id} "${row.event_name}"`)
+    console.log(`  URL: ${row.after_url}`)
+
+    const result = await verifyPosterImage(row.after_url, row.event_name, dateStr)
+
+    if (!result) {
+      console.log(`  ⚠ Vision check failed (API error)`)
+      skipped++
+      continue
+    }
+
+    console.log(`  Name found: ${result.eventNameFound ? '✓' : '✗'}`)
+    console.log(`  Date: ${result.dateMatch}`)
+    console.log(`  Safety: ${result.safetyIssue ? `⚠ ${result.safetyDetail}` : '✓'}`)
+    console.log(`  Confidence: ${result.confidence}`)
+    if (result.ocrText.length > 0) {
+      console.log(`  OCR: ${result.ocrText.slice(0, 3).join(', ')}`)
+    }
+
+    if (result.safetyIssue) {
+      console.log(`  → AUTO-REJECT (safety issue)`)
+      await rejectAudit(row.id, `vision: ${result.safetyDetail || 'safety issue'}`, 'SAFETY')
+      failed++
+    } else if (result.dateMatch === 'mismatch') {
+      console.log(`  → AUTO-REJECT (date mismatch)`)
+      await rejectAudit(row.id, 'vision: date mismatch', 'STALE_YEAR')
+      failed++
+    } else if (result.confidence >= 0.7 && result.eventNameFound) {
+      console.log(`  → AUTO-APPROVE (high confidence)`)
+      await approveAudit(row.id)
+      passed++
+    } else {
+      console.log(`  → NEEDS MANUAL REVIEW`)
+      skipped++
+    }
+    console.log('')
+
+    // Rate limit
+    await new Promise(r => setTimeout(r, 1000))
+  }
+
+  console.log(`Vision check: ${passed} approved, ${failed} rejected, ${skipped} need review`)
+}
+
+// ─── Hide poster with recovery pre-check (#18) ──────────────────────────────
+
+async function hidePoster(eventId: number): Promise<void> {
+  const { data: ev, error } = await supabase
+    .from('events')
+    .select('id, name, poster_url, source, end_date')
+    .eq('id', eventId)
+    .maybeSingle()
+
+  if (error || !ev) {
+    console.error(`Event #${eventId} not found`)
+    return
+  }
+
+  // Pre-check: warn if event is ending soon or already ended
+  if (ev.end_date) {
+    const daysLeft = Math.ceil((new Date(ev.end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+    if (daysLeft < 7) {
+      console.log(`⚠ Warning: event #${eventId} ends in ${daysLeft} days — recovery may not complete in time`)
+    }
+    if (daysLeft < 0) {
+      console.log(`⚠ Warning: event #${eventId} already ended — hiding may be unnecessary`)
+    }
+  }
+
+  // Pre-check: warn if recovery attempts exhausted
+  const { data: evFull } = await supabase
+    .from('events')
+    .select('recovery_attempts')
+    .eq('id', eventId)
+    .maybeSingle()
+
+  if (evFull && (evFull.recovery_attempts ?? 0) >= 3) {
+    console.log(`⚠ Warning: event #${eventId} already has ${evFull.recovery_attempts} recovery attempts — unlikely to find replacement`)
+  }
+
+  // Set poster_hidden
+  const { error: updateErr } = await supabase
+    .from('events')
+    .update({ poster_hidden: true })
+    .eq('id', eventId)
+
+  if (updateErr) console.error('Error:', updateErr.message)
+  else console.log(`Hidden poster for event #${eventId} "${ev.name}" (was: ${ev.poster_url || 'none'})`)
+}
+
+// ─── Locked poster auto-expiry (#20) ─────────────────────────────────────────
+
+async function expireLocks(daysThreshold = 90): Promise<void> {
+  const cutoff = new Date(Date.now() - daysThreshold * 24 * 60 * 60 * 1000).toISOString()
+
+  // Find locked events where the lock is older than threshold and event has ended
+  const today = new Date().toISOString().split('T')[0]
+  const { data, error } = await supabase
+    .from('events')
+    .select('id, name, poster_locked_at, end_date')
+    .eq('poster_locked', true)
+    .lt('poster_locked_at', cutoff)
+    .lt('end_date', today)
+
+  if (error) { console.error('Error:', error.message); return }
+  if (!data || data.length === 0) {
+    console.log(`No expired locks found (threshold: ${daysThreshold} days)`)
+    return
+  }
+
+  const ids = data.map(e => e.id)
+  const { error: updateErr } = await supabase
+    .from('events')
+    .update({ poster_locked: false })
+    .in('id', ids)
+
+  if (updateErr) console.error('Error unlocking:', updateErr.message)
+  else console.log(`Expired ${ids.length} poster locks (locked >${daysThreshold} days + event ended)`)
+}
+
 // ─── CLI Parser ──────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
@@ -613,10 +767,12 @@ async function main(): Promise<void> {
   } else if (args.includes('--reject')) {
     const idx = args.indexOf('--reject')
     const id = parseInt(args[idx + 1])
-    if (isNaN(id)) { console.error('Usage: --reject <audit_id> [--note "reason"]'); return }
+    if (isNaN(id)) { console.error('Usage: --reject <audit_id> [--note "reason"] [--code CODE]'); return }
     const noteIdx = args.indexOf('--note')
     const note = noteIdx >= 0 ? args[noteIdx + 1] : undefined
-    await rejectAudit(id, note)
+    const codeIdx = args.indexOf('--code')
+    const code = codeIdx >= 0 ? args[codeIdx + 1] : undefined
+    await rejectAudit(id, note, code)
   } else if (args.includes('--flag')) {
     const idx = args.indexOf('--flag')
     const id = parseInt(args[idx + 1])
@@ -672,6 +828,19 @@ async function main(): Promise<void> {
     const limitIdx = args.indexOf('--limit')
     const limit = limitIdx >= 0 ? parseInt(args[limitIdx + 1]) || 50 : 50
     await listLocked(limit)
+  } else if (args.includes('--vision-check')) {
+    const limitIdx = args.indexOf('--limit')
+    const limit = limitIdx >= 0 ? parseInt(args[limitIdx + 1]) || 10 : 10
+    await visionCheck(limit)
+  } else if (args.includes('--hide')) {
+    const idx = args.indexOf('--hide')
+    const eventId = parseInt(args[idx + 1])
+    if (isNaN(eventId)) { console.error('Usage: --hide <event_id>'); return }
+    await hidePoster(eventId)
+  } else if (args.includes('--expire-locks')) {
+    const daysIdx = args.indexOf('--days')
+    const days = daysIdx >= 0 ? parseInt(args[daysIdx + 1]) || 90 : 90
+    await expireLocks(days)
   } else if (args.includes('--prompt')) {
     showPromptInfo()
   } else {
@@ -683,7 +852,9 @@ Commands:
   --review [--limit N] [--offset N]  Opus visual review: UPDATED entries with all candidate URLs (default: 10)
   --summary                    Statistics and pattern analysis
   --approve <audit_id>         Approve a poster decision (recovery: auto-unhide + apply poster)
-  --reject <audit_id> [--note] Reject with optional reason (recovery: stays hidden)
+  --reject <audit_id> [--note] [--code CODE] Reject with reason + structured code
+                               Codes: WRONG_REGION, BLOG_SNAP, STALE_YEAR, PLACE_PHOTO,
+                                      PRODUCT_IMAGE, NEWS_PHOTO, STOCK_IMAGE, OTHER
   --flag <audit_id> [--note]   Flag for further review
   --bulk-approve [--action X]  Approve all pending (optionally filter by action)
   --search-only [--limit N]    Show LLM search results for locked events
@@ -693,6 +864,9 @@ Commands:
   --hidden [--limit N]         List recovery pending for hidden posters
   --review-recovery [--limit N] [--offset N]  Opus strict review: recovery candidates
   --replace <audit_id> --poster <url>  Replace poster + unhide (Opus direct pick)
+  --vision-check [--limit N]   Gemini Vision auto-verify UPDATED posters (#5)
+  --hide <event_id>            Hide poster (set poster_hidden=true)
+  --expire-locks [--days N]    Expire old locks (default: 90 days)
   --prompt                     Show current prompt config
 
 Examples:

@@ -9,6 +9,7 @@
  */
 
 import { classifyWithGemini } from '../lib/gemini'
+import { supabaseAdmin } from '../lib/supabase-admin'
 
 export interface EventForClassification {
   TITLE: string
@@ -221,6 +222,33 @@ JSON 배열만 응답하세요 (예: [1, 3, 7]).`
       )
       .filter((i) => i >= 0)
   }
+}
+
+/**
+ * Record excluded events for classification audit coverage (#3).
+ * Logs events that were filtered out by blacklist/LLM so audit can check for false negatives.
+ */
+export async function recordExcludedEvents(
+  events: { name: string; source: string; sourceEventId?: string; useTarget?: string; classifierStep: string; matchedPattern?: string }[]
+): Promise<number> {
+  if (events.length === 0) return 0
+  const rows = events.map(e => ({
+    source_event_id: e.sourceEventId || null,
+    name: e.name,
+    source: e.source,
+    use_target: e.useTarget || null,
+    classifier_step: e.classifierStep,
+    matched_pattern: e.matchedPattern || null,
+  }))
+
+  const BATCH = 200
+  let inserted = 0
+  for (let i = 0; i < rows.length; i += BATCH) {
+    const batch = rows.slice(i, i + BATCH)
+    const { error } = await supabaseAdmin.from('excluded_events').insert(batch)
+    if (!error) inserted += batch.length
+  }
+  return inserted
 }
 
 function classifyWithFallbackRegex(events: EventForClassification[]): Set<number> {

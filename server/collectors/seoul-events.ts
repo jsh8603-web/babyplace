@@ -13,6 +13,8 @@ import {
   isBlacklisted,
   isWhitelisted,
   classifyEventsWithLLM,
+  getBlacklistMatch,
+  recordExcludedEvents,
 } from '../utils/event-classifier'
 
 export interface SeoulEventItem {
@@ -160,15 +162,29 @@ export async function runSeoulEventsCollector(): Promise<SeoulEventsCollectorRes
       }
     }
 
-    // Step 1: Blacklist filter (immediate exclude)
+    // Step 1: Blacklist filter (immediate exclude) + record excluded for audit (#3)
+    const blacklistExcluded: SeoulEventItem[] = []
     const afterBlacklist = unknownEvents.filter((e) => {
       if (isBlacklisted(e.USE_TRGT, e.TITLE)) {
         result.filtered++
+        blacklistExcluded.push(e)
         return false
       }
       return true
     })
-    console.log(`[seoul-events] Step 1 blacklist: excluded ${result.filtered}`)
+    if (blacklistExcluded.length > 0) {
+      const excludedCount = await recordExcludedEvents(blacklistExcluded.map(e => ({
+        name: e.TITLE,
+        source: 'seoul_events',
+        sourceEventId: e.HMPG_ADDR ? extractCultCode(e.HMPG_ADDR) || undefined : undefined,
+        useTarget: e.USE_TRGT,
+        classifierStep: 'blacklist',
+        matchedPattern: getBlacklistMatch(e.USE_TRGT, e.TITLE) || undefined,
+      })))
+      console.log(`[seoul-events] Step 1 blacklist: excluded ${result.filtered} (${excludedCount} recorded)`)
+    } else {
+      console.log(`[seoul-events] Step 1 blacklist: excluded ${result.filtered}`)
+    }
 
     // Step 2: Whitelist filter (immediate include)
     const whitelisted: SeoulEventItem[] = []
@@ -192,8 +208,21 @@ export async function runSeoulEventsCollector(): Promise<SeoulEventsCollectorRes
       }))
     )
     const llmIncluded = remaining.filter((_, i) => llmIncludedIndices.has(i))
+    const llmExcluded = remaining.filter((_, i) => !llmIncludedIndices.has(i))
     result.llmClassified = llmIncluded.length
     console.log(`[seoul-events] Step 3 LLM: ${llmIncluded.length}/${remaining.length} included`)
+
+    // Record LLM-excluded events for audit (#3)
+    if (llmExcluded.length > 0) {
+      const excludedCount = await recordExcludedEvents(llmExcluded.map(e => ({
+        name: e.TITLE,
+        source: 'seoul_events',
+        sourceEventId: e.HMPG_ADDR ? extractCultCode(e.HMPG_ADDR) || undefined : undefined,
+        useTarget: e.USE_TRGT,
+        classifierStep: 'llm',
+      })))
+      console.log(`[seoul-events] LLM excluded: ${llmExcluded.length} (${excludedCount} recorded)`)
+    }
 
     // Combine whitelisted + LLM-included events
     const eventsToProcess = [...whitelisted, ...llmIncluded]

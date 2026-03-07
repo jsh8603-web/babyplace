@@ -1,0 +1,68 @@
+# #13: Automated audit after pipeline runs
+# Quick audit (poster + mention) after daily pipeline
+# Full audit + compare weekly on Sundays
+
+name: Audit
+
+on:
+  workflow_run:
+    workflows: ["Pipeline"]
+    types: [completed]
+  schedule:
+    # Weekly full audit: Sunday 10:00 KST (01:00 UTC)
+    - cron: '0 1 * * 0'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Audit mode'
+        required: true
+        default: 'quick'
+        type: choice
+        options:
+          - quick
+          - full
+          - report
+          - compare
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      KAKAO_REST_KEY: ${{ secrets.KAKAO_REST_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Determine audit mode
+        id: mode
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            echo "mode=full" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "mode=${{ inputs.mode }}" >> $GITHUB_OUTPUT
+          else
+            echo "mode=quick" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run audit
+        run: |
+          MODE="${{ steps.mode.outputs.mode }}"
+          echo "Running audit --${MODE}"
+          DOTENV_CONFIG_PATH=.env.local npx tsx -r dotenv/config server/scripts/audit-all.ts --${MODE}
+
+      - name: Run compare (weekly only)
+        if: github.event_name == 'schedule'
+        run: |
+          DOTENV_CONFIG_PATH=.env.local npx tsx -r dotenv/config server/scripts/audit-all.ts --compare

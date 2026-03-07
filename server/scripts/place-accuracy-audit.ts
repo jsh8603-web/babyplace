@@ -382,12 +382,142 @@ async function setVerdict(auditId: number, verdict: string, note?: string): Prom
   else console.log(`Set audit #${auditId} → ${verdict}${note ? ` (${note})` : ''}`)
 }
 
+const NOT_BABY_FRIENDLY_PATTERNS = /주점|술집|호프|바\s*$|타이어|자동차|중고차|묘지|납골|주유소|부동산|인테리어|여행사|모텔|사우나|노래방|당구|사격|볼링|PC방|피씨방|게임방|세차|렌터카|장의사|축산|도축|철물/
+
+async function batchRevalidate(count = 5): Promise<void> {
+  // Random sample of old places for Kakao re-verification
+  const sixMonthsAgo = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString()
+
+  const { count: total } = await supabase
+    .from('places')
+    .select('id', { count: 'exact', head: true })
+    .eq('is_active', true)
+    .lt('created_at', sixMonthsAgo)
+
+  if (!total || total === 0) {
+    console.log('No old places to revalidate')
+    return
+  }
+
+  const offsets = new Set<number>()
+  while (offsets.size < Math.min(count * 3, total)) {
+    offsets.add(Math.floor(Math.random() * total))
+  }
+
+  let revalidated = 0
+  for (const offset of offsets) {
+    if (revalidated >= count) break
+
+    const { data } = await supabase
+      .from('places')
+      .select('id')
+      .eq('is_active', true)
+      .lt('created_at', sixMonthsAgo)
+      .order('id', { ascending: true })
+      .range(offset, offset)
+      .limit(1)
+
+    if (data && data.length > 0) {
+      await revalidatePlace(data[0].id)
+      revalidated++
+      // Rate limit Kakao API calls
+      await new Promise(r => setTimeout(r, 500))
+    }
+  }
+
+  console.log(`\nBatch revalidation complete: ${revalidated} places checked`)
+}
+
+async function bulkJudgePlaces(): Promise<void> {
+  const BATCH = 500
+  let cursor = 0
+  let approved = 0, flagged = 0
+
+  while (true) {
+    const { data, error } = await supabase
+      .from('place_accuracy_audit_log')
+      .select('id, place_name, place_category, check_type, check_result')
+      .eq('audit_status', 'pending')
+      .eq('check_type', 'data_accuracy')
+      .order('id', { ascending: true })
+      .gt('id', cursor)
+      .limit(BATCH)
+
+    if (error) { console.error('Error:', error.message); break }
+    if (!data || data.length === 0) break
+
+    const approveRows: number[] = []
+    const flagRows: number[] = []
+
+    for (const row of data) {
+      cursor = row.id
+      const name = row.place_name || ''
+      const cr = (row.check_result || {}) as Record<string, any>
+      const source = cr.source || ''
+
+      if (NOT_BABY_FRIENDLY_PATTERNS.test(name)) {
+        flagRows.push(row.id)
+      } else {
+        approveRows.push(row.id)
+      }
+    }
+
+    if (approveRows.length > 0) {
+      await supabase.from('place_accuracy_audit_log').update({ audit_status: 'approved', audit_verdict: 'accurate', audit_notes: 'bulk-judge: auto-approve' }).in('id', approveRows)
+      approved += approveRows.length
+    }
+    if (flagRows.length > 0) {
+      await supabase.from('place_accuracy_audit_log').update({ audit_status: 'flagged', audit_verdict: 'flagged', audit_notes: 'bulk-judge: not-baby-friendly name pattern' }).in('id', flagRows)
+      flagged += flagRows.length
+    }
+
+    if (data.length < BATCH) break
+  }
+
+  console.log(`\nPlace bulk judge complete:`)
+  console.log(`  Approved (accurate): ${approved}`)
+  console.log(`  Flagged (review needed): ${flagged}`)
+  console.log(`  Total: ${approved + flagged}`)
+}
+
+// ─── #7: Validate bulk judge rules — random sample check ─────────────────────
+
+async function validateBulkPlace(count = 10): Promise<void> {
+  const { data, error } = await supabase
+    .from('place_accuracy_audit_log')
+    .select('id, place_id, place_name, place_category, audit_verdict, audit_notes, check_result')
+    .like('audit_notes', 'bulk-judge%')
+    .order('id', { ascending: false })
+    .limit(count * 3)
+
+  if (error) { console.error('Error:', error.message); return }
+  if (!data || data.length === 0) { console.log('No bulk-judged place entries found'); return }
+
+  const shuffled = data.sort(() => Math.random() - 0.5).slice(0, count)
+
+  console.log(`\n=== Place Bulk Judge Validation (${shuffled.length}건) ===`)
+  console.log('Review each entry to check if auto-judgment was correct.\n')
+
+  for (const row of shuffled) {
+    const rule = (row.audit_notes || '').replace('bulk-judge: ', '')
+    const cr = (row.check_result || {}) as Record<string, any>
+    console.log(`[${row.audit_verdict?.toUpperCase()}] audit_id=${row.id} (rule: ${rule})`)
+    console.log(`  Place: "${row.place_name}" (${row.place_category})`)
+    console.log(`  Source: ${cr.source || '?'}, Address: ${cr.address || '(none)'}`)
+    console.log('')
+  }
+}
+
 // ─── CLI Parser ──────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2)
 
-  if (args.includes('--sample')) {
+  if (args.includes('--validate-bulk')) {
+    const countIdx = args.indexOf('--count')
+    const count = countIdx >= 0 ? parseInt(args[countIdx + 1]) || 10 : 10
+    await validateBulkPlace(count)
+  } else if (args.includes('--sample')) {
     const countIdx = args.indexOf('--random')
     const randomCount = countIdx >= 0 ? parseInt(args[countIdx + 1]) || 10 : 10
     await samplePlaces(randomCount)
@@ -406,6 +536,12 @@ async function main(): Promise<void> {
     await listPending(limit)
   } else if (args.includes('--summary')) {
     await showSummary()
+  } else if (args.includes('--batch-revalidate')) {
+    const countIdx = args.indexOf('--count')
+    const count = countIdx >= 0 ? parseInt(args[countIdx + 1]) || 5 : 5
+    await batchRevalidate(count)
+  } else if (args.includes('--bulk-judge')) {
+    await bulkJudgePlaces()
   } else if (args.includes('--correct') || args.includes('--accurate')) {
     const flag = args.includes('--correct') ? '--correct' : '--accurate'
     const idx = args.indexOf(flag)
@@ -436,9 +572,12 @@ Place Accuracy Audit CLI
 Commands:
   --sample [--random N]        New places (전수) + existing random (default: 10)
   --revalidate <place_id>      Kakao API re-verify (폐업/이전 check)
+  --batch-revalidate [--count] Random old places Kakao re-verify (#10)
   --check-dupes [--count N]    Find duplicate suspects (<100m, similar name)
   --list [--limit N]           Pending audit entries
   --summary                    Statistics
+  --bulk-judge                 Auto-judge pending by name patterns
+  --validate-bulk [--count N]  Validate bulk-judge accuracy (#7)
   --correct <audit_id>         Mark as accurate
   --inaccurate <audit_id>      Mark as inaccurate [--note]
   --closed <audit_id>          Mark as closed/moved

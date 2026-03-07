@@ -42,6 +42,14 @@ const COMPETING_LOCATIONS = new Set([
   '여수', '순천', '목포', '군산', '전주', '익산',
   '천안', '아산', '청주',
   '춘천', '원주', '강릉', '속초', '동해',
+  // #10: 추가 서비스 지역 외 도시
+  '충주', '제천', '공주', '논산', '서산', '보령', '당진',
+  '안동', '경주', '김천', '영주', '상주', '영천', '문경',
+  '진해', '사천', '밀양', '거창', '함안', '합천',
+  '남원', '정읍', '김제', '완주',
+  '나주', '광양', '담양', '해남', '무안', '영암',
+  '태백', '삼척', '홍천', '횡성', '영월', '평창', '정선', '철원', '화천', '양구', '인제', '고성',
+  '서귀포',
 ])
 
 const SERVICE_AREA_CITIES = [
@@ -190,9 +198,10 @@ export function computePostRelevance(
   isCommon: boolean,
   title: string,
   snippet: string,
-  dynamicBlacklistTerms: string[] = []
+  dynamicBlacklistTerms: string[] = [],
+  postDate?: string | null
 ): number {
-  return computePostRelevanceDetailed(placeName, addr, isCommon, title, snippet, dynamicBlacklistTerms).score
+  return computePostRelevanceDetailed(placeName, addr, isCommon, title, snippet, dynamicBlacklistTerms, postDate).score
 }
 
 export function computePostRelevanceDetailed(
@@ -201,7 +210,8 @@ export function computePostRelevanceDetailed(
   isCommon: boolean,
   title: string,
   snippet: string,
-  dynamicBlacklistTerms: string[] = []
+  dynamicBlacklistTerms: string[] = [],
+  postDate?: string | null
 ): RelevanceResult {
   const text = `${title} ${snippet}`.toLowerCase()
   const nameL = placeName.toLowerCase()
@@ -275,6 +285,42 @@ export function computePostRelevanceDetailed(
   } else if (isCommon) {
     if (!hasDongMatch && !hasRoadMatch) {
       bd.penalty_common_name = -0.25; score -= 0.25; penalties.push('common_name_addr_miss')
+    }
+  }
+
+  // #1: Chain branch region cross-check — blog mentions a specific region
+  // that doesn't match the place's address (e.g., "목동 키즈카페" for a 강남 place)
+  if (bd.name_title > 0 || bd.name_snippet > 0) {
+    const titleL = title.toLowerCase()
+    // Check if blog title contains a SERVICE_AREA city that conflicts with place address
+    for (const city of SERVICE_AREA_CITIES) {
+      if (city === addr.city || city === addr.district?.replace(/[구군시]$/, '')) continue
+      // Check SUB_AREA_TO_PARENT mapping
+      const parent = SUB_AREA_TO_PARENT[city]
+      if (parent && (parent === addr.city || parent === addr.district?.replace(/[구군시]$/, ''))) continue
+      // Reverse: if place is in a sub-area, allow its parent
+      const ownSubs = Object.entries(SUB_AREA_TO_PARENT).filter(([, p]) => p === addr.district?.replace(/[구군시]$/, '')).map(([s]) => s)
+      if (ownSubs.includes(city)) continue
+
+      if (titleL.includes(city) && !titleL.includes(placeName.toLowerCase())) {
+        // Title mentions different service-area city AND doesn't contain the exact place name
+        bd.penalty_competing_branch += -0.30
+        score -= 0.30
+        penalties.push('chain_region_mismatch')
+        break
+      }
+    }
+  }
+
+  // #21: Blog recency penalty — old blog posts for current places are unreliable
+  if (postDate) {
+    const postYear = new Date(postDate).getFullYear()
+    const currentYear = new Date().getFullYear()
+    const age = currentYear - postYear
+    if (age >= 3) {
+      bd.penalty_irrelevant += -0.10
+      score -= 0.10
+      penalties.push('stale_post_3y')
     }
   }
 
