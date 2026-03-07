@@ -318,10 +318,20 @@ async function runFull(): Promise<void> {
   console.log('[poster] Running vision-check on UPDATED posters...')
   console.log(tsx('server/scripts/poster-audit.ts --vision-check --limit 20', 180000))
 
+  // Phase 2.5: Auto-flag candidates with null kakao_similarity (#14)
+  console.log('\n[candidate] Auto-flagging null kakao_similarity...')
+  const { count: flaggedCandidates } = await supabase
+    .from('candidate_promotion_audit_log')
+    .update({ audit_status: 'flagged', audit_notes: 'auto: kakao_similarity null' })
+    .eq('audit_status', 'pending')
+    .is('kakao_similarity', null)
+  console.log(`[candidate] Flagged ${flaggedCandidates ?? 0} candidates with null kakao_similarity`)
+
   // Phase 3: Report
   console.log('\n── Phase 3: Report ────────────────────────────────────')
   await runReport()
   await runAnalysis()
+  await runCrossAudit()
 }
 
 async function runQuick(): Promise<void> {
@@ -616,6 +626,66 @@ async function runAnalysis(): Promise<void> {
   console.log('')
 }
 
+// #16: Cross-audit integrity check
+async function runCrossAudit(): Promise<void> {
+  console.log('\n=== Cross-Audit Integrity Check (#16) ===\n')
+
+  // 1. Inactive places with high-score mentions
+  const { data: inactivePlaces } = await supabase
+    .from('places')
+    .select('id')
+    .eq('is_active', false)
+
+  if (inactivePlaces && inactivePlaces.length > 0) {
+    let staleCount = 0
+    for (let i = 0; i < inactivePlaces.length; i += 100) {
+      const batch = inactivePlaces.slice(i, i + 100).map(p => p.id)
+      const { count } = await supabase
+        .from('blog_mentions')
+        .select('id', { count: 'exact', head: true })
+        .in('place_id', batch)
+        .gt('relevance_score', 0)
+      staleCount += count ?? 0
+    }
+    if (staleCount > 0) {
+      console.log(`\u26a0 ${staleCount} mentions with score>0 linked to ${inactivePlaces.length} inactive places`)
+    } else {
+      console.log('\u2713 No stale mentions for inactive places')
+    }
+  }
+
+  // 2. Expired events with pending poster audits
+  const today = new Date().toISOString().split('T')[0]
+  const { data: expiredPendingPosters } = await supabase
+    .from('poster_audit_log')
+    .select('event_id, events!inner(end_date)')
+    .eq('audit_status', 'pending')
+    .lt('events.end_date', today)
+
+  const expiredCount = expiredPendingPosters?.length ?? 0
+  if (expiredCount > 0) {
+    console.log(`\u26a0 ${expiredCount} pending poster audits for expired events`)
+  } else {
+    console.log('\u2713 No pending poster audits for expired events')
+  }
+
+  // 3. Candidates promoted to inactive places
+  const { data: promotedToInactive } = await supabase
+    .from('candidate_promotion_audit_log')
+    .select('id, place_id, places!inner(is_active)')
+    .eq('audit_status', 'approved')
+    .eq('places.is_active', false)
+
+  const demoteCount = promotedToInactive?.length ?? 0
+  if (demoteCount > 0) {
+    console.log(`\u26a0 ${demoteCount} approved candidates linked to now-inactive places`)
+  } else {
+    console.log('\u2713 No approved candidates for inactive places')
+  }
+
+  console.log('')
+}
+
 // ─── CLI Parser ──────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
@@ -629,8 +699,11 @@ async function main(): Promise<void> {
     await saveSnapshot('quick')
   } else if (args.includes('--report')) {
     await runReport()
+    await runCrossAudit()
   } else if (args.includes('--analysis')) {
     await runAnalysis()
+  } else if (args.includes('--cross-audit')) {
+    await runCrossAudit()
   } else if (args.includes('--compare')) {
     await compareWithConfig()
   } else if (args.includes('--snapshot')) {
@@ -647,6 +720,7 @@ Commands:
   --report    Summary report + cross-audit quality signals + source dashboard
   --analysis  Automated 4th-stage analysis (penalty distribution, coverage, divergence)
   --compare   Round-over-round change tracking + config version changes
+  --cross-audit  Cross-audit integrity check (stale mentions, expired posters, inactive candidates)
   --snapshot  Save audit metadata snapshot manually
 `)
   }

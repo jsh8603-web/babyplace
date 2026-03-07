@@ -29,6 +29,7 @@ interface AuditMention {
   title: string | null
   snippet: string | null
   relevance_score: number
+  post_date: string | null
   places: {
     name: string
     category: string
@@ -48,6 +49,7 @@ export interface BlogFullAuditResult {
   irrelevant: number
   downgraded: number
   termsExtracted: number
+  termsFiltered: number
   termsPromoted: number
   retroactiveCleaned: number
   mentionCountsUpdated: number
@@ -61,6 +63,14 @@ const CONCURRENCY = 4
 const DELAY_BETWEEN_CHUNKS_MS = 2000
 const DOWNGRADE_BATCH_SIZE = 500
 
+// P9: Baby-friendly terms that should never be blacklisted
+const BABY_FRIENDLY_SAFELIST = new Set([
+  '카페', '전시', '베이커리', '브런치', '호텔', '펜션', '맛집',
+  '키즈', '어린이', '유아', '아기', '놀이', '체험', '교육',
+  '박물관', '미술관', '도서관', '공원', '수영장', '워터파크',
+  '키즈카페', '놀이터', '동물원', '수족관', '과학관', '문화센터',
+])
+
 // ─── Main ────────────────────────────────────────────────────────────────────
 
 export async function runFullBlogAudit(resume = false): Promise<BlogFullAuditResult> {
@@ -70,6 +80,7 @@ export async function runFullBlogAudit(resume = false): Promise<BlogFullAuditRes
     irrelevant: 0,
     downgraded: 0,
     termsExtracted: 0,
+    termsFiltered: 0,
     termsPromoted: 0,
     retroactiveCleaned: 0,
     mentionCountsUpdated: 0,
@@ -182,9 +193,27 @@ export async function runFullBlogAudit(resume = false): Promise<BlogFullAuditRes
 
   // Phase 5: Blacklist terms upsert + promote + retroactive cleanup
   if (extractedTerms.length > 0) {
-    await upsertExtractedTerms(extractedTerms)
-    result.termsExtracted = extractedTerms.length
-    console.log(`[blog-full-audit] Extracted ${extractedTerms.length} noise terms`)
+    // P9: Filter out baby-friendly terms before upserting to blacklist
+    const safeTerms = extractedTerms.filter(t => {
+      const term = t.term.toLowerCase()
+      if (BABY_FRIENDLY_SAFELIST.has(term)) return false
+      const safeArr = Array.from(BABY_FRIENDLY_SAFELIST)
+      for (let si = 0; si < safeArr.length; si++) {
+        if (term.includes(safeArr[si])) return false
+      }
+      return true
+    })
+    result.termsFiltered = extractedTerms.length - safeTerms.length
+
+    if (result.termsFiltered > 0) {
+      console.log(`[blog-full-audit] Filtered ${result.termsFiltered} baby-friendly terms from blacklist candidates`)
+    }
+
+    if (safeTerms.length > 0) {
+      await upsertExtractedTerms(safeTerms)
+      result.termsExtracted = safeTerms.length
+      console.log(`[blog-full-audit] Extracted ${safeTerms.length} noise terms`)
+    }
   }
 
   const promoted = await promoteQualifiedTerms()
@@ -219,7 +248,7 @@ async function loadAllMentions(resumeOnly: boolean): Promise<AuditMention[]> {
   while (true) {
     let query = supabaseAdmin
       .from('blog_mentions')
-      .select('id, place_id, title, snippet, relevance_score, places!inner(name, category, address)')
+      .select('id, place_id, title, snippet, relevance_score, post_date, places!inner(name, category, address)')
       .gte('relevance_score', 0.3)
       .order('id', { ascending: true })
       .range(offset, offset + PAGE_SIZE - 1)
@@ -246,6 +275,7 @@ async function loadAllMentions(resumeOnly: boolean): Promise<AuditMention[]> {
         title: row.title as string | null,
         snippet: row.snippet as string | null,
         relevance_score: row.relevance_score as number,
+        post_date: row.post_date as string | null,
         places,
       })
     }
@@ -270,6 +300,7 @@ async function classifyAuditBatch(
     주소: m.places.address ?? '',
     제목: m.title ?? '(제목없음)',
     내용: (m.snippet ?? '').slice(0, 200),
+    작성일: m.post_date ? m.post_date.split('T')[0] : '',
   }))
 
   const prompt = `당신은 아기/유아(0~5세)와 함께 갈 수 있는 장소에 대한 블로그 언급의 관련성을 판정합니다.
@@ -279,6 +310,12 @@ async function classifyAuditBatch(
 
 관련: 해당 장소 방문 후기, 시설 소개, 아이와 함께 추천
 무관: 부동산(분양/매매/전세), 상품리뷰/광고, 타 지역, 스팸, 성인전용, 학원, 일반맛집(키즈존X), 장소를 위치참조로만 사용
+
+추가 판정 기준:
+- 체인 지점: 같은 이름이라도 블로그에 언급된 지역(목동, 청라, 동탄 등)이 장소 주소와 다르면 무관 (다른 지점 방문기)
+- 서비스 지역 외: 장소 주소가 서울/경기인데 블로그가 부산/대구/광주/대전/울산/강원/제주 등 타 지역 내용이면 무관
+- 짧은 장소명(2~3글자): "강남", "가평" 등 일반명사는 장소를 위치참조로만 쓸 가능성 높음 → 실제 방문이 아니면 무관
+- 오래된 블로그: 작성일이 3년 이상 오래되었으면 폐업/리모델링 가능성 → 주의하여 판정
 
 JSON으로 응답: [{"n":1,"r":1,"t":null},{"n":2,"r":0,"t":"분양"}]
 n=번호, r=관련(1)/무관(0), t=무관일 때 핵심 노이즈 키워드(1~2단어, 관련이면 null)
