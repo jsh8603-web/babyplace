@@ -75,7 +75,7 @@ const POSTER_BLOCKED_DOMAINS = [
   'file.kinolights.com',
   'cphoto.asiae.co.kr', 'img.asiatoday.co.kr', 'pds.joins.com',
   'cdn.socialfocus.co.kr', 'cdn.autoherald.co.kr',
-  'www.gukjenews.com', 'www.kns.tv', 'www.ctnews.kr',
+  'www.gukjenews.com', 'cdn.gukjenews.com', 'www.kns.tv', 'www.ctnews.kr',
   'www.woorinews.co.kr', 'www.bodonews.com', 'thesegye.com', 'kr.news.cn',
   'www.jinju.go.kr', 'jinju.go.kr', 'taean.go.kr', 'lib.changwon.go.kr',
   'www.yeonggwang.go.kr', 'www.bonghwa.go.kr', 'www.naju.go.kr',

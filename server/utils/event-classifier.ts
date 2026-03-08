@@ -29,7 +29,7 @@ const WHITELIST_PATTERN =
 
 // Step 2b: Title-based whitelist — events that are clearly baby-relevant by title
 const WHITELIST_TITLE_PATTERN =
-  /캐릭터.*전시|테마파크|팝업.*키즈|키즈.*팝업|키즈파크|어린이.*전시|인형극|동화.*공연|어린이.*뮤지컬|어린이.*공연|키즈.*체험/
+  /캐릭터.*전시|테마파크|팝업.*키즈|키즈.*팝업|키즈파크|어린이.*전시|인형극|동화.*공연|어린이.*뮤지컬|어린이.*공연|키즈.*체험|버블.*쇼|매직쇼|마술쇼|버블.*매직|탭탭탭|가족극/
 
 // Fallback regex when LLM is unavailable
 const FALLBACK_BABY_PATTERN =
