@@ -72,6 +72,26 @@ ${eventDates ? `예상 날짜: ${eventDates}` : ''}
 JSON만 응답하세요.`
 
   try {
+    // Fetch image and convert to base64 for Gemini Vision
+    const imageResponse = await fetch(imageUrl, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; BabyPlace/1.0)' },
+      signal: AbortSignal.timeout(10000),
+    })
+    if (!imageResponse.ok) {
+      console.error(`[poster-vision] Image fetch failed: ${imageResponse.status} ${imageUrl}`)
+      return null
+    }
+
+    const contentType = imageResponse.headers.get('content-type') || 'image/jpeg'
+    const mimeType = contentType.split(';')[0].trim()
+    const buffer = Buffer.from(await imageResponse.arrayBuffer())
+    const base64 = buffer.toString('base64')
+
+    if (buffer.length < 1000) {
+      console.error(`[poster-vision] Image too small (${buffer.length} bytes): ${imageUrl}`)
+      return null
+    }
+
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: [
@@ -79,8 +99,7 @@ JSON만 응답하세요.`
           role: 'user',
           parts: [
             { text: prompt },
-            { inlineData: { mimeType: 'image/jpeg', data: '' } },
-            { fileData: { mimeType: 'image/jpeg', fileUri: imageUrl } },
+            { inlineData: { mimeType, data: base64 } },
           ],
         },
       ],
@@ -108,38 +127,7 @@ JSON만 응답하세요.`
       return null
     }
   } catch (err: any) {
-    // Gemini Vision may not support direct URL — fall back to URL-based fetch
     console.error(`[poster-vision] Vision API error: ${err.message}`)
-
-    // Try with image URL as text context instead
-    try {
-      const fallbackResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: `${prompt}\n\n이미지 URL: ${imageUrl}\n\n(URL만으로 판단할 수 없으면 confidence=0으로 답하세요)`,
-        config: {
-          maxOutputTokens: 1024,
-          temperature: 0,
-          responseMimeType: 'application/json',
-        },
-      })
-
-      const text = fallbackResponse.text ?? ''
-      try {
-        const parsed = JSON.parse(text)
-        return {
-          eventNameFound: parsed.event_name_found ?? false,
-          dateMatch: parsed.date_match ?? 'no_date',
-          safetyIssue: parsed.safety_issue ?? false,
-          safetyDetail: parsed.safety_detail ?? undefined,
-          ocrText: parsed.ocr_text ?? [],
-          confidence: parsed.confidence ?? 0,
-          rawResponse: text,
-        }
-      } catch {
-        return null
-      }
-    } catch {
-      return null
-    }
+    return null
   }
 }

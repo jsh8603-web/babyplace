@@ -568,7 +568,7 @@ async function runAnalysis(): Promise<void> {
   console.log('\n--- Score Divergence (audit_log vs blog_mentions) ---')
   let divergeCount = 0
   let checkCount = 0
-  let scoreCursor = Number.MAX_SAFE_INTEGER
+  let scoreCursor = 2147483647 // PostgreSQL INT max
   while (checkCount < 500) {
     const { data, error } = await supabase
       .from('mention_audit_log')
