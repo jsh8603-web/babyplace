@@ -382,7 +382,7 @@ async function setVerdict(auditId: number, verdict: string, note?: string): Prom
   else console.log(`Set audit #${auditId} → ${verdict}${note ? ` (${note})` : ''}`)
 }
 
-const NOT_BABY_FRIENDLY_PATTERNS = /주점|술집|호프|바\s*$|타이어|자동차|중고차|묘지|납골|주유소|부동산|인테리어|여행사|모텔|사우나|노래방|당구|사격|볼링|PC방|피씨방|게임방|세차|렌터카|장의사|축산|도축|철물/
+const NOT_BABY_FRIENDLY_PATTERNS = /주점|술집|호프|바\s*$|타이어|자동차|중고차|묘지|납골|묘역|추모비|순절비|선정비|장군묘|주유소|부동산|인테리어|여행사|모텔|사우나|노래방|당구|사격|볼링|PC방|피씨방|게임방|세차|렌터카|장의사|축산|도축|철물|저수지|고개$|산$|봉$|천$|골$|폭포$|등산로|등산|바위$|행궁|생가$|좌상$|정상$|관광특구|이동외과|풍화당|옹기$/
 
 async function batchRevalidate(count = 5): Promise<void> {
   // Random sample of old places for Kakao re-verification

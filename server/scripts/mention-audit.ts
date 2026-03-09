@@ -364,34 +364,46 @@ async function bulkJudge(): Promise<void> {
   // #1 improvement: uses current blog_mentions.relevance_score instead of
   // stale audit_log score (config changes may have altered actual scores)
 
-  const BATCH = 500
-  let cursor = 0
+  const BATCH = 30
+  const UPDATE_BATCH = 30
   let approved = 0, rejected = 0, flagged = 0, excludedIds: number[] = []
+  let rounds = 0
 
+  console.log('Starting bulk judge...')
   while (true) {
+    // Step 1: Get IDs only (no ORDER BY — avoid sort on 23K rows)
+    const { data: idRows, error: idErr } = await supabase
+      .from('mention_audit_log')
+      .select('id')
+      .eq('audit_status', 'pending')
+      .limit(BATCH)
+
+    if (idErr) { console.error('ID select error:', idErr.message); break }
+    if (!idRows || idRows.length === 0) { console.log('No more pending rows'); break }
+
+    const ids = idRows.map(r => r.id)
+    console.log(`  Fetched ${ids.length} IDs: ${ids[0]}..${ids[ids.length-1]}`)
+
+    // Step 2: Fetch full data by primary key IN (fast)
     const { data, error } = await supabase
       .from('mention_audit_log')
       .select('id, mention_id, relevance_score, relevance_breakdown, penalty_flags')
-      .eq('audit_status', 'pending')
-      .order('id', { ascending: true })
-      .gt('id', cursor)
-      .limit(BATCH)
+      .in('id', ids)
 
-    if (error) { console.error('Error:', error.message); break }
-    if (!data || data.length === 0) break
+    if (error) { console.error('Data select error:', error.message); break }
+    if (!data || data.length === 0) { console.log('No data for IDs'); break }
+    console.log(`  Got ${data.length} rows with JSONB`)
 
-    // #1: Fetch current scores from blog_mentions for accurate judging
+    // Fetch current scores from blog_mentions for accurate judging
     const mentionIds = data.map(r => r.mention_id)
     const currentScores = new Map<number, number>()
-    for (let i = 0; i < mentionIds.length; i += 200) {
-      const batch = mentionIds.slice(i, i + 200)
-      const { data: mentions } = await supabase
-        .from('blog_mentions')
-        .select('id, relevance_score')
-        .in('id', batch)
-      for (const m of mentions || []) {
-        currentScores.set(m.id, m.relevance_score ?? 0)
-      }
+    const { data: mentions, error: mErr } = await supabase
+      .from('blog_mentions')
+      .select('id, relevance_score')
+      .in('id', mentionIds)
+    if (mErr) { console.error('Mention score fetch error:', mErr.message) }
+    for (const m of mentions || []) {
+      currentScores.set(m.id, m.relevance_score ?? 0)
     }
 
     const approveRows: number[] = []
@@ -399,7 +411,6 @@ async function bulkJudge(): Promise<void> {
     const flagRows: number[] = []
 
     for (const row of data) {
-      cursor = row.id
       const bd = (row.relevance_breakdown || {}) as Record<string, number>
       const penalties = (row.penalty_flags || []) as string[]
       // Use current blog_mentions score, fallback to audit_log score
@@ -433,18 +444,28 @@ async function bulkJudge(): Promise<void> {
       }
     }
 
-    // Batch updates
-    if (approveRows.length > 0) {
-      await supabase.from('mention_audit_log').update({ audit_status: 'approved', audit_verdict: 'correct', audit_notes: 'bulk-judge: name match' }).in('id', approveRows)
-      approved += approveRows.length
+    // Batch updates — sub-batch to avoid Supabase statement_timeout
+    for (let i = 0; i < approveRows.length; i += UPDATE_BATCH) {
+      const batch = approveRows.slice(i, i + UPDATE_BATCH)
+      await supabase.from('mention_audit_log').update({ audit_status: 'approved', audit_verdict: 'correct', audit_notes: 'bulk-judge: name match' }).in('id', batch)
     }
-    if (rejectRows.length > 0) {
-      await supabase.from('mention_audit_log').update({ audit_status: 'rejected', audit_verdict: 'wrong_match', audit_notes: 'bulk-judge: no name match' }).in('id', rejectRows)
-      rejected += rejectRows.length
+    approved += approveRows.length
+
+    for (let i = 0; i < rejectRows.length; i += UPDATE_BATCH) {
+      const batch = rejectRows.slice(i, i + UPDATE_BATCH)
+      await supabase.from('mention_audit_log').update({ audit_status: 'rejected', audit_verdict: 'wrong_match', audit_notes: 'bulk-judge: no name match' }).in('id', batch)
     }
-    if (flagRows.length > 0) {
-      await supabase.from('mention_audit_log').update({ audit_status: 'flagged', audit_verdict: 'borderline', audit_notes: 'bulk-judge: uncertain' }).in('id', flagRows)
-      flagged += flagRows.length
+    rejected += rejectRows.length
+
+    for (let i = 0; i < flagRows.length; i += UPDATE_BATCH) {
+      const batch = flagRows.slice(i, i + UPDATE_BATCH)
+      await supabase.from('mention_audit_log').update({ audit_status: 'flagged', audit_verdict: 'borderline', audit_notes: 'bulk-judge: uncertain' }).in('id', batch)
+    }
+    flagged += flagRows.length
+
+    rounds++
+    if (rounds % 100 === 0) {
+      console.log(`  Progress: ${approved + rejected + flagged} processed (${approved} approved, ${rejected} rejected, ${flagged} flagged)`)
     }
 
     if (data.length < BATCH) break
@@ -452,7 +473,7 @@ async function bulkJudge(): Promise<void> {
 
   // Exclude rejected mentions (score=0 + lock)
   if (excludedIds.length > 0) {
-    const EXCL_BATCH = 200
+    const EXCL_BATCH = 50
     for (let i = 0; i < excludedIds.length; i += EXCL_BATCH) {
       const batch = excludedIds.slice(i, i + EXCL_BATCH)
       await supabase.from('blog_mentions').update({ relevance_score: 0, mention_locked: true }).in('id', batch)
