@@ -95,6 +95,12 @@ const DAUM_BLOG_URL = 'https://dapi.kakao.com/v2/search/blog'
  *  2,250 places/run ≈ naver ~3,375 + kakao-search ~2,250 = ~15-25% of daily quota. */
 const REVERSE_SEARCH_BATCH = 2250
 
+/** Max duration for reverse search before yielding to other collectors (80 min).
+ *  The PUBLIC_DATA_SCHEDULE job has a 150-min GitHub Actions timeout — this leaves
+ *  ~70 min for public-data, localdata, and children-facility collectors.
+ *  Unprocessed places are picked up in the next daily run (oldest-crawled first). */
+const REVERSE_SEARCH_MAX_MS = 80 * 60 * 1000
+
 /** Number of results per API call. */
 const DISPLAY_COUNT = 30
 
@@ -317,7 +323,18 @@ async function runReverseSearch(
     `[pipeline-b] Reverse search: ${uncrawledPlaces.length} uncrawled + ${popularPlaces.length} popular = ${allPlaces.length} total`
   )
 
+  const startTime = Date.now()
   for (const place of allPlaces) {
+    // Time budget: stop processing to leave room for other collectors in the same job
+    const elapsed = Date.now() - startTime
+    if (elapsed > REVERSE_SEARCH_MAX_MS) {
+      console.log(
+        `[pipeline-b] Reverse search time budget reached (${Math.round(elapsed / 60000)}min). ` +
+        `Processed ${stats.placesProcessed}/${allPlaces.length} places. Remaining will be picked up next run.`
+      )
+      break
+    }
+
     try {
       const addr = parseAddressComponents(place.road_address, place.address)
       const isCommon = isCommonWordName(place.name)
