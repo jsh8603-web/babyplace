@@ -33,7 +33,7 @@ import { runPipelineA } from './collectors/kakao-category'
 import { runPipelineB, runReverseSearchOnly, runKeywordSearchBatch, replayFromExtraction } from './collectors/naver-blog'
 import { runPublicData } from './collectors/public-data'
 import { runLocalData } from './collectors/localdata'
-import { runScoring, runEventScoring, runEventAutoHide } from './scoring'
+import { runScoring, runEventScoring, runEventAutoHide, recalculateMentionCounts } from './scoring'
 import { runDensityControl } from './enrichers/density'
 import { runKakaoEnrichment, runEventKakaoEnrichment } from './enrichers/kakao-enrich'
 import { runAutoPromotion } from './candidates/auto-promote'
@@ -330,6 +330,11 @@ async function runScoringJob(): Promise<void> {
   console.log('[run] Running event Kakao enrichment...')
   const eventEnrichResult = await runEventKakaoEnrichment()
   console.log('[run] Event Kakao enrichment result:', JSON.stringify(eventEnrichResult, null, 2))
+
+  // Recalculate mention_count before scoring (sync with blog_mentions)
+  console.log('[run] Recalculating mention counts...')
+  const recalcResult = await recalculateMentionCounts()
+  console.log('[run] Mention recalculation:', JSON.stringify(recalcResult, null, 2))
 
   // Popularity scoring: compute scores for all active places
   console.log('[run] Running popularity scoring...')

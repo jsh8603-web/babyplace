@@ -38,11 +38,12 @@ async function main() {
     const batch = uniquePlaceIds.slice(i, i + BATCH)
     await Promise.all(
       batch.map(async (placeId) => {
-        // Count mentions with relevance_score >= 0.3 (matches detail API filter)
+        // Count mentions with relevance_score >= 0.3 + source_type filter (matches detail API filter)
         const { count, error: countErr } = await supabaseAdmin
           .from('blog_mentions')
           .select('id', { count: 'exact', head: true })
           .eq('place_id', placeId)
+          .in('source_type', ['naver_blog', 'daum_blog'])
           .gte('relevance_score', 0.3)
 
         if (countErr) {

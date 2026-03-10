@@ -2,21 +2,18 @@
  * Popularity scoring engine for places.
  *
  * Computes popularity_score for all active places based on:
- *   - mention_count (blog/café references)
+ *   - mention_count (blog/café references) — bracket-based absolute scoring
  *   - source_count (distinct data sources)
  *   - recency (days since last mention, exponential decay)
  *   - data_completeness (filled fields ratio)
  *
- * Formula (plan.md 8-1):
- *   raw_score = (
- *     0.35 × normalize(log(1 + mention_count)) +
- *     0.25 × source_diversity +
- *     0.25 × recency(exp(-days/180)) +
- *     0.15 × data_completeness
- *   )
+ * Formula:
+ *   score = 0.50 × mentionScore(count) + 0.10 × source_diversity +
+ *           0.25 × recency + 0.15 × completeness
+ *   (mention_count=0 → floor 0.30)
  *
- *   bayesian_score = (raw × n + avg × C) / (n + C)
- *     where C = 25th percentile of mention_count across all places
+ * Also includes recalculateMentionCounts() to sync places.mention_count
+ * with actual blog_mentions before scoring.
  *
  * Runs daily at 05:00 KST (schedule: '0 20 * * *').
  * Results logged to scoring_logs table.
@@ -36,7 +33,6 @@ export interface ScoringResult {
 
 const RECENCY_HALF_LIFE_DAYS = 180 // exponential decay half-life
 const DATA_FIELDS = ['name', 'address', 'phone', 'tags', 'description'] // for completeness
-const BAYESIAN_CONSTANT_PERCENTILE = 0.25 // use 25th percentile of mention_count as smoothing constant
 
 // ─── Main export ──────────────────────────────────────────────────────────────
 
@@ -96,74 +92,34 @@ export async function runScoring(): Promise<ScoringResult> {
       return result
     }
 
-    // Compute Bayesian constant C = 25th percentile of mention_count
-    const sortedMentions = places
-      .map((p) => p.mention_count)
-      .sort((a, b) => a - b)
-    const cIndex = Math.floor(places.length * BAYESIAN_CONSTANT_PERCENTILE)
-    const bayesianConstant = Math.max(sortedMentions[cIndex] ?? 1, 1)
-
-    // Calculate raw scores for min/max normalization
-    const rawScores: number[] = []
-    const scoreMap = new Map<
-      number,
-      { raw: number; final: number; completeness: number; recency: number }
-    >()
-
-    // Pre-compute max log(mention_count) for normalization (all components → 0~1)
-    const maxMentionCount = places.reduce((max, p) => Math.max(max, p.mention_count ?? 0), 0)
-    const maxLogMention = Math.log(1 + maxMentionCount)
+    // Score each place using absolute bracket-based mentionScore
+    const scoreMap = new Map<number, number>()
 
     for (const place of places) {
       try {
         const completeness = computeDataCompleteness(place)
         const recency = computeRecency(place.last_mentioned_at ?? place.created_at)
+        const mention = mentionScore(place.mention_count ?? 0)
+        const sourceDiversity = Math.min(place.source_count ?? 1, 4) / 4
 
-        const normalizedMention = maxLogMention > 0
-          ? Math.log(1 + place.mention_count) / maxLogMention
-          : 0
-
-        const raw =
-          0.35 * normalizedMention +
-          0.25 * (Math.min(place.source_count ?? 1, 4) / 4) + // source_diversity: capped at 4
-          0.25 * recency +
-          0.15 * completeness
-
-        if (isNaN(raw)) continue // skip places with invalid data
-        rawScores.push(raw)
-        scoreMap.set(place.id, { raw, final: 0, completeness, recency })
-      } catch (err) {
-        console.error(`[scoring] Error computing raw score for place ${place.id}:`, err)
-        result.errors++
-      }
-    }
-
-    // Normalize raw scores to [0, 1]
-    if (rawScores.length > 0) {
-      let minRaw = Infinity
-      let maxRaw = -Infinity
-      for (const s of rawScores) { if (s < minRaw) minRaw = s; if (s > maxRaw) maxRaw = s }
-      const range = Math.max(maxRaw - minRaw, 0.001) // avoid division by zero
-
-      for (const place of places) {
-        const entry = scoreMap.get(place.id)
-        if (!entry) continue
-
-        // Places with no mentions get a low base score (below any mentioned place)
-        if (place.mention_count === 0) {
-          entry.final = 0.30
+        // Places with no mentions get a fixed floor score
+        if ((place.mention_count ?? 0) === 0) {
+          scoreMap.set(place.id, 0.30)
           continue
         }
 
-        // Normalize raw score
-        const normalized = (entry.raw - minRaw) / range
+        const score =
+          0.50 * mention +
+          0.10 * sourceDiversity +
+          0.25 * recency +
+          0.15 * completeness
 
-        // Apply Bayesian smoothing with prior=0.35 (ensures mentioned places > unmentioned)
-        const bayes =
-          (normalized * place.mention_count + 0.35 * bayesianConstant) /
-          (place.mention_count + bayesianConstant)
-
-        entry.final = Math.max(0.31, Math.min(1, bayes)) // floor above unmentioned base
+        const finalScore = Math.max(0.31, Math.min(1, score))
+        if (isNaN(finalScore)) continue
+        scoreMap.set(place.id, finalScore)
+      } catch (err) {
+        console.error(`[scoring] Error computing score for place ${place.id}:`, err)
+        result.errors++
       }
     }
 
@@ -172,13 +128,13 @@ export async function runScoring(): Promise<ScoringResult> {
     let scoreSum = 0
 
     for (const place of places) {
-      const entry = scoreMap.get(place.id)
-      if (!entry) continue
+      const finalScore = scoreMap.get(place.id)
+      if (finalScore === undefined) continue
 
-      updates.push({ id: place.id, score: entry.final })
-      scoreSum += entry.final
-      result.minScore = Math.min(result.minScore, entry.final)
-      result.maxScore = Math.max(result.maxScore, entry.final)
+      updates.push({ id: place.id, score: finalScore })
+      scoreSum += finalScore
+      result.minScore = Math.min(result.minScore, finalScore)
+      result.maxScore = Math.max(result.maxScore, finalScore)
       result.placesProcessed++
     }
 
@@ -214,7 +170,7 @@ export async function runScoring(): Promise<ScoringResult> {
       min_score: result.minScore,
       max_score: result.maxScore,
       avg_score: result.avgScore,
-      bayesian_constant: bayesianConstant,
+      bayesian_constant: 0,
       duration_ms: Date.now() - startedAt,
     })
 
@@ -235,7 +191,107 @@ export async function runScoring(): Promise<ScoringResult> {
   }
 }
 
+// ─── Mention Count Recalculation ─────────────────────────────────────────────
+
+/**
+ * Recalculates places.mention_count and last_mentioned_at from blog_mentions.
+ * Filters by source_type IN ('naver_blog','daum_blog') AND relevance_score >= 0.3
+ * to match the detail API query.
+ */
+export async function recalculateMentionCounts(): Promise<{ updated: number; mismatches: number }> {
+  const stats = { updated: 0, mismatches: 0 }
+
+  // Get distinct place_ids from blog_mentions (paginated)
+  const allPlaceIds = new Set<number>()
+  let from = 0
+  const PAGE = 1000
+  while (true) {
+    const { data, error } = await supabaseAdmin
+      .from('blog_mentions')
+      .select('place_id')
+      .range(from, from + PAGE - 1)
+    if (error) {
+      console.error('[recalculate] Failed to fetch place_ids:', error)
+      return stats
+    }
+    if (!data || data.length === 0) break
+    for (const row of data) allPlaceIds.add(row.place_id)
+    if (data.length < PAGE) break
+    from += PAGE
+  }
+
+  const uniquePlaceIds = [...allPlaceIds]
+  console.log(`[recalculate] Checking ${uniquePlaceIds.length} places for mention_count sync...`)
+
+  const BATCH = 50
+  for (let i = 0; i < uniquePlaceIds.length; i += BATCH) {
+    const batch = uniquePlaceIds.slice(i, i + BATCH)
+    await Promise.all(
+      batch.map(async (placeId) => {
+        // Count qualifying mentions
+        const { count, error: countErr } = await supabaseAdmin
+          .from('blog_mentions')
+          .select('id', { count: 'exact', head: true })
+          .eq('place_id', placeId)
+          .in('source_type', ['naver_blog', 'daum_blog'])
+          .gte('relevance_score', 0.3)
+
+        if (countErr) return
+
+        const newCount = count ?? 0
+
+        // Get latest post_date for last_mentioned_at
+        const { data: latestRow } = await supabaseAdmin
+          .from('blog_mentions')
+          .select('post_date')
+          .eq('place_id', placeId)
+          .in('source_type', ['naver_blog', 'daum_blog'])
+          .gte('relevance_score', 0.3)
+          .not('post_date', 'is', null)
+          .order('post_date', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+
+        // Get current values
+        const { data: place } = await supabaseAdmin
+          .from('places')
+          .select('mention_count, last_mentioned_at')
+          .eq('id', placeId)
+          .single()
+
+        const oldCount = place?.mention_count ?? 0
+        const newLastMentioned = latestRow?.post_date ?? null
+
+        if (oldCount !== newCount || (newLastMentioned && place?.last_mentioned_at !== newLastMentioned)) {
+          stats.mismatches++
+          const updateData: Record<string, unknown> = { mention_count: newCount }
+          if (newLastMentioned) updateData.last_mentioned_at = newLastMentioned
+          await supabaseAdmin.from('places').update(updateData).eq('id', placeId)
+        }
+
+        stats.updated++
+      })
+    )
+  }
+
+  console.log(`[recalculate] Done: ${stats.updated} checked, ${stats.mismatches} mismatches fixed`)
+  return stats
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * Bracket-based mention score: absolute value, no relative normalization needed.
+ * 0→0, 1-3→0.20, 4-10→0.20-0.40, 11-30→0.40-0.65, 31-100→0.65-0.90, 100+→0.90-1.00
+ */
+export function mentionScore(count: number): number {
+  if (count === 0) return 0
+  if (count <= 3) return 0.20
+  if (count <= 10) return 0.20 + 0.20 * (count - 3) / 7
+  if (count <= 30) return 0.40 + 0.25 * (count - 10) / 20
+  if (count <= 100) return 0.65 + 0.25 * (count - 30) / 70
+  return 0.90 + 0.10 * Math.min((count - 100) / 200, 1)
+}
 
 /**
  * Computes data completeness: ratio of non-null, non-empty fields.
