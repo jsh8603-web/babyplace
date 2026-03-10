@@ -27,6 +27,15 @@ export interface DuplicateCheckResult {
 }
 
 /**
+ * Extract numeric kakao place id from prefixed variants.
+ * e.g. "tour_12345" → "12345", "dup_12345" → "12345", "12345" → "12345"
+ */
+function extractKakaoNumericId(id: string): string | null {
+  const m = id.match(/(\d{5,})/)
+  return m ? m[1] : null
+}
+
+/**
  * Checks whether a Kakao API result already exists in the places table.
  *
  * Returns the existing place id if a duplicate is found, so the caller can
@@ -35,7 +44,7 @@ export interface DuplicateCheckResult {
 export async function checkDuplicate(
   input: KakaoPlaceInput
 ): Promise<DuplicateCheckResult> {
-  // --- Pass 1: exact kakao_place_id match ---
+  // --- Pass 1a: exact kakao_place_id match ---
   const { data: byId } = await supabaseAdmin
     .from('places')
     .select('id, name')
@@ -52,10 +61,35 @@ export async function checkDuplicate(
     }
   }
 
-  // --- Pass 2: nearby places (within ~100m bounding box) + name similarity ---
-  // Approximate 100m in degrees: ~0.0009 degrees latitude, ~0.0011 degrees longitude
-  const LAT_DELTA = 0.0009
-  const LNG_DELTA = 0.0011
+  // --- Pass 1b: cross-source kakao_place_id match ---
+  // Different collectors use prefixed IDs (tour_123, pfc_456, park_789, dup_123).
+  // Extract the numeric part and check if any existing place has the same
+  // numeric kakao ID (either bare or with dup_ prefix).
+  const numericId = extractKakaoNumericId(input.kakaoPlaceId)
+  if (numericId && numericId !== input.kakaoPlaceId) {
+    // Search for bare numeric ID or dup_ variant
+    const { data: byNumericId } = await supabaseAdmin
+      .from('places')
+      .select('id, name')
+      .or(`kakao_place_id.eq.${numericId},kakao_place_id.eq.dup_${numericId}`)
+      .limit(1)
+      .maybeSingle()
+
+    if (byNumericId) {
+      return {
+        isDuplicate: true,
+        existingId: byNumericId.id,
+        existingName: byNumericId.name,
+        matchType: 'kakao_id',
+        similarityScore: 1.0,
+      }
+    }
+  }
+
+  // --- Pass 2: nearby places (within ~300m bounding box) + name similarity ---
+  // Widened from 100m to 300m to catch cross-source duplicates with GPS drift
+  const LAT_DELTA = 0.0027
+  const LNG_DELTA = 0.0033
 
   const { data: nearby } = await supabaseAdmin
     .from('places')

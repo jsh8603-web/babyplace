@@ -156,20 +156,24 @@ async function insertPlaceAuditEntry(place: any): Promise<boolean> {
   return !error
 }
 
-async function checkDuplicates(count = 15): Promise<void> {
-  // Find potential duplicates: same category, within ~100m, similar names
+async function checkDuplicates(count = 50): Promise<void> {
+  // Find potential duplicates: within ~200m, similar names (cross-category)
   const { data, error } = await supabase
     .from('places')
-    .select('id, name, category, lat, lng, address')
+    .select('id, name, category, lat, lng, address, source, kakao_place_id')
     .eq('is_active', true)
     .order('id', { ascending: true })
 
   if (error) { console.error('Error:', error.message); return }
   if (!data || data.length === 0) return
 
-  const suspects: { p1: any; p2: any; distance: number }[] = []
+  // Import similarity for Dice coefficient matching
+  const { similarity } = await import('../matchers/similarity')
 
-  // Simple O(n^2) check limited to count * 10 comparisons
+  function normalize(n: string) { return n.replace(/\s+/g, '').replace(/[()（）]/g, '') }
+
+  const suspects: { p1: any; p2: any; distance: number; sim: number }[] = []
+
   for (let i = 0; i < data.length && suspects.length < count; i++) {
     const p1 = data[i]
     if (!p1.lat || !p1.lng) continue
@@ -177,23 +181,39 @@ async function checkDuplicates(count = 15): Promise<void> {
     for (let j = i + 1; j < data.length && suspects.length < count; j++) {
       const p2 = data[j]
       if (!p2.lat || !p2.lng) continue
-      if (p1.category !== p2.category) continue
 
       // Approximate distance (meters)
       const dlat = (p1.lat - p2.lat) * 111000
       const dlng = (p1.lng - p2.lng) * 111000 * Math.cos(p1.lat * Math.PI / 180)
       const dist = Math.sqrt(dlat * dlat + dlng * dlng)
 
-      if (dist < 100) {
-        // Check name similarity (simple token overlap)
-        const tokens1 = new Set(p1.name.replace(/[^가-힣a-zA-Z0-9]/g, ' ').toLowerCase().split(/\s+/))
-        const tokens2 = new Set(p2.name.replace(/[^가-힣a-zA-Z0-9]/g, ' ').toLowerCase().split(/\s+/))
-        const overlap = Array.from(tokens1).filter(t => tokens2.has(t)).length
-        const maxLen = Math.max(tokens1.size, tokens2.size)
-        if (maxLen > 0 && overlap / maxLen > 0.5) {
-          suspects.push({ p1, p2, distance: Math.round(dist) })
+      if (dist < 300) {
+        // Use Dice similarity + substring containment (same as duplicate.ts)
+        const sim = similarity(p1.name, p2.name)
+        const na = normalize(p1.name), nb = normalize(p2.name)
+        const isContained = na.includes(nb) || nb.includes(na)
+
+        if (sim > 0.7 || isContained) {
+          suspects.push({ p1, p2, distance: Math.round(dist), sim })
         }
       }
+    }
+  }
+
+  // Check for kakao_place_id cross-matches (dup_ prefix)
+  const dupPrefixed = data.filter(p => p.kakao_place_id?.startsWith('dup_'))
+  for (const dup of dupPrefixed) {
+    if (suspects.length >= count) break
+    const numericId = dup.kakao_place_id!.replace('dup_', '')
+    const keeper = data.find(p => p.kakao_place_id === numericId && p.id !== dup.id)
+    if (keeper && !suspects.some(s =>
+      (s.p1.id === dup.id && s.p2.id === keeper.id) ||
+      (s.p1.id === keeper.id && s.p2.id === dup.id)
+    )) {
+      const dlat = ((dup.lat ?? 0) - (keeper.lat ?? 0)) * 111000
+      const dlng = ((dup.lng ?? 0) - (keeper.lng ?? 0)) * 111000 * Math.cos((dup.lat ?? 0) * Math.PI / 180)
+      const dist = Math.sqrt(dlat * dlat + dlng * dlng)
+      suspects.push({ p1: keeper, p2: dup, distance: Math.round(dist), sim: 1.0 })
     }
   }
 
@@ -208,6 +228,9 @@ async function checkDuplicates(count = 15): Promise<void> {
         other_place_id: s.p2.id,
         other_name: s.p2.name,
         distance_m: s.distance,
+        similarity: s.sim,
+        p1_source: s.p1.source,
+        p2_source: s.p2.source,
         p1_address: s.p1.address,
         p2_address: s.p2.address,
       },
@@ -215,7 +238,7 @@ async function checkDuplicates(count = 15): Promise<void> {
     if (!insertErr) sampled++
   }
 
-  console.log(`Found ${sampled} duplicate suspects (within 100m, similar names)`)
+  console.log(`Found ${sampled} duplicate suspects (within 200m, sim>0.7 or name contained)`)
 }
 
 async function listPending(limit = 50): Promise<void> {
@@ -382,7 +405,7 @@ async function setVerdict(auditId: number, verdict: string, note?: string): Prom
   else console.log(`Set audit #${auditId} → ${verdict}${note ? ` (${note})` : ''}`)
 }
 
-const NOT_BABY_FRIENDLY_PATTERNS = /주점|술집|호프|바\s*$|타이어|자동차|중고차|묘지|납골|묘역|추모비|순절비|선정비|장군묘|주유소|부동산|인테리어|여행사|모텔|사우나|노래방|당구|사격|볼링|PC방|피씨방|게임방|세차|렌터카|장의사|축산|도축|철물|저수지|고개$|산$|봉$|천$|골$|폭포$|등산로|등산|바위$|행궁|생가$|좌상$|정상$|관광특구|이동외과|풍화당|옹기$/
+const NOT_BABY_FRIENDLY_PATTERNS = /주점|술집|호프|바\s*$|타이어|자동차|중고차|묘지|납골|묘역|추모비|순절비|선정비|장군묘|주유소|부동산|인테리어|여행사|모텔|사우나|노래방|당구|사격|볼링|PC방|피씨방|게임방|세차|렌터카|장의사|축산|도축|철물|저수지|고개$|산$|봉$|천$|골$|폭포$|등산로|등산|바위$|행궁|생가$|좌상$|정상$|관광특구|이동외과|풍화당|옹기$|약수터|해맞이|석탑|열녀문|소녀상|동상$|카지노|썬팅|피트니스|헬스장/
 
 async function batchRevalidate(count = 5): Promise<void> {
   // Random sample of old places for Kakao re-verification

@@ -142,27 +142,29 @@ export async function runScoring(): Promise<ScoringResult> {
       result.avgScore = scoreSum / updates.length
     }
 
-    // Batch update places using RPC
-    const { error: updateError } = await supabaseAdmin.rpc('update_place_scores_batch', {
-      updates_json: JSON.stringify(updates),
-    })
+    // Batch update places using RPC (chunked to avoid Supabase timeout)
+    const RPC_CHUNK = 1000
+    let totalUpdated = 0
+    for (let i = 0; i < updates.length; i += RPC_CHUNK) {
+      const chunk = updates.slice(i, i + RPC_CHUNK)
+      const { error: updateError } = await supabaseAdmin.rpc('update_place_scores_batch', {
+        updates_json: JSON.stringify(chunk),
+      })
 
-    if (updateError) {
-      // Fallback: update one by one (slower but reliable)
-      let successCount = 0
-      for (const { id, score } of updates) {
-        const { error } = await supabaseAdmin
-          .from('places')
-          .update({ popularity_score: score })
-          .eq('id', id)
-
-        if (!error) successCount++
-        else console.error(`[scoring] Failed to update place ${id}:`, error)
+      if (updateError) {
+        console.error(`[scoring] RPC failed for chunk ${i}-${i + chunk.length}, falling back to individual updates`)
+        for (const { id, score } of chunk) {
+          const { error } = await supabaseAdmin
+            .from('places')
+            .update({ popularity_score: score })
+            .eq('id', id)
+          if (!error) totalUpdated++
+        }
+      } else {
+        totalUpdated += chunk.length
       }
-      result.logsInserted = successCount
-    } else {
-      result.logsInserted = updates.length
     }
+    result.logsInserted = totalUpdated
 
     // Log scoring run
     const { error: logError } = await supabaseAdmin.from('scoring_logs').insert({

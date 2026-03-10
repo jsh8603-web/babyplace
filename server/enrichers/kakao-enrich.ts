@@ -58,7 +58,7 @@ export async function runKakaoEnrichment(): Promise<KakaoEnrichResult> {
   // (kakao_place_id presence means it was already matched/enriched)
   const { data: places, error: fetchError } = await supabaseAdmin
     .from('places')
-    .select('id, name, address, road_address, phone, kakao_place_id, sub_category, category')
+    .select('id, name, address, road_address, phone, kakao_place_id, sub_category, category, mention_count')
     .eq('is_active', true)
     .is('kakao_place_id', null)
     .order('id', { ascending: true })
@@ -130,6 +130,7 @@ interface PlaceRow {
   kakao_place_id: string | null
   sub_category: string | null
   category: string | null
+  mention_count: number | null
 }
 
 async function enrichPlace(place: PlaceRow, usedKakaoIds: Set<string>): Promise<boolean> {
@@ -142,11 +143,38 @@ async function enrichPlace(place: PlaceRow, usedKakaoIds: Set<string>): Promise<
 
   // Check if this kakao_place_id is already used by another place (in-memory check)
   if (usedKakaoIds.has(match.id)) {
-    // Already assigned to another place — mark current place as checked to skip next time
+    // Already assigned to another place — deactivate this duplicate and migrate mentions
+    const { data: keeper } = await supabaseAdmin
+      .from('places')
+      .select('id, mention_count')
+      .eq('kakao_place_id', match.id)
+      .eq('is_active', true)
+      .maybeSingle()
+
+    if (keeper) {
+      // Migrate blog_mentions from duplicate to keeper
+      await supabaseAdmin
+        .from('blog_mentions')
+        .update({ place_id: keeper.id })
+        .eq('place_id', place.id)
+
+      // Add mention counts
+      const dupMentions = (place as any).mention_count ?? 0
+      if (dupMentions > 0) {
+        await supabaseAdmin
+          .from('places')
+          .update({ mention_count: (keeper.mention_count ?? 0) + dupMentions })
+          .eq('id', keeper.id)
+      }
+    }
+
+    // Deactivate duplicate and mark with dup_ prefix
     await supabaseAdmin
       .from('places')
-      .update({ kakao_place_id: `dup_${match.id}` })
+      .update({ kakao_place_id: `dup_${match.id}`, is_active: false })
       .eq('id', place.id)
+
+    console.log(`[kakao-enrich] Deactivated duplicate place ${place.id} (${place.name}) → keeper ${keeper?.id}`)
     return false
   }
 
