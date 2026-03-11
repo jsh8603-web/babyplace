@@ -291,7 +291,7 @@ async function runFull(): Promise<void> {
   console.log('── Phase 1: Sample & Register ──────────────────────────')
 
   console.log('\n[mention] Registering all new mentions + 30 random existing...')
-  console.log(tsx('server/scripts/mention-audit.ts --sample --random 30'))
+  console.log(tsx('server/scripts/mention-audit.ts --sample --random 30', 300000))
 
   console.log('[poster] Summary...')
   console.log(tsx('server/scripts/poster-audit.ts --summary'))
@@ -301,7 +301,7 @@ async function runFull(): Promise<void> {
   console.log(tsx('server/scripts/classification-audit.ts --sample-excluded --count 10'))
 
   console.log('[place] Sampling...')
-  console.log(tsx('server/scripts/place-accuracy-audit.ts --sample --count 15'))
+  console.log(tsx('server/scripts/place-accuracy-audit.ts --sample --count 15', 300000))
 
   console.log('[event-dedup] Listing...')
   console.log(tsx('server/scripts/event-dedup-audit.ts --list --limit 20'))
@@ -370,7 +370,7 @@ async function runFull(): Promise<void> {
   console.log('\n── Phase 3.5: Pattern Analysis ────────────────────────')
 
   console.log('\n[mention] Analyzing flagged mention patterns...')
-  console.log(tsx('server/scripts/mention-audit.ts --analyze-flagged'))
+  console.log(tsx('server/scripts/mention-audit.ts --analyze-flagged', 180000))
 
   console.log('[classification] Analyzing FP/FN patterns...')
   console.log(tsx('server/scripts/classification-audit.ts --patterns'))
@@ -398,13 +398,13 @@ async function runQuick(): Promise<void> {
   console.log(tsx('server/scripts/poster-audit.ts --bulk-approve --action kept'))
 
   console.log('[mention] Sampling new + 10 random...')
-  console.log(tsx('server/scripts/mention-audit.ts --sample --count 10'))
+  console.log(tsx('server/scripts/mention-audit.ts --sample --count 10', 300000))
 
   console.log('[classification] Sampling...')
   console.log(tsx('server/scripts/classification-audit.ts --sample-included --count 5'))
 
   console.log('[place] Sampling...')
-  console.log(tsx('server/scripts/place-accuracy-audit.ts --sample --count 5'))
+  console.log(tsx('server/scripts/place-accuracy-audit.ts --sample --count 5', 300000))
 
   console.log('[event-dedup] Listing...')
   console.log(tsx('server/scripts/event-dedup-audit.ts --list --limit 5'))

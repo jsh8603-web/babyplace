@@ -82,8 +82,14 @@ JSON만 응답하세요.`
       return null
     }
 
-    const contentType = imageResponse.headers.get('content-type') || 'image/jpeg'
-    const mimeType = contentType.split(';')[0].trim()
+    const rawContentType = imageResponse.headers.get('content-type') || ''
+    let mimeType = rawContentType.split(';')[0].trim()
+    // Fallback: infer MIME type from URL extension or default to jpeg
+    if (!mimeType || !mimeType.startsWith('image/')) {
+      const ext = imageUrl.split('?')[0].split('.').pop()?.toLowerCase()
+      const extMap: Record<string, string> = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', webp: 'image/webp' }
+      mimeType = extMap[ext ?? ''] || 'image/jpeg'
+    }
     const buffer = Buffer.from(await imageResponse.arrayBuffer())
     const base64 = buffer.toString('base64')
 
