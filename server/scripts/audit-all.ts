@@ -309,11 +309,35 @@ async function runFull(): Promise<void> {
   console.log('[candidate] Sampling...')
   console.log(tsx('server/scripts/candidate-audit.ts --sample --count 10'))
 
+  // Phase 1.5: Proactive scans
+  console.log('\n── Phase 1.5: Proactive Scans ─────────────────────────')
+
+  console.log('\n[event-dedup] Scanning for missed duplicates...')
+  console.log(tsx('server/scripts/event-dedup-audit.ts --missed-dupes --count 20'))
+
+  console.log('[event-dedup] Flagging low-similarity merges...')
+  console.log(tsx('server/scripts/event-dedup-audit.ts --flag-low-sim'))
+
+  console.log('[place] Checking for duplicate suspects...')
+  console.log(tsx('server/scripts/place-accuracy-audit.ts --check-dupes --count 20'))
+
+  console.log('[place] Batch revalidating old places via Kakao...')
+  console.log(tsx('server/scripts/place-accuracy-audit.ts --batch-revalidate --count 10', 180000))
+
+  console.log('[poster] Expiring old locks on ended events...')
+  console.log(tsx('server/scripts/poster-audit.ts --expire-locks'))
+
   // Phase 2: Automated Judging — bulk-judge + vision-check
   console.log('\n── Phase 2: Automated Judging ──────────────────────────')
 
+  console.log('\n[poster] Bulk-approving kept posters...')
+  console.log(tsx('server/scripts/poster-audit.ts --bulk-approve --action kept'))
+
   console.log('\n[mention] Running bulk-judge on all pending...')
   console.log(tsx('server/scripts/mention-audit.ts --bulk-judge', 300000))
+
+  console.log('[place] Running bulk-judge on pending places...')
+  console.log(tsx('server/scripts/place-accuracy-audit.ts --bulk-judge'))
 
   console.log('[poster] Running vision-check on UPDATED posters...')
   console.log(tsx('server/scripts/poster-audit.ts --vision-check --limit 20', 180000))
@@ -327,42 +351,98 @@ async function runFull(): Promise<void> {
     .is('kakao_similarity', null)
   console.log(`[candidate] Flagged ${flaggedCandidates ?? 0} candidates with null kakao_similarity`)
 
-  // Phase 3: Report
-  console.log('\n── Phase 3: Report ────────────────────────────────────')
+  // Phase 2.6: Validation — check bulk-judge accuracy
+  console.log('\n── Phase 2.6: Validation ──────────────────────────────')
+
+  console.log('\n[mention] Validating bulk-judge accuracy...')
+  console.log(tsx('server/scripts/mention-audit.ts --validate-bulk --count 10'))
+
+  console.log('[place] Validating bulk-judge accuracy...')
+  console.log(tsx('server/scripts/place-accuracy-audit.ts --validate-bulk --count 5'))
+
+  // Phase 3: Report + Analysis
+  console.log('\n── Phase 3: Report + Analysis ─────────────────────────')
   await runReport()
   await runAnalysis()
   await runCrossAudit()
+
+  // Phase 3.5: Pattern analysis
+  console.log('\n── Phase 3.5: Pattern Analysis ────────────────────────')
+
+  console.log('\n[mention] Analyzing flagged mention patterns...')
+  console.log(tsx('server/scripts/mention-audit.ts --analyze-flagged'))
+
+  console.log('[classification] Analyzing FP/FN patterns...')
+  console.log(tsx('server/scripts/classification-audit.ts --patterns'))
 }
 
 async function runQuick(): Promise<void> {
-  console.log('[audit-all] Quick audit (poster + mention)\n')
+  console.log('[audit-all] Quick audit (6종 lightweight)\n')
 
   const { execSync } = await import('child_process')
   const env = { ...process.env }
-
-  const audits = [
-    { name: 'poster', cmd: 'server/scripts/poster-audit.ts --summary' },
-    { name: 'mention', cmd: 'server/scripts/mention-audit.ts --sample --count 10' },
-  ]
-
-  for (const audit of audits) {
-    console.log(`\n── ${audit.name} ──────────────────────────────────`)
+  const tsx = (cmd: string, timeout = 120000) => {
     try {
-      const output = execSync(
-        `npx tsx -r dotenv/config ${audit.cmd}`,
-        { env, encoding: 'utf-8', timeout: 60000, cwd: process.cwd() }
-      )
-      console.log(output)
+      return execSync(`npx tsx -r dotenv/config ${cmd}`, { env, encoding: 'utf-8', timeout, cwd: process.cwd() })
     } catch (err: any) {
-      console.error(`[${audit.name}] Error:`, err.message?.slice(0, 200))
+      console.error(`  Error:`, err.message?.slice(0, 200))
+      return ''
     }
   }
 
-  // Quick summary
-  for (const audit of AUDIT_TABLES.slice(0, 2)) {
+  // Phase 1: Sample all 6 audit types (lightweight)
+  console.log('── Phase 1: Sample & Register ──────────────────────────')
+
+  console.log('\n[poster] Summary + bulk-approve kept...')
+  console.log(tsx('server/scripts/poster-audit.ts --summary'))
+  console.log(tsx('server/scripts/poster-audit.ts --bulk-approve --action kept'))
+
+  console.log('[mention] Sampling new + 10 random...')
+  console.log(tsx('server/scripts/mention-audit.ts --sample --count 10'))
+
+  console.log('[classification] Sampling...')
+  console.log(tsx('server/scripts/classification-audit.ts --sample-included --count 5'))
+
+  console.log('[place] Sampling...')
+  console.log(tsx('server/scripts/place-accuracy-audit.ts --sample --count 5'))
+
+  console.log('[event-dedup] Listing...')
+  console.log(tsx('server/scripts/event-dedup-audit.ts --list --limit 5'))
+
+  console.log('[candidate] Sampling...')
+  console.log(tsx('server/scripts/candidate-audit.ts --sample --count 5'))
+
+  // Phase 2: Automated judging (lightweight)
+  console.log('\n── Phase 2: Automated Judging ──────────────────────────')
+
+  console.log('\n[mention] Running bulk-judge...')
+  console.log(tsx('server/scripts/mention-audit.ts --bulk-judge', 180000))
+
+  console.log('[place] Running bulk-judge...')
+  console.log(tsx('server/scripts/place-accuracy-audit.ts --bulk-judge'))
+
+  console.log('[poster] Running vision-check (limit 10)...')
+  console.log(tsx('server/scripts/poster-audit.ts --vision-check --limit 10', 120000))
+
+  // Auto-flag candidates with null kakao_similarity
+  console.log('\n[candidate] Auto-flagging null kakao_similarity...')
+  const { count: flaggedCandidates } = await supabase
+    .from('candidate_promotion_audit_log')
+    .update({ audit_status: 'flagged', audit_notes: 'auto: kakao_similarity null' })
+    .eq('audit_status', 'pending')
+    .is('kakao_similarity', null)
+  console.log(`[candidate] Flagged ${flaggedCandidates ?? 0} candidates with null kakao_similarity`)
+
+  // Phase 3: Quick summary + cross-audit
+  console.log('\n── Phase 3: Summary ───────────────────────────────────')
+
+  for (const audit of AUDIT_TABLES) {
     const counts = await getSummary(audit.table)
-    console.log(`${audit.name}: ${counts.pending} pending / ${counts.total} total`)
+    console.log(`${audit.name.padEnd(16)} pending=${String(counts.pending).padStart(4)}  approved=${String(counts.approved).padStart(4)}  rejected=${String(counts.rejected).padStart(4)}  total=${String(counts.total).padStart(5)}`)
   }
+
+  // Cross-audit check (catch stale mentions daily)
+  await runCrossAudit()
 }
 
 // #6: Save audit metadata snapshot
@@ -715,8 +795,8 @@ async function main(): Promise<void> {
 Audit Orchestrator CLI
 
 Commands:
-  --full      Integrated pipeline: sample → bulk-judge → vision-check → report + snapshot
-  --quick     Poster + mention only (daily check) + save snapshot
+  --full      Integrated pipeline: sample → proactive scans → bulk-judge → vision-check → pattern analysis → report + snapshot
+  --quick     6종 lightweight: sample → bulk-judge → vision-check → cross-audit + snapshot
   --report    Summary report + cross-audit quality signals + source dashboard
   --analysis  Automated 4th-stage analysis (penalty distribution, coverage, divergence)
   --compare   Round-over-round change tracking + config version changes

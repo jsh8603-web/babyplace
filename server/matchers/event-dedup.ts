@@ -377,10 +377,15 @@ async function mergeEvents(event1: any, event2: any, processed: Set<number>): Pr
     }
   }
 
-  // Delete the lower-priority event
-  const { error } = await supabaseAdmin.from('events').delete().eq('id', del.id)
-
-  if (error) {
+  // Delete the lower-priority event (retry once on timeout)
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const { error } = await supabaseAdmin.from('events').delete().eq('id', del.id)
+    if (!error) break
+    if (error.code === '57014' && attempt === 0) {
+      console.warn(`[event-dedup] DELETE timeout for ${del.id}, retrying...`)
+      await new Promise(r => setTimeout(r, 2000))
+      continue
+    }
     throw error
   }
 

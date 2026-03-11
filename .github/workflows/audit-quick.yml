@@ -1,5 +1,5 @@
 # #13: Automated audit after pipeline runs
-# Quick audit (poster + mention) after daily pipeline
+# Quick audit (6종 lightweight) after daily pipeline
 # Full audit + compare weekly on Sundays
 
 name: Audit
@@ -23,11 +23,16 @@ on:
           - full
           - report
           - compare
+          - analysis
 
 jobs:
   audit:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # #13: Skip audit if Data Collection failed
+    if: >-
+      github.event_name != 'workflow_run' ||
+      github.event.workflow_run.conclusion == 'success'
+    timeout-minutes: 60
 
     env:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
