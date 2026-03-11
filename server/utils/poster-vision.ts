@@ -104,15 +104,19 @@ JSON만 응답하세요.`
         },
       ],
       config: {
-        maxOutputTokens: 1024,
+        maxOutputTokens: 2048,
         temperature: 0,
         responseMimeType: 'application/json',
+        thinkingConfig: { thinkingBudget: 0 },
       },
     })
 
     const text = response.text ?? ''
     try {
-      const parsed = JSON.parse(text)
+      // Extract JSON from response (handle markdown fences or extra text)
+      const jsonMatch = text.match(/\{[\s\S]*\}/)
+      const jsonStr = jsonMatch ? jsonMatch[0] : text
+      const parsed = JSON.parse(jsonStr)
       return {
         eventNameFound: parsed.event_name_found ?? false,
         dateMatch: parsed.date_match ?? 'no_date',
@@ -123,7 +127,7 @@ JSON만 응답하세요.`
         rawResponse: text,
       }
     } catch {
-      console.error('[poster-vision] Failed to parse response:', text.slice(0, 200))
+      console.error('[poster-vision] Failed to parse response:', text.slice(0, 300))
       return null
     }
   } catch (err: any) {

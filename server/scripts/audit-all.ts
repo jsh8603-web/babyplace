@@ -728,23 +728,43 @@ async function runCrossAudit(): Promise<void> {
       staleCount += count ?? 0
     }
     if (staleCount > 0) {
-      console.log(`\u26a0 ${staleCount} mentions with score>0 linked to ${inactivePlaces.length} inactive places`)
+      // Auto-fix: zero out scores for mentions linked to inactive places
+      let cleaned = 0
+      for (let i = 0; i < inactivePlaces.length; i += 50) {
+        const batch = inactivePlaces.slice(i, i + 50).map(p => p.id)
+        const { count } = await supabase
+          .from('blog_mentions')
+          .update({ relevance_score: 0, mention_locked: true })
+          .in('place_id', batch)
+          .gt('relevance_score', 0)
+        cleaned += count ?? 0
+      }
+      console.log(`\u2713 Cleaned ${cleaned} stale mentions (score→0, locked) for inactive places`)
     } else {
       console.log('\u2713 No stale mentions for inactive places')
     }
   }
 
-  // 2. Expired events with pending poster audits
+  // 2. Expired events with pending poster audits → auto-close
   const today = new Date().toISOString().split('T')[0]
   const { data: expiredPendingPosters } = await supabase
     .from('poster_audit_log')
-    .select('event_id, events!inner(end_date)')
+    .select('id, event_id, events!inner(end_date)')
     .eq('audit_status', 'pending')
     .lt('events.end_date', today)
 
   const expiredCount = expiredPendingPosters?.length ?? 0
   if (expiredCount > 0) {
-    console.log(`\u26a0 ${expiredCount} pending poster audits for expired events`)
+    // Auto-approve expired event posters (no point reviewing ended events)
+    const expiredIds = expiredPendingPosters!.map((r: any) => r.id)
+    for (let i = 0; i < expiredIds.length; i += 50) {
+      const batch = expiredIds.slice(i, i + 50)
+      await supabase
+        .from('poster_audit_log')
+        .update({ audit_status: 'approved', audit_notes: 'auto: event expired' })
+        .in('id', batch)
+    }
+    console.log(`\u2713 Auto-closed ${expiredCount} pending poster audits for expired events`)
   } else {
     console.log('\u2713 No pending poster audits for expired events')
   }
