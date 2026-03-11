@@ -1,15 +1,16 @@
-# #13: Automated audit after pipeline runs
-# Quick audit (6종 lightweight) after daily pipeline
-# Full audit + compare + analysis weekly on Sundays
+# #13: Automated audit — egress-aware scheduling
+# Quick audit: 3~4x/week (Mon/Wed/Fri + optional Sat)
+# Full audit: biweekly (1st/3rd Sunday) — without analysis
+# Analysis: monthly (1st Sunday only)
 
 name: Audit
 
 on:
-  workflow_run:
-    workflows: ["Data Collection"]
-    types: [completed]
   schedule:
-    # Weekly full audit: Sunday 10:00 KST (01:00 UTC)
+    # Quick audit: Mon/Wed/Fri 10:30 KST (01:30 UTC)
+    - cron: '30 1 * * 1,3,5'
+    # Full audit + compare: biweekly Sun 10:00 KST (01:00 UTC)
+    # GitHub cron doesn't support biweekly; use day-of-month filter in job
     - cron: '0 1 * * 0'
   workflow_dispatch:
     inputs:
@@ -28,10 +29,6 @@ on:
 jobs:
   audit:
     runs-on: ubuntu-latest
-    # #13: Skip audit if Data Collection failed
-    if: >-
-      github.event_name != 'workflow_run' ||
-      github.event.workflow_run.conclusion == 'success'
     timeout-minutes: 90
 
     env:
@@ -53,22 +50,48 @@ jobs:
       - name: Determine audit mode
         id: mode
         run: |
-          if [ "${{ github.event_name }}" = "schedule" ]; then
-            echo "mode=full" >> $GITHUB_OUTPUT
-          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          DOW=$(date +%u)  # 1=Mon ... 7=Sun
+          DOM=$(date +%d)  # day of month
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "mode=${{ inputs.mode }}" >> $GITHUB_OUTPUT
+            echo "run_compare=false" >> $GITHUB_OUTPUT
+            echo "run_analysis=false" >> $GITHUB_OUTPUT
+          elif [ "$DOW" = "7" ]; then
+            # Sunday: full audit (biweekly — 1st/3rd week = day 1-7, 15-21)
+            if [ "$DOM" -le 7 ] || [ "$DOM" -ge 15 -a "$DOM" -le 21 ]; then
+              echo "mode=full" >> $GITHUB_OUTPUT
+              echo "run_compare=true" >> $GITHUB_OUTPUT
+              # Analysis only on 1st Sunday (day 1-7)
+              if [ "$DOM" -le 7 ]; then
+                echo "run_analysis=true" >> $GITHUB_OUTPUT
+              else
+                echo "run_analysis=false" >> $GITHUB_OUTPUT
+              fi
+            else
+              # 2nd/4th Sunday: skip (save egress)
+              echo "mode=skip" >> $GITHUB_OUTPUT
+              echo "run_compare=false" >> $GITHUB_OUTPUT
+              echo "run_analysis=false" >> $GITHUB_OUTPUT
+            fi
           else
+            # Mon/Wed/Fri: quick audit
             echo "mode=quick" >> $GITHUB_OUTPUT
+            echo "run_compare=false" >> $GITHUB_OUTPUT
+            echo "run_analysis=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Run audit
+        if: steps.mode.outputs.mode != 'skip'
         run: |
           MODE="${{ steps.mode.outputs.mode }}"
           echo "Running audit --${MODE}"
           npx tsx -r dotenv/config server/scripts/audit-all.ts --${MODE}
 
-      - name: Run compare + analysis (weekly only)
-        if: github.event_name == 'schedule'
-        run: |
-          npx tsx -r dotenv/config server/scripts/audit-all.ts --compare
-          npx tsx -r dotenv/config server/scripts/audit-all.ts --analysis
+      - name: Run compare (biweekly full only)
+        if: steps.mode.outputs.run_compare == 'true'
+        run: npx tsx -r dotenv/config server/scripts/audit-all.ts --compare
+
+      - name: Run analysis (monthly only)
+        if: steps.mode.outputs.run_analysis == 'true'
+        run: npx tsx -r dotenv/config server/scripts/audit-all.ts --analysis

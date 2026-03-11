@@ -364,10 +364,9 @@ async function runFull(): Promise<void> {
   console.log('[place] Validating bulk-judge accuracy...')
   console.log(tsx('server/scripts/place-accuracy-audit.ts --validate-bulk --count 5'))
 
-  // Phase 3: Report + Analysis
-  console.log('\n── Phase 3: Report + Analysis ─────────────────────────')
+  // Phase 3: Report (analysis separated to --analysis for egress optimization)
+  console.log('\n── Phase 3: Report ────────────────────────────────────')
   await runReport()
-  await runAnalysis()
   await runCrossAudit()
 
   // Phase 3.5: Pattern analysis
@@ -585,15 +584,17 @@ async function compareWithConfig(): Promise<void> {
 async function runAnalysis(): Promise<void> {
   console.log('\n=== Automated Analysis (#13) ===\n')
 
-  // 1. Penalty flags distribution (mention)
+  // 1. Penalty flags distribution (mention) — sample 10K rows max to limit egress
   console.log('--- Mention Penalty Flags Distribution ---')
   const BATCH = 1000
+  const MAX_SCAN = 10000
   let cursor = 0
   const flagDist: Record<string, number> = {}
   let totalWithFlags = 0
   let totalNull = 0
+  let scanned = 0
 
-  while (true) {
+  while (scanned < MAX_SCAN) {
     const { data, error } = await supabase
       .from('mention_audit_log')
       .select('id, penalty_flags')
@@ -603,6 +604,7 @@ async function runAnalysis(): Promise<void> {
     if (error || !data || data.length === 0) break
     for (const row of data) {
       cursor = row.id
+      scanned++
       const flags = (row.penalty_flags || []) as string[]
       if (flags.length === 0) { totalNull++; continue }
       totalWithFlags++
