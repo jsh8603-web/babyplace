@@ -334,7 +334,7 @@ async function runFull(): Promise<void> {
   console.log(tsx('server/scripts/poster-audit.ts --bulk-approve --action kept'))
 
   console.log('\n[mention] Running bulk-judge on all pending...')
-  console.log(tsx('server/scripts/mention-audit.ts --bulk-judge', 1200000))
+  console.log(tsx('server/scripts/mention-audit.ts --bulk-judge', 600000))
 
   console.log('[place] Running bulk-judge on pending places...')
   console.log(tsx('server/scripts/place-accuracy-audit.ts --bulk-judge'))
