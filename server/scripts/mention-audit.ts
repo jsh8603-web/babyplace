@@ -47,51 +47,49 @@ async function sampleMentions(randomCount = 10): Promise<void> {
 
   // --- 1) New mentions (전수 배치): id > lastAuditedId ---
   let newSampled = 0
-  const BATCH = 200
+  const BATCH = 500
 
-  // Pre-fetch already-audited mention_ids for fast skip
-  const auditedIds = new Set<number>()
-  let aOffset = 0
-  while (true) {
-    const { data: aRows } = await supabase
-      .from('mention_audit_log')
-      .select('mention_id')
-      .gt('mention_id', lastAuditedId)
-      .range(aOffset, aOffset + 999)
-    if (!aRows || aRows.length === 0) break
-    for (const r of aRows) auditedIds.add(r.mention_id)
-    if (aRows.length < 1000) break
-    aOffset += 1000
-  }
-
-  let page = 0
+  // Use keyset pagination (cursor-based) — no ORDER BY sort on full table
+  let cursor = lastAuditedId
   while (true) {
     const { data: batch, error } = await supabase
       .from('blog_mentions')
       .select(SELECT)
       .eq('mention_locked', false)
-      .gt('id', lastAuditedId)
+      .gt('id', cursor)
       .order('id', { ascending: true })
-      .range(page * BATCH, (page + 1) * BATCH - 1)
+      .limit(BATCH)
 
     if (error) { console.error('Error fetching new mentions:', error.message); break }
     if (!batch || batch.length === 0) break
 
-    // Batch insert: skip already-audited, collect entries
+    // Batch insert with onConflict ignore (skip already-audited)
     const toInsert: any[] = []
     for (const row of batch) {
-      if (auditedIds.has(row.id)) continue
       const entry = buildAuditEntry(row, config, 'new')
       if (entry) toInsert.push(entry)
+      cursor = row.id
     }
     if (toInsert.length > 0) {
       const { error: insertErr } = await supabase.from('mention_audit_log').insert(toInsert)
-      if (insertErr) console.error('Batch insert error:', insertErr.message)
-      else newSampled += toInsert.length
+      if (insertErr) {
+        // On duplicate, fall back to individual inserts (rare: only if re-run mid-batch)
+        if (insertErr.message.includes('duplicate') || insertErr.message.includes('unique')) {
+          let inserted = 0
+          for (const entry of toInsert) {
+            const { error: singleErr } = await supabase.from('mention_audit_log').insert(entry)
+            if (!singleErr) inserted++
+          }
+          newSampled += inserted
+        } else {
+          console.error('Batch insert error:', insertErr.message)
+        }
+      } else {
+        newSampled += toInsert.length
+      }
     }
 
     if (batch.length < BATCH) break
-    page++
   }
 
   // --- 2) Existing mentions (기존 랜덤 샘플): stratified random from id <= lastAuditedId ---
@@ -364,8 +362,8 @@ async function bulkJudge(): Promise<void> {
   // #1 improvement: uses current blog_mentions.relevance_score instead of
   // stale audit_log score (config changes may have altered actual scores)
 
-  const BATCH = 30
-  const UPDATE_BATCH = 30
+  const BATCH = 200
+  const UPDATE_BATCH = 100
   let approved = 0, rejected = 0, flagged = 0, excludedIds: number[] = []
   let rounds = 0
 
@@ -464,7 +462,7 @@ async function bulkJudge(): Promise<void> {
     flagged += flagRows.length
 
     rounds++
-    if (rounds % 100 === 0) {
+    if (rounds % 20 === 0) {
       console.log(`  Progress: ${approved + rejected + flagged} processed (${approved} approved, ${rejected} rejected, ${flagged} flagged)`)
     }
 
@@ -473,7 +471,7 @@ async function bulkJudge(): Promise<void> {
 
   // Exclude rejected mentions (score=0 + lock)
   if (excludedIds.length > 0) {
-    const EXCL_BATCH = 50
+    const EXCL_BATCH = 200
     for (let i = 0; i < excludedIds.length; i += EXCL_BATCH) {
       const batch = excludedIds.slice(i, i + EXCL_BATCH)
       await supabase.from('blog_mentions').update({ relevance_score: 0, mention_locked: true }).in('id', batch)
