@@ -355,7 +355,10 @@ async function runFull(): Promise<void> {
     .is('kakao_similarity', null)
   console.log(`[candidate] Flagged ${flaggedCandidates ?? 0} candidates with null kakao_similarity`)
 
-  // Phase 2.6: Validation — check bulk-judge accuracy
+  // Phase 2.7: Cleanup — delete flagged/rejected audit + score=0 mentions + JSONB trim
+  await runCleanup('full')
+
+  // Phase 2.8: Validation — check bulk-judge accuracy
   console.log('\n── Phase 2.6: Validation ──────────────────────────────')
 
   console.log('\n[mention] Validating bulk-judge accuracy...')
@@ -450,6 +453,9 @@ async function runQuick(): Promise<void> {
     .eq('audit_status', 'pending')
     .is('kakao_similarity', null)
   console.log(`[candidate] Flagged ${flaggedCandidates ?? 0} candidates with null kakao_similarity`)
+
+  // Phase 2.7: Cleanup — delete flagged/rejected audit + score=0 mentions
+  await runCleanup('quick')
 
   // Phase 3: Quick summary + cross-audit
   console.log('\n── Phase 3: Summary ───────────────────────────────────')
@@ -727,6 +733,116 @@ async function runAnalysis(): Promise<void> {
   console.log('')
 }
 
+// DB cleanup — delete low-value audit data to keep Supabase Free Plan under 0.5GB
+async function runCleanup(mode: 'quick' | 'full' = 'quick'): Promise<void> {
+  console.log('\n=== DB Cleanup (egress-aware) ===\n')
+  const DEL_BATCH = 500
+
+  async function batchDelete(table: string, filter: (q: any) => any, label: string): Promise<number> {
+    let deleted = 0
+    while (true) {
+      const { data: batch } = await filter(supabase.from(table).select('id')).limit(DEL_BATCH)
+      if (!batch || batch.length === 0) break
+      const ids = batch.map((r: any) => r.id)
+      const { error } = await supabase.from(table).delete().in('id', ids)
+      if (error) { console.error(`  ${label} delete error:`, error.message); break }
+      deleted += ids.length
+      if (deleted % 5000 === 0) console.log(`  ${label}: ${deleted} deleted...`)
+    }
+    return deleted
+  }
+
+  // 1. mention_audit_log: flagged (bulk-judge borderline, no manual review value)
+  const flaggedDel = await batchDelete(
+    'mention_audit_log',
+    (q: any) => q.eq('audit_status', 'flagged'),
+    'mention_audit flagged'
+  )
+  console.log(`[cleanup] mention_audit_log flagged: ${flaggedDel} deleted`)
+
+  // 2. mention_audit_log: rejected (already processed, blog_mentions score=0)
+  const rejectedDel = await batchDelete(
+    'mention_audit_log',
+    (q: any) => q.eq('audit_status', 'rejected'),
+    'mention_audit rejected'
+  )
+  console.log(`[cleanup] mention_audit_log rejected: ${rejectedDel} deleted`)
+
+  // 3. blog_mentions: score=0 + locked (rejected matches, never reused)
+  //    FK cascade: mention_audit_log(mention_id) → blog_mentions(id) ON DELETE CASCADE
+  //    Must delete audit_log entries first to avoid cascade timeout on Free Plan
+  let bmDel = 0
+  while (true) {
+    const { data: idBatch } = await supabase
+      .from('blog_mentions')
+      .select('id')
+      .eq('relevance_score', 0)
+      .eq('mention_locked', true)
+      .limit(100)
+    if (!idBatch || idBatch.length === 0) break
+    const ids = idBatch.map((r: any) => r.id)
+
+    // Step 1: Delete FK children (mention_audit_log) first
+    await supabase.from('mention_audit_log').delete().in('mention_id', ids)
+
+    // Step 2: Delete blog_mentions (no cascade needed now)
+    const { error } = await supabase.from('blog_mentions').delete().in('id', ids)
+    if (error) { console.error('  blog_mentions delete error:', error.message); break }
+    bmDel += ids.length
+    if (bmDel % 2000 === 0) console.log(`  blog_mentions score=0+locked: ${bmDel} deleted...`)
+  }
+  console.log(`[cleanup] blog_mentions score=0+locked: ${bmDel} deleted`)
+
+  // 4. Full mode only: blog_mentions score=0 + unlocked older than 30 days
+  if (mode === 'full') {
+    const cutoff30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+    let bmOldDel = 0
+    while (true) {
+      const { data: idBatch } = await supabase
+        .from('blog_mentions')
+        .select('id')
+        .eq('relevance_score', 0)
+        .eq('mention_locked', false)
+        .lt('created_at', cutoff30d)
+        .limit(100)
+      if (!idBatch || idBatch.length === 0) break
+      const ids = idBatch.map((r: any) => r.id)
+      await supabase.from('mention_audit_log').delete().in('mention_id', ids)
+      const { error } = await supabase.from('blog_mentions').delete().in('id', ids)
+      if (error) { console.error('  blog_mentions old delete error:', error.message); break }
+      bmOldDel += ids.length
+      if (bmOldDel % 2000 === 0) console.log(`  blog_mentions score=0+old: ${bmOldDel} deleted...`)
+    }
+    console.log(`[cleanup] blog_mentions score=0+unlocked(>30d): ${bmOldDel} deleted`)
+
+    // 5. Full mode: trim JSONB from approved audit_log older than 90 days
+    const cutoff90d = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()
+    let trimmed = 0
+    while (true) {
+      const { data: batch } = await supabase
+        .from('mention_audit_log')
+        .select('id')
+        .eq('audit_status', 'approved')
+        .lt('created_at', cutoff90d)
+        .not('relevance_breakdown', 'is', null)
+        .limit(DEL_BATCH)
+      if (!batch || batch.length === 0) break
+      const ids = batch.map((r: any) => r.id)
+      const { error } = await supabase
+        .from('mention_audit_log')
+        .update({ relevance_breakdown: null, penalty_flags: null })
+        .in('id', ids)
+      if (error) { console.error('  JSONB trim error:', error.message); break }
+      trimmed += ids.length
+      if (trimmed % 5000 === 0) console.log(`  JSONB trim: ${trimmed} rows...`)
+    }
+    console.log(`[cleanup] mention_audit_log JSONB trimmed (>90d): ${trimmed} rows`)
+  }
+
+  const totalDel = flaggedDel + rejectedDel + bmDel
+  console.log(`\n[cleanup] Total deleted: ${totalDel} rows`)
+}
+
 // #16: Cross-audit integrity check
 async function runCrossAudit(): Promise<void> {
   console.log('\n=== Cross-Audit Integrity Check (#16) ===\n')
@@ -825,6 +941,9 @@ async function main(): Promise<void> {
     await runAnalysis()
   } else if (args.includes('--cross-audit')) {
     await runCrossAudit()
+  } else if (args.includes('--cleanup')) {
+    const fullMode = args.includes('--full-cleanup')
+    await runCleanup(fullMode ? 'full' : 'quick')
   } else if (args.includes('--compare')) {
     await compareWithConfig()
   } else if (args.includes('--snapshot')) {
@@ -841,6 +960,8 @@ Commands:
   --report    Summary report + cross-audit quality signals + source dashboard
   --analysis  Automated 4th-stage analysis (penalty distribution, coverage, divergence)
   --compare   Round-over-round change tracking + config version changes
+  --cleanup   Delete flagged/rejected audit_log + score=0 mentions (quick mode)
+  --cleanup --full-cleanup  + trim JSONB >90d + delete score=0 unlocked >30d
   --cross-audit  Cross-audit integrity check (stale mentions, expired posters, inactive candidates)
   --snapshot  Save audit metadata snapshot manually
 `)
