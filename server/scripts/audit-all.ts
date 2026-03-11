@@ -278,7 +278,7 @@ async function runFull(): Promise<void> {
 
   const { execSync } = await import('child_process')
   const env = { ...process.env }
-  const tsx = (cmd: string, timeout = 120000) => {
+  const tsx = (cmd: string, timeout = 180000) => {
     try {
       return execSync(`npx tsx -r dotenv/config ${cmd}`, { env, encoding: 'utf-8', timeout, cwd: process.cwd() })
     } catch (err: any) {
@@ -334,7 +334,7 @@ async function runFull(): Promise<void> {
   console.log(tsx('server/scripts/poster-audit.ts --bulk-approve --action kept'))
 
   console.log('\n[mention] Running bulk-judge on all pending...')
-  console.log(tsx('server/scripts/mention-audit.ts --bulk-judge', 300000))
+  console.log(tsx('server/scripts/mention-audit.ts --bulk-judge', 600000))
 
   console.log('[place] Running bulk-judge on pending places...')
   console.log(tsx('server/scripts/place-accuracy-audit.ts --bulk-judge'))
@@ -370,7 +370,7 @@ async function runFull(): Promise<void> {
   console.log('\n── Phase 3.5: Pattern Analysis ────────────────────────')
 
   console.log('\n[mention] Analyzing flagged mention patterns...')
-  console.log(tsx('server/scripts/mention-audit.ts --analyze-flagged', 180000))
+  console.log(tsx('server/scripts/mention-audit.ts --analyze-flagged', 300000))
 
   console.log('[classification] Analyzing FP/FN patterns...')
   console.log(tsx('server/scripts/classification-audit.ts --patterns'))
@@ -381,7 +381,7 @@ async function runQuick(): Promise<void> {
 
   const { execSync } = await import('child_process')
   const env = { ...process.env }
-  const tsx = (cmd: string, timeout = 120000) => {
+  const tsx = (cmd: string, timeout = 180000) => {
     try {
       return execSync(`npx tsx -r dotenv/config ${cmd}`, { env, encoding: 'utf-8', timeout, cwd: process.cwd() })
     } catch (err: any) {
