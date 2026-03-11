@@ -290,8 +290,8 @@ async function runFull(): Promise<void> {
   // Phase 1: Sample & Register — all new data gets audit entries
   console.log('── Phase 1: Sample & Register ──────────────────────────')
 
-  console.log('\n[mention] Registering all new mentions + 30 random existing...')
-  console.log(tsx('server/scripts/mention-audit.ts --sample --random 30', 300000))
+  console.log('\n[mention] Registering new mentions + 30 random existing...')
+  console.log(tsx('server/scripts/mention-audit.ts --sample --random 30', 600000))
 
   console.log('[poster] Summary...')
   console.log(tsx('server/scripts/poster-audit.ts --summary'))
@@ -334,7 +334,7 @@ async function runFull(): Promise<void> {
   console.log(tsx('server/scripts/poster-audit.ts --bulk-approve --action kept'))
 
   console.log('\n[mention] Running bulk-judge on all pending...')
-  console.log(tsx('server/scripts/mention-audit.ts --bulk-judge', 600000))
+  console.log(tsx('server/scripts/mention-audit.ts --bulk-judge', 1200000))
 
   console.log('[place] Running bulk-judge on pending places...')
   console.log(tsx('server/scripts/place-accuracy-audit.ts --bulk-judge'))
