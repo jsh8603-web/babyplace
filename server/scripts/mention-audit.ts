@@ -22,6 +22,17 @@ const supabase = createClient(
 
 const CONFIG_PATH = path.join(__dirname, '..', 'config', 'mention-relevance-config.json')
 
+/** Sanitize JSON object — replace NaN/Infinity with null for Postgres JSONB */
+function sanitizeJson(obj: any): any {
+  if (obj == null || typeof obj !== 'object') return null
+  try {
+    // JSON.stringify converts NaN/Infinity to null, then parse back
+    return JSON.parse(JSON.stringify(obj, (_k, v) => typeof v === 'number' && !isFinite(v) ? null : v))
+  } catch {
+    return null
+  }
+}
+
 
 function loadConfig() {
   try {
@@ -176,7 +187,7 @@ function buildAuditEntry(row: any, config: any, verdict: string): any | null {
     relevance_score: row.relevance_score,
     audit_verdict: verdict,
     config_version: config.version,
-    relevance_breakdown: relevanceBreakdown && typeof relevanceBreakdown === 'object' ? relevanceBreakdown : null,
+    relevance_breakdown: sanitizeJson(relevanceBreakdown),
     penalty_flags: Array.isArray(penaltyFlags) && penaltyFlags.length > 0 ? penaltyFlags : null,
     source_type: row.source_type || null,
     post_date: row.post_date || null,

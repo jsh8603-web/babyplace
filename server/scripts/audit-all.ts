@@ -398,7 +398,7 @@ async function runQuick(): Promise<void> {
   console.log(tsx('server/scripts/poster-audit.ts --bulk-approve --action kept'))
 
   console.log('[mention] Sampling new + 10 random...')
-  console.log(tsx('server/scripts/mention-audit.ts --sample --count 10', 300000))
+  console.log(tsx('server/scripts/mention-audit.ts --sample --count 10', 600000))
 
   console.log('[classification] Sampling...')
   console.log(tsx('server/scripts/classification-audit.ts --sample-included --count 5'))
@@ -416,7 +416,7 @@ async function runQuick(): Promise<void> {
   console.log('\n── Phase 2: Automated Judging ──────────────────────────')
 
   console.log('\n[mention] Running bulk-judge...')
-  console.log(tsx('server/scripts/mention-audit.ts --bulk-judge', 180000))
+  console.log(tsx('server/scripts/mention-audit.ts --bulk-judge', 600000))
 
   console.log('[place] Running bulk-judge...')
   console.log(tsx('server/scripts/place-accuracy-audit.ts --bulk-judge'))
