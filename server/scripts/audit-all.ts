@@ -793,8 +793,9 @@ async function runCleanup(mode: 'quick' | 'full' = 'quick'): Promise<void> {
   }
   console.log(`[cleanup] blog_mentions score=0+locked: ${bmDel} deleted`)
 
-  // 4. Full mode only: blog_mentions score=0 + unlocked older than 30 days
+  // 4. Full mode only: extended cleanup
   if (mode === 'full') {
+    // 4a. blog_mentions score=0 + unlocked older than 30 days
     const cutoff30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
     let bmOldDel = 0
     while (true) {
@@ -815,15 +816,32 @@ async function runCleanup(mode: 'quick' | 'full' = 'quick'): Promise<void> {
     }
     console.log(`[cleanup] blog_mentions score=0+unlocked(>30d): ${bmOldDel} deleted`)
 
-    // 5. Full mode: trim JSONB from approved audit_log older than 90 days
-    const cutoff90d = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()
-    let trimmed = 0
+    // 4b. blog_mentions 0 < score < 0.2 (not shown in frontend, no info value)
+    let bmLowDel = 0
+    while (true) {
+      const { data: idBatch } = await supabase
+        .from('blog_mentions')
+        .select('id')
+        .gt('relevance_score', 0)
+        .lt('relevance_score', 0.2)
+        .limit(100)
+      if (!idBatch || idBatch.length === 0) break
+      const ids = idBatch.map((r: any) => r.id)
+      await supabase.from('mention_audit_log').delete().in('mention_id', ids)
+      const { error } = await supabase.from('blog_mentions').delete().in('id', ids)
+      if (error) { console.error('  blog_mentions low-score delete error:', error.message); break }
+      bmLowDel += ids.length
+      if (bmLowDel % 5000 === 0) console.log(`  blog_mentions score<0.2: ${bmLowDel} deleted...`)
+    }
+    console.log(`[cleanup] blog_mentions 0<score<0.2: ${bmLowDel} deleted`)
+
+    // 5. mention_audit_log: approved relevance_breakdown → NULL
+    let mentionTrimmed = 0
     while (true) {
       const { data: batch } = await supabase
         .from('mention_audit_log')
         .select('id')
         .eq('audit_status', 'approved')
-        .lt('created_at', cutoff90d)
         .not('relevance_breakdown', 'is', null)
         .limit(DEL_BATCH)
       if (!batch || batch.length === 0) break
@@ -832,15 +850,79 @@ async function runCleanup(mode: 'quick' | 'full' = 'quick'): Promise<void> {
         .from('mention_audit_log')
         .update({ relevance_breakdown: null, penalty_flags: null })
         .in('id', ids)
-      if (error) { console.error('  JSONB trim error:', error.message); break }
-      trimmed += ids.length
-      if (trimmed % 5000 === 0) console.log(`  JSONB trim: ${trimmed} rows...`)
+      if (error) { console.error('  mention JSONB trim error:', error.message); break }
+      mentionTrimmed += ids.length
+      if (mentionTrimmed % 5000 === 0) console.log(`  mention JSONB trim: ${mentionTrimmed} rows...`)
     }
-    console.log(`[cleanup] mention_audit_log JSONB trimmed (>90d): ${trimmed} rows`)
+    console.log(`[cleanup] mention_audit_log JSONB trimmed: ${mentionTrimmed} rows`)
+
+    // 6. poster_audit_log: non-pending candidates → NULL
+    let posterTrimmed = 0
+    while (true) {
+      const { data: batch } = await supabase
+        .from('poster_audit_log')
+        .select('id')
+        .neq('audit_status', 'pending')
+        .not('candidates', 'is', null)
+        .limit(DEL_BATCH)
+      if (!batch || batch.length === 0) break
+      const ids = batch.map((r: any) => r.id)
+      const { error } = await supabase
+        .from('poster_audit_log')
+        .update({ candidates: null })
+        .in('id', ids)
+      if (error) { console.error('  poster JSONB trim error:', error.message); break }
+      posterTrimmed += ids.length
+    }
+    console.log(`[cleanup] poster_audit_log candidates trimmed: ${posterTrimmed} rows`)
+
+    // 7. place_accuracy_audit_log: non-pending check_result → NULL
+    let placeTrimmed = 0
+    while (true) {
+      const { data: batch } = await supabase
+        .from('place_accuracy_audit_log')
+        .select('id')
+        .neq('audit_status', 'pending')
+        .not('check_result', 'is', null)
+        .limit(DEL_BATCH)
+      if (!batch || batch.length === 0) break
+      const ids = batch.map((r: any) => r.id)
+      const { error } = await supabase
+        .from('place_accuracy_audit_log')
+        .update({ check_result: null })
+        .in('id', ids)
+      if (error) { console.error('  place JSONB trim error:', error.message); break }
+      placeTrimmed += ids.length
+    }
+    console.log(`[cleanup] place_accuracy_audit_log check_result trimmed: ${placeTrimmed} rows`)
+
+    // 8. Log tables cleanup
+    const cutoff60d = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString()
+
+    const kwDel = await batchDelete(
+      'keyword_logs',
+      (q: any) => q.lt('created_at', cutoff30d),
+      'keyword_logs >30d'
+    )
+    console.log(`[cleanup] keyword_logs >30d: ${kwDel} deleted`)
+
+    const exclDel = await batchDelete(
+      'excluded_events',
+      (q: any) => q.lt('created_at', cutoff60d),
+      'excluded_events >60d'
+    )
+    console.log(`[cleanup] excluded_events >60d: ${exclDel} deleted`)
+
+    const clDel = await batchDelete(
+      'collection_logs',
+      (q: any) => q.lt('created_at', cutoff30d),
+      'collection_logs >30d'
+    )
+    console.log(`[cleanup] collection_logs >30d: ${clDel} deleted`)
   }
 
   const totalDel = flaggedDel + rejectedDel + bmDel
-  console.log(`\n[cleanup] Total deleted: ${totalDel} rows`)
+  console.log(`\n[cleanup] Total deleted: ${totalDel} rows (+ JSONB trims + log tables in full mode)`)
 }
 
 // #16: Cross-audit integrity check
@@ -961,7 +1043,7 @@ Commands:
   --analysis  Automated 4th-stage analysis (penalty distribution, coverage, divergence)
   --compare   Round-over-round change tracking + config version changes
   --cleanup   Delete flagged/rejected audit_log + score=0 mentions (quick mode)
-  --cleanup --full-cleanup  + trim JSONB >90d + delete score=0 unlocked >30d
+  --cleanup --full-cleanup  + score<0.2 mentions + JSONB trim + log tables cleanup
   --cross-audit  Cross-audit integrity check (stale mentions, expired posters, inactive candidates)
   --snapshot  Save audit metadata snapshot manually
 `)
