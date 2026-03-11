@@ -1,6 +1,6 @@
 # #13: Automated audit after pipeline runs
 # Quick audit (6종 lightweight) after daily pipeline
-# Full audit + compare weekly on Sundays
+# Full audit + compare + analysis weekly on Sundays
 
 name: Audit
 
@@ -32,7 +32,7 @@ jobs:
     if: >-
       github.event_name != 'workflow_run' ||
       github.event.workflow_run.conclusion == 'success'
-    timeout-minutes: 60
+    timeout-minutes: 90
 
     env:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
@@ -65,9 +65,10 @@ jobs:
         run: |
           MODE="${{ steps.mode.outputs.mode }}"
           echo "Running audit --${MODE}"
-          DOTENV_CONFIG_PATH=.env.local npx tsx -r dotenv/config server/scripts/audit-all.ts --${MODE}
+          npx tsx -r dotenv/config server/scripts/audit-all.ts --${MODE}
 
-      - name: Run compare (weekly only)
+      - name: Run compare + analysis (weekly only)
         if: github.event_name == 'schedule'
         run: |
-          DOTENV_CONFIG_PATH=.env.local npx tsx -r dotenv/config server/scripts/audit-all.ts --compare
+          npx tsx -r dotenv/config server/scripts/audit-all.ts --compare
+          npx tsx -r dotenv/config server/scripts/audit-all.ts --analysis

@@ -8,6 +8,8 @@
  *   Step 3: Claude Haiku batch classification (remaining events)
  */
 
+import { readFileSync } from 'fs'
+import { join } from 'path'
 import { classifyWithGemini } from '../lib/gemini'
 import { supabaseAdmin } from '../lib/supabase-admin'
 
@@ -18,18 +20,38 @@ export interface EventForClassification {
   PLACE: string
 }
 
+// Load classifier config (blacklist/whitelist patterns maintained via audit wf)
+interface ClassifierConfig {
+  blacklist_patterns: string[]
+  whitelist_title_patterns: string[]
+}
+
+function loadClassifierConfig(): ClassifierConfig {
+  try {
+    const configPath = join(__dirname, '..', 'config', 'classifier-config.json')
+    return JSON.parse(readFileSync(configPath, 'utf-8'))
+  } catch {
+    return { blacklist_patterns: [], whitelist_title_patterns: [] }
+  }
+}
+
+const classifierConfig = loadClassifierConfig()
+
 // Step 1: Blacklist — adult/senior-only events (USE_TRGT + TITLE)
 const BLACKLIST_TARGET_PATTERN =
   /성인|미취학.*입장불가|14세\s*이상|13세\s*이상|12세\s*이상|만\s*19세|시니어|65세/
-const BLACKLIST_TITLE_PATTERN = /개인전|1\+1|할인\s*이벤트|세일\s*이벤트|구매.*이벤트|프로모션|특가\s*이벤트/
+const BLACKLIST_TITLE_PATTERN = classifierConfig.blacklist_patterns.length > 0
+  ? new RegExp(classifierConfig.blacklist_patterns.join('|'))
+  : /개인전|1\+1|할인\s*이벤트|세일\s*이벤트|구매.*이벤트|프로모션|특가\s*이벤트/
 
 // Step 2: Whitelist — clearly baby/child-related events
 const WHITELIST_PATTERN =
   /어린이|유아|영유아|아기|키즈|가족|36개월|24개월|48개월|영아|유치원|어린이집/
 
-// Step 2b: Title-based whitelist — events that are clearly baby-relevant by title
-const WHITELIST_TITLE_PATTERN =
-  /캐릭터.*전시|테마파크|팝업.*키즈|키즈.*팝업|키즈파크|어린이.*전시|인형극|동화.*공연|어린이.*뮤지컬|어린이.*공연|키즈.*체험|버블.*쇼|매직쇼|마술쇼|버블.*매직|탭탭탭|가족극/
+// Step 2b: Title-based whitelist — loaded from classifier-config.json
+const WHITELIST_TITLE_PATTERN = classifierConfig.whitelist_title_patterns.length > 0
+  ? new RegExp(classifierConfig.whitelist_title_patterns.join('|'))
+  : /캐릭터.*전시|테마파크|팝업.*키즈|키즈.*팝업|키즈파크|어린이.*전시|인형극|동화.*공연|어린이.*뮤지컬|어린이.*공연|키즈.*체험|버블.*쇼|매직쇼|마술쇼|버블.*매직|탭탭탭|가족극/
 
 // Fallback regex when LLM is unavailable
 const FALLBACK_BABY_PATTERN =

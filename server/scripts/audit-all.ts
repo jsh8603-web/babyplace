@@ -330,8 +330,12 @@ async function runFull(): Promise<void> {
   // Phase 2: Automated Judging — bulk-judge + vision-check
   console.log('\n── Phase 2: Automated Judging ──────────────────────────')
 
-  console.log('\n[poster] Bulk-approving kept posters...')
+  console.log('\n[poster] Bulk-approving clear poster actions...')
   console.log(tsx('server/scripts/poster-audit.ts --bulk-approve --action kept'))
+  console.log(tsx('server/scripts/poster-audit.ts --bulk-approve --action removed'))
+  console.log(tsx('server/scripts/poster-audit.ts --bulk-approve --action no_candidates'))
+  console.log(tsx('server/scripts/poster-audit.ts --bulk-approve --action recovery_failed'))
+  console.log(tsx('server/scripts/poster-audit.ts --bulk-approve --action search_only'))
 
   console.log('\n[mention] Running bulk-judge on all pending...')
   console.log(tsx('server/scripts/mention-audit.ts --bulk-judge', 1200000))
@@ -393,24 +397,39 @@ async function runQuick(): Promise<void> {
   // Phase 1: Sample all 6 audit types (lightweight)
   console.log('── Phase 1: Sample & Register ──────────────────────────')
 
-  console.log('\n[poster] Summary + bulk-approve kept...')
+  console.log('\n[poster] Summary + bulk-approve clear actions...')
   console.log(tsx('server/scripts/poster-audit.ts --summary'))
   console.log(tsx('server/scripts/poster-audit.ts --bulk-approve --action kept'))
+  console.log(tsx('server/scripts/poster-audit.ts --bulk-approve --action removed'))
+  console.log(tsx('server/scripts/poster-audit.ts --bulk-approve --action no_candidates'))
+  console.log(tsx('server/scripts/poster-audit.ts --bulk-approve --action recovery_failed'))
+  console.log(tsx('server/scripts/poster-audit.ts --bulk-approve --action search_only'))
 
   console.log('[mention] Sampling new + 10 random...')
   console.log(tsx('server/scripts/mention-audit.ts --sample --count 10', 600000))
 
-  console.log('[classification] Sampling...')
+  console.log('[classification] Sampling included + excluded...')
   console.log(tsx('server/scripts/classification-audit.ts --sample-included --count 5'))
+  console.log(tsx('server/scripts/classification-audit.ts --sample-excluded --count 5'))
 
   console.log('[place] Sampling...')
   console.log(tsx('server/scripts/place-accuracy-audit.ts --sample --count 5', 300000))
 
-  console.log('[event-dedup] Listing...')
+  console.log('[event-dedup] Listing + missed-dupes scan...')
   console.log(tsx('server/scripts/event-dedup-audit.ts --list --limit 5'))
+  console.log(tsx('server/scripts/event-dedup-audit.ts --missed-dupes --count 10'))
 
   console.log('[candidate] Sampling...')
   console.log(tsx('server/scripts/candidate-audit.ts --sample --count 5'))
+
+  // Phase 1.5: Proactive scans (lightweight)
+  console.log('\n── Phase 1.5: Proactive Scans ─────────────────────────')
+
+  console.log('\n[place] Checking for duplicate suspects...')
+  console.log(tsx('server/scripts/place-accuracy-audit.ts --check-dupes --count 10'))
+
+  console.log('[poster] Expiring old locks on ended events...')
+  console.log(tsx('server/scripts/poster-audit.ts --expire-locks'))
 
   // Phase 2: Automated judging (lightweight)
   console.log('\n── Phase 2: Automated Judging ──────────────────────────')

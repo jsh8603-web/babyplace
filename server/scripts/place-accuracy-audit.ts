@@ -172,6 +172,28 @@ async function checkDuplicates(count = 50): Promise<void> {
 
   function normalize(n: string) { return n.replace(/\s+/g, '').replace(/[()（）]/g, '') }
 
+  // Skip numbered series (e.g. "어린이6호공원" vs "어린이7호공원") — different places
+  const NUMBERED_PATTERN = /^(.+?)\d+호(.+)$/
+  function isNumberedSeries(a: string, b: string): boolean {
+    const ma = normalize(a).match(NUMBERED_PATTERN)
+    const mb = normalize(b).match(NUMBERED_PATTERN)
+    return !!(ma && mb && ma[1] === mb[1] && ma[2] === mb[2])
+  }
+
+  // Dedup: skip pairs already in audit log
+  const existingPairs = new Set<string>()
+  const { data: existing } = await supabase
+    .from('place_accuracy_audit_log')
+    .select('place_id, check_result')
+    .eq('check_type', 'duplicate_suspect')
+  for (const row of existing || []) {
+    const cr = row.check_result as Record<string, any> | null
+    if (cr?.other_place_id) {
+      existingPairs.add(`${row.place_id}-${cr.other_place_id}`)
+      existingPairs.add(`${cr.other_place_id}-${row.place_id}`)
+    }
+  }
+
   const suspects: { p1: any; p2: any; distance: number; sim: number }[] = []
 
   for (let i = 0; i < data.length && suspects.length < count; i++) {
@@ -181,6 +203,12 @@ async function checkDuplicates(count = 50): Promise<void> {
     for (let j = i + 1; j < data.length && suspects.length < count; j++) {
       const p2 = data[j]
       if (!p2.lat || !p2.lng) continue
+
+      // Skip numbered series (different parks with sequential numbering)
+      if (isNumberedSeries(p1.name, p2.name)) continue
+
+      // Skip already audited pairs
+      if (existingPairs.has(`${p1.id}-${p2.id}`)) continue
 
       // Approximate distance (meters)
       const dlat = (p1.lat - p2.lat) * 111000

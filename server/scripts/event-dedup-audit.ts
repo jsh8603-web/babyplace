@@ -84,8 +84,22 @@ async function missedDupes(count = 10): Promise<void> {
     return
   }
 
+  // Dedup: skip pairs that already exist in audit log (any status)
+  const existingPairs = new Set<string>()
+  const { data: existing } = await supabase
+    .from('event_dedup_audit_log')
+    .select('kept_event_id, removed_event_id')
+    .eq('match_reason', 'missed_scan')
+  for (const row of existing || []) {
+    existingPairs.add(`${row.kept_event_id}-${row.removed_event_id}`)
+    existingPairs.add(`${row.removed_event_id}-${row.kept_event_id}`)
+  }
+
   let sampled = 0
   for (const s of suspects) {
+    const key = `${s.e1.id}-${s.e2.id}`
+    if (existingPairs.has(key)) continue
+
     const { error: insertErr } = await supabase.from('event_dedup_audit_log').insert({
       kept_event_id: s.e1.id,
       removed_event_id: s.e2.id,
@@ -95,7 +109,10 @@ async function missedDupes(count = 10): Promise<void> {
       match_reason: 'missed_scan',
       audit_verdict: 'missed_dupe',
     })
-    if (!insertErr) sampled++
+    if (!insertErr) {
+      sampled++
+      existingPairs.add(key)
+    }
   }
 
   console.log(`Found ${sampled} potential missed duplicates (similarity 0.6~0.8, cross-source)`)
