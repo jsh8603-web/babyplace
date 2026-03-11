@@ -370,7 +370,7 @@ async function runFull(): Promise<void> {
   console.log('\n── Phase 3.5: Pattern Analysis ────────────────────────')
 
   console.log('\n[mention] Analyzing flagged mention patterns...')
-  console.log(tsx('server/scripts/mention-audit.ts --analyze-flagged', 300000))
+  console.log(tsx('server/scripts/mention-audit.ts --analyze-flagged', 600000))
 
   console.log('[classification] Analyzing FP/FN patterns...')
   console.log(tsx('server/scripts/classification-audit.ts --patterns'))

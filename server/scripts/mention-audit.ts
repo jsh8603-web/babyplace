@@ -499,16 +499,17 @@ async function bulkJudge(): Promise<void> {
 // ─── #2: Analyze flagged mentions — penalty_flags distribution ────────────────
 
 async function analyzeFlagged(): Promise<void> {
-  const BATCH = 500
+  const BATCH = 1000
   let cursor = 0
   const flagCounts: Record<string, number> = {}
   const scoreBuckets: Record<string, number> = { 'low(<0.4)': 0, 'border(0.4-0.5)': 0, 'mid(0.5-0.7)': 0, 'high(≥0.7)': 0 }
   let total = 0
 
   while (true) {
+    // Use only audit_log scores for pattern analysis (skip live blog_mentions lookup)
     const { data, error } = await supabase
       .from('mention_audit_log')
-      .select('id, mention_id, relevance_score, penalty_flags, relevance_breakdown')
+      .select('id, relevance_score, penalty_flags')
       .eq('audit_status', 'flagged')
       .order('id', { ascending: true })
       .gt('id', cursor)
@@ -517,25 +518,10 @@ async function analyzeFlagged(): Promise<void> {
     if (error) { console.error('Error:', error.message); break }
     if (!data || data.length === 0) break
 
-    // #1: Fetch current scores from blog_mentions
-    const mentionIds = data.map(r => r.mention_id)
-    const currentScores = new Map<number, number>()
-    for (let i = 0; i < mentionIds.length; i += 200) {
-      const batch = mentionIds.slice(i, i + 200)
-      const { data: mentions } = await supabase
-        .from('blog_mentions')
-        .select('id, relevance_score')
-        .in('id', batch)
-      for (const m of mentions || []) {
-        currentScores.set(m.id, m.relevance_score ?? 0)
-      }
-    }
-
     for (const row of data) {
       cursor = row.id
       total++
-      // Use current blog_mentions score, fallback to audit_log score
-      const score = currentScores.get(row.mention_id) ?? row.relevance_score ?? 0
+      const score = row.relevance_score ?? 0
       if (score >= 0.7) scoreBuckets['high(≥0.7)']++
       else if (score >= 0.5) scoreBuckets['mid(0.5-0.7)']++
       else if (score >= 0.4) scoreBuckets['border(0.4-0.5)']++
