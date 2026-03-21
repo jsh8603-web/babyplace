@@ -258,7 +258,7 @@ Commands:
 `)
   }
 
-  process.exit(0)
+  setTimeout(() => process.exit(0), 50)
 }
 
 main()

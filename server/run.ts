@@ -260,6 +260,8 @@ async function runPublicDataAndReverseSearchJob(): Promise<void> {
 }
 
 async function runEventsJob(): Promise<void> {
+  const jobStartedAt = Date.now()
+  const JOB_BUDGET_MIN = 130 // leave 20min margin before 150min timeout
   console.log('[run] === Events collectors (Tour API, Seoul) ===')
 
   // Expired event cleanup (before collecting new events)
@@ -308,8 +310,11 @@ async function runEventsJob(): Promise<void> {
   console.log('[run] Event deduplication result:', JSON.stringify(dedupResult, null, 2))
 
   // Poster enrichment (skip official sources: tour_api, interpark, babygo)
-  console.log('[run] Running poster enrichment...')
-  const posterResult = await runPosterEnrichment()
+  // Time-budgeted: use remaining time from job budget, min 10min
+  const elapsedMin = Math.round((Date.now() - jobStartedAt) / 60000)
+  const posterBudget = Math.max(10, JOB_BUDGET_MIN - elapsedMin)
+  console.log(`[run] Running poster enrichment... (budget ${posterBudget}min, elapsed ${elapsedMin}min)`)
+  const posterResult = await runPosterEnrichment(posterBudget)
   console.log('[run] Poster enrichment result:', JSON.stringify(posterResult, null, 2))
 
   // Hidden poster recovery (search for replacements, don't apply — approval required)

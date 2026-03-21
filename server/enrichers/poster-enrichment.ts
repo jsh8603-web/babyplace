@@ -479,7 +479,7 @@ JSON만 응답: {"pick": 번호, "reason": "이유"}`
 
 // ─── Main Enrichment Job ────────────────────────────────────────────────────
 
-export async function runPosterEnrichment(): Promise<PosterEnrichmentResult> {
+export async function runPosterEnrichment(timeBudgetMinutes = 90): Promise<PosterEnrichmentResult> {
   const result: PosterEnrichmentResult = { processed: 0, updated: 0, skipped: 0, errors: 0 }
   const startedAt = Date.now()
 
@@ -542,9 +542,14 @@ export async function runPosterEnrichment(): Promise<PosterEnrichmentResult> {
     const toProcess = [...needsPoster, ...hasPoster]
 
     const promptConfig = loadPromptConfig()
-    console.log(`[poster-enrich] ${allEvents.length} active events, ${eligible.length} eligible (excl official), ${needsPoster.length} missing posters, ${lockedEligible.length} locked (search_only), prompt v${promptConfig.version}`)
+    const deadlineMs = startedAt + timeBudgetMinutes * 60 * 1000
+    console.log(`[poster-enrich] ${allEvents.length} active events, ${eligible.length} eligible (excl official), ${needsPoster.length} missing posters, ${lockedEligible.length} locked (search_only), prompt v${promptConfig.version}, budget ${timeBudgetMinutes}min`)
 
     for (const ev of toProcess) {
+      if (Date.now() >= deadlineMs) {
+        console.log(`[poster-enrich] Time budget ${timeBudgetMinutes}min reached at ${result.processed}/${toProcess.length} — stopping`)
+        break
+      }
       result.processed++
 
       try {
@@ -607,9 +612,13 @@ export async function runPosterEnrichment(): Promise<PosterEnrichmentResult> {
     }
 
     // Process locked events in search_only mode (search + log, no DB update)
-    if (lockedEligible.length > 0) {
+    if (lockedEligible.length > 0 && Date.now() < deadlineMs) {
       console.log(`[poster-enrich] Processing ${lockedEligible.length} locked events (search_only)`)
       for (const ev of lockedEligible) {
+        if (Date.now() >= deadlineMs) {
+          console.log(`[poster-enrich] Time budget reached during locked events — stopping`)
+          break
+        }
         try {
           const candidates = await collectImages(ev.name, ev.venue_name || '', ev.source_url || null)
           const llmResult = await selectPosterWithLLM(candidates, ev.name, ev.venue_name || '', ev.poster_url)

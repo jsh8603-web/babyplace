@@ -10,6 +10,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { searchKakaoPlace } from '../lib/kakao-search'
+import { isBlockedByNamePattern, isBlockedByBrand } from '../matchers/place-gate'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -433,7 +434,8 @@ async function setVerdict(auditId: number, verdict: string, note?: string): Prom
   else console.log(`Set audit #${auditId} → ${verdict}${note ? ` (${note})` : ''}`)
 }
 
-const NOT_BABY_FRIENDLY_PATTERNS = /주점|술집|호프|바\s*$|타이어|자동차|중고차|묘지|납골|묘역|추모비|순절비|선정비|장군묘|주유소|부동산|인테리어|여행사|모텔|사우나|노래방|당구|사격|볼링|PC방|피씨방|게임방|세차|렌터카|장의사|축산|도축|철물|저수지|고개$|산$|봉$|천$|골$|폭포$|등산로|등산|바위$|행궁|생가$|좌상$|정상$|관광특구|이동외과|풍화당|옹기$|약수터|해맞이|석탑|열녀문|소녀상|동상$|카지노|썬팅|피트니스|헬스장/
+// NOT_BABY_FRIENDLY_PATTERNS removed — now uses place-gate.ts as single source of truth
+// See: isBlockedByNamePattern() + isBlockedByBrand() from '../matchers/place-gate'
 
 async function batchRevalidate(count = 5): Promise<void> {
   // Random sample of old places for Kakao re-verification
@@ -506,7 +508,17 @@ async function bulkJudgePlaces(): Promise<void> {
       const cr = (row.check_result || {}) as Record<string, any>
       const source = cr.source || ''
 
-      if (NOT_BABY_FRIENDLY_PATTERNS.test(name)) {
+      const category = row.place_category || ''
+
+      // Known baby-friendly categories: auto-approve if name is clean
+      const BABY_CATEGORIES = /키즈|어린이|놀이터|소아과|산후|유아|아동|아기/
+      // Suspicious "놀이" category with no baby keywords: flag for review
+      const BABY_NAME_HINTS = /키즈|어린이|아이|아기|유아|베이비|놀이터|공원|도서관|박물관|과학관|체험|카페|식당|맘|육아|산후/
+
+      if (isBlockedByNamePattern(name) || isBlockedByBrand(name)) {
+        flagRows.push(row.id)
+      } else if (category === '놀이' && !BABY_NAME_HINTS.test(name)) {
+        // "놀이" category but name has no baby-friendly hints → flag
         flagRows.push(row.id)
       } else {
         approveRows.push(row.id)
@@ -529,6 +541,106 @@ async function bulkJudgePlaces(): Promise<void> {
   console.log(`  Approved (accurate): ${approved}`)
   console.log(`  Flagged (review needed): ${flagged}`)
   console.log(`  Total: ${approved + flagged}`)
+}
+
+// ─── Learn patterns from deactivated places → DB ────────────────────────────
+
+async function learnPatternsFromDeactivated(): Promise<void> {
+  // Find recently deactivated places (last 30 days)
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+  const { data, error } = await supabase
+    .from('places')
+    .select('id, name, category, sub_category')
+    .eq('is_active', false)
+    .gte('updated_at', thirtyDaysAgo)
+
+  if (error) { console.error('Error:', error.message); return }
+  if (!data || data.length === 0) { console.log('No recently deactivated places found.'); return }
+
+  console.log(`\nAnalyzing ${data.length} recently deactivated places...\n`)
+
+  // Extract first token (brand-like) and suffix tokens (name pattern)
+  const brandCounts = new Map<string, number>()
+  const suffixCounts = new Map<string, number>()
+
+  for (const p of data) {
+    const tokens = p.name.split(/\s+/)
+    const firstToken = tokens[0]
+    if (firstToken && firstToken.length >= 2) {
+      brandCounts.set(firstToken, (brandCounts.get(firstToken) || 0) + 1)
+    }
+    // Check for common suffixes (last 2-3 chars)
+    if (p.name.length >= 3) {
+      const suffix2 = p.name.slice(-2)
+      const suffix3 = p.name.slice(-3)
+      if (suffix2.length === 2) suffixCounts.set(suffix2, (suffixCounts.get(suffix2) || 0) + 1)
+      if (suffix3.length === 3) suffixCounts.set(suffix3, (suffixCounts.get(suffix3) || 0) + 1)
+    }
+  }
+
+  // Load existing DB patterns to avoid duplicates
+  const { data: existing } = await supabase
+    .from('place_blacklist_patterns')
+    .select('pattern_type, pattern')
+    .eq('is_active', true)
+
+  const existingSet = new Set((existing || []).map(e => `${e.pattern_type}:${e.pattern}`))
+
+  const today = new Date().toISOString().split('T')[0]
+  let learned = 0
+
+  // Register brand tokens appearing 3+ times
+  for (const [token, count] of brandCounts) {
+    if (count < 3) continue
+    if (existingSet.has(`brand:${token}`)) continue
+
+    const { error: insertErr } = await supabase
+      .from('place_blacklist_patterns')
+      .upsert({
+        pattern_type: 'brand',
+        pattern: token,
+        source: 'audit',
+        is_active: true,
+        description: `${count}건 비활성화 장소에서 반복 발견`,
+        discovered_at: today,
+      }, { onConflict: 'pattern_type,pattern' })
+
+    if (!insertErr) {
+      learned++
+      console.log(`  [brand] "${token}" (${count}건)`)
+    }
+  }
+
+  // Register suffix patterns appearing 5+ times (more conservative)
+  for (const [suffix, count] of suffixCounts) {
+    if (count < 5) continue
+    const pattern = `${suffix}$`
+    if (existingSet.has(`name:${pattern}`)) continue
+
+    // Skip baby-relevant suffixes
+    if (/공원|카페|도서|체험|놀이|학교|유치|어린/.test(suffix)) continue
+
+    const { error: insertErr } = await supabase
+      .from('place_blacklist_patterns')
+      .upsert({
+        pattern_type: 'name',
+        pattern: pattern,
+        source: 'audit',
+        is_active: true,
+        description: `${count}건 비활성화 장소의 공통 접미사`,
+        discovered_at: today,
+      }, { onConflict: 'pattern_type,pattern' })
+
+    if (!insertErr) {
+      learned++
+      console.log(`  [name] "${pattern}" (${count}건)`)
+    }
+  }
+
+  console.log(`\nLearned ${learned} new patterns from ${data.length} deactivated places`)
+  if (learned > 0) {
+    console.log('Patterns saved to place_blacklist_patterns table (active in ~5 min)')
+  }
 }
 
 // ─── #7: Validate bulk judge rules — random sample check ─────────────────────
@@ -593,6 +705,8 @@ async function main(): Promise<void> {
     await batchRevalidate(count)
   } else if (args.includes('--bulk-judge')) {
     await bulkJudgePlaces()
+  } else if (args.includes('--learn-patterns')) {
+    await learnPatternsFromDeactivated()
   } else if (args.includes('--correct') || args.includes('--accurate')) {
     const flag = args.includes('--correct') ? '--correct' : '--accurate'
     const idx = args.indexOf(flag)
@@ -628,6 +742,7 @@ Commands:
   --list [--limit N]           Pending audit entries
   --summary                    Statistics
   --bulk-judge                 Auto-judge pending by name patterns
+  --learn-patterns             Extract patterns from deactivated places → DB
   --validate-bulk [--count N]  Validate bulk-judge accuracy (#7)
   --correct <audit_id>         Mark as accurate
   --inaccurate <audit_id>      Mark as inaccurate [--note]
@@ -636,7 +751,7 @@ Commands:
 `)
   }
 
-  process.exit(0)
+  setTimeout(() => process.exit(0), 50)
 }
 
 main()

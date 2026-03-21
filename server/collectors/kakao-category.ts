@@ -292,9 +292,6 @@ async function processTarget(
     result.totalFetched += docs.documents.length
 
     for (const doc of docs.documents) {
-      // Skip non-baby-relevant landmarks (palaces, temples, historical sites)
-      if (shouldSkipKakaoPlace(doc.place_name, doc.category_name)) continue
-
       const lat = parseFloat(doc.y)
       const lng = parseFloat(doc.x)
       const address = doc.road_address_name || doc.address_name
@@ -419,25 +416,8 @@ async function fetchKakaoPage(
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/**
- * Skip non-baby-relevant places from Kakao results.
- * Filters out historical landmarks, temples, streets, hotels, churches, pet parks.
- */
-function shouldSkipKakaoPlace(name: string, categoryName: string): boolean {
-  // Name patterns for non-baby-relevant places
-  const skipNamePatterns = /궁$|궁궐|사찰|사당|서원$|향교|명륜|번사|총국|관아|왕릉|능묘|묘소|성곽|성터|성벽|봉수대|비석|기념비|전적지|유적|기념탑|사적|종묘|반려견|애견/
-  if (skipNamePatterns.test(name)) return true
-
-  // Non-baby franchise chains: comic cafes, board game cafes, escape rooms
-  const skipBrands = /^(벌툰|놀숲|레드버튼|홈즈앤루팡|히어로보드게임|나인블럭|스타벅스|이디야|투썸플레이스|할리스|메가커피|컴포즈|빽다방)(\s|$)/
-  if (skipBrands.test(name)) return true
-
-  // Kakao category_name patterns to skip
-  const skipCategories = /테마거리|먹자골목|카페거리|도보여행|고궁|궁$|사적지|유적지|성지$|묘$|사찰|교회$|성당$|호텔$|여관|모텔|반려견|만화카페|보드게임|방탈출|스터디카페|코인노래방|PC방|당구|볼링장|노래방|네일|피부관리|미용실|안경|영화관|CGV|롯데시네마|메가박스|시네마|주점|유흥|호프|라이브카페|직업소개|인력파견|배관|누수|전기자재|부품|직물|원단|반도체|해운|해상|시공업체|철거|조명기기|오피스텔|빌라,주택|아파트|전자담배|셀프세차|세차장|화장품|숙박예약|쇼핑시설관리|행정기관|지방행정|슈퍼마켓|가구판매|주방가구|정육점/
-  if (skipCategories.test(categoryName)) return true
-
-  return false
-}
+// shouldSkipKakaoPlace() removed — checkPlaceGate() now covers all patterns
+// (궁궐/사찰/왕릉 merged into BLOCKED_NAME_PATTERNS, brands/categories already covered)
 
 /**
  * Input shape for mapKakaoCategory — works with both KakaoDocument and KakaoPlaceMatch.
