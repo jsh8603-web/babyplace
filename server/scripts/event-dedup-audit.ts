@@ -55,14 +55,17 @@ async function missedDupes(count = 10): Promise<void> {
 
   const suspects: { e1: any; e2: any; sim: number }[] = []
 
+  // Generic suffixes that inflate similarity between unrelated events
+  const GENERIC_SUFFIXES = /\s*(팝업스토어|팝업|특별전|전시회|축제|페스타|체험전|공연|뮤지컬|콘서트)$/
+
   // Simple name-based scan
   for (let i = 0; i < data.length && suspects.length < count; i++) {
     for (let j = i + 1; j < data.length && suspects.length < count; j++) {
       if (data[i].source === data[j].source) continue
 
-      // Quick Dice coefficient
-      const n1 = data[i].name.toLowerCase().replace(/\s+/g, '')
-      const n2 = data[j].name.toLowerCase().replace(/\s+/g, '')
+      // Quick Dice coefficient — strip generic suffixes before comparison
+      const n1 = data[i].name.toLowerCase().replace(GENERIC_SUFFIXES, '').replace(/\s+/g, '')
+      const n2 = data[j].name.toLowerCase().replace(GENERIC_SUFFIXES, '').replace(/\s+/g, '')
       if (Math.abs(n1.length - n2.length) > 10) continue
 
       const bg1 = new Set<string>()

@@ -122,6 +122,14 @@ const POSTER_BLOCKED_DOMAINS = [
   'image6.yanolja.com', 'image.yanolja.com',
   'contents.lotteon.com',
   'cdn.crowdpic.net',
+  // 2026-03-23 감사 추가
+  'static.inven.co.kr', 'cdn.gamemeca.com', 'file.thisisgame.com',
+  'file.albamon.com', 'img.hankyung.com', 'tnnews.co.kr',
+  'www.sportsworldi.com', 'cdn.ardentnews.co.kr', 'cdn.globalnewsagency.kr',
+  'img.29cm.co.kr', 'photo.akmall.com', 'image.oliveyoung.co.kr',
+  'image.lotte.com', 'file.nspna.com', 'media-cdn.linkareer.com',
+  'cdn.eyesmag.com', 'img.lottehotel.com', 'culture.lotteshopping.com',
+  'c1.staticflickr.com', 'cdn.clien.net',
 ]
 
 const POSTER_TRUSTED_DOMAINS = [
