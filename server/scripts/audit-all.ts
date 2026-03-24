@@ -706,17 +706,17 @@ async function runAnalysis(): Promise<void> {
   const divergePct = checkCount > 0 ? Math.round(divergeCount / checkCount * 100) : 0
   console.log(`  Checked: ${checkCount}, diverged (>0.05): ${divergeCount} (${divergePct}%)`)
 
-  // 6. Category-level accuracy (place)
+  // 6. Category-level accuracy (place) — use place_category column
   console.log('\n--- Place Category Accuracy ---')
   const { data: catData } = await supabase
     .from('place_accuracy_audit_log')
-    .select('category, audit_status')
+    .select('place_category, audit_status')
     .in('audit_status', ['approved', 'rejected'])
 
   if (catData && catData.length > 0) {
     const catStats: Record<string, { approved: number; rejected: number }> = {}
     for (const r of catData) {
-      const cat = r.category || 'unknown'
+      const cat = (r as any).place_category || 'unknown'
       if (!catStats[cat]) catStats[cat] = { approved: 0, rejected: 0 }
       catStats[cat][r.audit_status as 'approved' | 'rejected']++
     }
