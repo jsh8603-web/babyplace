@@ -489,7 +489,7 @@ JSON만 응답: {"pick": 번호, "reason": "이유"}`
 
 // ─── Main Enrichment Job ────────────────────────────────────────────────────
 
-export async function runPosterEnrichment(timeBudgetMinutes = 90): Promise<PosterEnrichmentResult> {
+export async function runPosterEnrichment(timeBudgetMinutes = 60): Promise<PosterEnrichmentResult> {
   const result: PosterEnrichmentResult = { processed: 0, updated: 0, skipped: 0, errors: 0 }
   const startedAt = Date.now()
 

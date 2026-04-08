@@ -161,7 +161,7 @@ export async function classifyEventsWithLLM(
     return classifyWithFallbackRegex(events)
   }
 
-  const BATCH_SIZE = 50
+  const BATCH_SIZE = 80
   const CONCURRENCY = 4
   const DELAY_BETWEEN_CHUNKS_MS = 2000
   const batches: EventForClassification[][] = []
