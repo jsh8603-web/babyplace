@@ -42,6 +42,18 @@ next-env.d.ts
 # claude
 .claude/
 
+# gemini sync copies (read-only, generated from Claude originals)
+AGENT_TASK_API.md
+EXCEL_POWERBI.md
+PATTERN_*.md
+CODE_QUALITY.md
+ENV_MANIFEST.md
+PC_TOOLS.md
+SKILL_*.md
+GEMINI_SYNC_MANIFEST.md
+.gemini-outbox/
+.gemini-task-prompt.txt
+
 # test outputs
 test-output/
 testsprite_tests/

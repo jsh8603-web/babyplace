@@ -177,6 +177,9 @@ function buildAuditEntry(row: any, config: any, verdict: string): any | null {
     penaltyFlags = detailed.penalties
   } catch { /* ignore */ }
 
+  // #2: Reconstruction logic for legacy/broken rows is now in buildAuditEntry.
+  // Existing NULL penalty_flags in DB should be backfilled via separate script.
+
   return {
     mention_id: row.id,
     place_id: row.place_id,
@@ -421,7 +424,15 @@ async function bulkJudge(): Promise<void> {
 
     for (const row of data) {
       const bd = (row.relevance_breakdown || {}) as Record<string, number>
-      const penalties = (row.penalty_flags || []) as string[]
+      let penalties = (row.penalty_flags || []) as string[]
+
+      // #2: Reconstruct penalties from breakdown if missing (for legacy pending rows)
+      if (penalties.length === 0 && Object.keys(bd).length > 0) {
+        penalties = Object.entries(bd)
+          .filter(([k, v]) => k.startsWith('penalty_') && v !== 0)
+          .map(([k]) => k.replace('penalty_', ''))
+      }
+
       // Use current blog_mentions score, fallback to audit_log score
       const score = currentScores.get(row.mention_id) ?? row.relevance_score ?? 0
       const hasNameTitle = (bd.name_title ?? 0) > 0

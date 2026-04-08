@@ -513,7 +513,7 @@ async function bulkJudgePlaces(): Promise<void> {
       // Known baby-friendly categories: auto-approve if name is clean
       const BABY_CATEGORIES = /키즈|어린이|놀이터|소아과|산후|유아|아동|아기/
       // Suspicious "놀이" category with no baby keywords: flag for review
-      const BABY_NAME_HINTS = /키즈|어린이|아이|아기|유아|베이비|놀이터|공원|도서관|박물관|과학관|체험|카페|식당|맘|육아|산후/
+      const BABY_NAME_HINTS = /키즈|어린이|아이|아기|유아|베베|베이비|놀이터|공원|도서관|박물관|과학관|체험|카페|식당|맘|육아|산후|챔피언|워터룸|키즈풀|키즈카페/
 
       if (isBlockedByNamePattern(name) || isBlockedByBrand(name)) {
         flagRows.push(row.id)

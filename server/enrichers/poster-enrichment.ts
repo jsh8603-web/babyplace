@@ -130,6 +130,8 @@ const POSTER_BLOCKED_DOMAINS = [
   'image.lotte.com', 'file.nspna.com', 'media-cdn.linkareer.com',
   'cdn.eyesmag.com', 'img.lottehotel.com', 'culture.lotteshopping.com',
   'c1.staticflickr.com', 'cdn.clien.net',
+  'jeonmae.co.kr', 'static.kinolights.com', 'static.kinolights.io',
+  'songpa.go.kr', 'www.songpa.go.kr',
 ]
 
 const POSTER_TRUSTED_DOMAINS = [

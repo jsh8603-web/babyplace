@@ -613,6 +613,8 @@ const POSTER_BLOCKED_DOMAINS = [
   // R23: site logos found as og:images
   'img.designhouse.co.kr', 'pngegg.com',
   'play-lh.googleusercontent.com', 'lh3.googleusercontent.com',
+  // R25: Product image leaks
+  '011st.com', 'wizwid.com', 'ridibooks.com', 'zigzag.kr',
 ]
 
 /**
