@@ -53,6 +53,20 @@ const BLOCKED_CATEGORIES =
 /** Names containing these keywords bypass category blocking (explicit baby-relevance) */
 const BABY_NAME_WHITELIST = /키즈|어린이|유아|베이비|아기|아동|육아|이유식|맘마|baby|kids|키움|돌봄|놀이터|장난감/i
 
+/** Place types in name that are inherently baby-accessible (whitelist gate only, not category bypass) */
+const BABY_PLACE_TYPE_WHITELIST = /공원|미술관|박물관|과학관|도서관|수영장|수영교실|농장|목장|수목원|식물원|동물원|극장|공연장|체험관|전시관|전시장|문화원|문화센터|문화회관|워터파크|아쿠아리움|수족관|테마파크|놀이공원|유원지|캠핑장|북카페|서점/i
+
+/**
+ * Category whitelist: Kakao categoryName / subCategory tokens that indicate baby-relevance.
+ *
+ * Strategy shift (2026-04-12): blacklist-only → whitelist-first.
+ * - Non-baby places are infinite; baby places are finite.
+ * - Default is now BLOCK. Only whitelisted categories + baby-name keywords pass.
+ * - Blacklists remain as first-pass certain-block (parking, charging, admin, etc.)
+ */
+const WHITELISTED_CATEGORY_PATTERNS =
+  /키즈|어린이|유아|아동|패밀리|키즈카페|키즈파크|놀이카페|실내놀이|볼풀|트램폴린|바운스|놀이터|놀이공원|테마파크|유원지|동물원|아쿠아리움|수족관|농장|목장|체험농장|관광농원|박물관|미술관|과학관|체험관|전시관|전시장|문화원|문화회관|문화센터|도서관|북카페|서점|워터파크|수영장|물놀이|공원|수목원|식물원|생태|자연학습|자연휴양|소아과|소아청소년|산후조리|보육|어린이집|유치원|보건소|수유실|공연장|극장|뮤지컬|인형극/i
+
 // ─── Dynamic DB patterns (5-min cache) ──────────────────────────────────────
 
 interface CachedPatterns {
@@ -127,6 +141,11 @@ export function isBabyRelevantName(name: string): boolean {
   return BABY_NAME_WHITELIST.test(name)
 }
 
+/** Check if category string matches baby-relevant whitelist (sync, no DB) */
+export function isWhitelistedCategory(catStr: string): boolean {
+  return WHITELISTED_CATEGORY_PATTERNS.test(catStr)
+}
+
 // ─── Main export ────────────────────────────────────────────────────────────
 
 export async function checkPlaceGate(input: PlaceGateInput): Promise<PlaceGateResult> {
@@ -178,7 +197,24 @@ export async function checkPlaceGate(input: PlaceGateInput): Promise<PlaceGateRe
     }
   }
 
-  return { allowed: true, reason: 'pass' }
+  // ─── Whitelist gate (default=block) ──────────────────────────────
+  // 5. Name with baby-relevant keywords → allow
+  if (BABY_NAME_WHITELIST.test(name)) {
+    return { allowed: true, reason: 'baby_name' }
+  }
+
+  // 5b. Name contains baby-accessible place type → allow
+  if (BABY_PLACE_TYPE_WHITELIST.test(name)) {
+    return { allowed: true, reason: 'baby_place_type' }
+  }
+
+  // 6. Category with baby-relevant keywords → allow
+  if (catStr && WHITELISTED_CATEGORY_PATTERNS.test(catStr)) {
+    return { allowed: true, reason: 'whitelisted_category' }
+  }
+
+  // 7. Default: block — place has no baby-relevant signal
+  return { allowed: false, reason: 'not_whitelisted' }
 }
 
 // ─── Feedback loop: flag irrelevant places ──────────────────────────────────
