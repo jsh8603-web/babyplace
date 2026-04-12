@@ -274,6 +274,7 @@ async function compareRounds(): Promise<void> {
 }
 
 async function runFull(): Promise<void> {
+  const startTime = Date.now()
   console.log('[audit-all] Starting integrated full audit pipeline\n')
 
   const { execSync } = await import('child_process')
@@ -380,9 +381,15 @@ async function runFull(): Promise<void> {
 
   console.log('[classification] Analyzing FP/FN patterns...')
   console.log(tsx('server/scripts/classification-audit.ts --patterns'))
+
+  const elapsedMs = Date.now() - startTime
+  const elapsedMin = Math.floor(elapsedMs / 60000)
+  const elapsedSec = Math.round((elapsedMs % 60000) / 1000)
+  console.log(`\n[audit-all] 총 소요시간: ${elapsedMin}분 ${elapsedSec}초`)
 }
 
 async function runQuick(): Promise<void> {
+  const startTime = Date.now()
   console.log('[audit-all] Quick audit (6종 lightweight)\n')
 
   const { execSync } = await import('child_process')
@@ -467,6 +474,11 @@ async function runQuick(): Promise<void> {
 
   // Cross-audit check (catch stale mentions daily)
   await runCrossAudit()
+
+  const elapsedMs = Date.now() - startTime
+  const elapsedMin = Math.floor(elapsedMs / 60000)
+  const elapsedSec = Math.round((elapsedMs % 60000) / 1000)
+  console.log(`\n[audit-all] 총 소요시간: ${elapsedMin}분 ${elapsedSec}초`)
 }
 
 // #6: Save audit metadata snapshot
@@ -752,13 +764,10 @@ async function runCleanup(mode: 'quick' | 'full' = 'quick'): Promise<void> {
     return deleted
   }
 
-  // 1. mention_audit_log: flagged (bulk-judge borderline, no manual review value)
-  const flaggedDel = await batchDelete(
-    'mention_audit_log',
-    (q: any) => q.eq('audit_status', 'flagged'),
-    'mention_audit flagged'
-  )
-  console.log(`[cleanup] mention_audit_log flagged: ${flaggedDel} deleted`)
+  // 1. mention_audit_log: flagged — 삭제하지 않음 (순환 샘플링 재검토 대상 보존)
+  //    last_resampled_at을 갱신하여 다음 감사 대상으로 유지
+  const flaggedDel = 0
+  console.log(`[cleanup] mention_audit_log flagged: preserved (no delete)`)
 
   // 2. mention_audit_log: rejected (already processed, blog_mentions score=0)
   const rejectedDel = await batchDelete(
