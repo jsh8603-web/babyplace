@@ -844,7 +844,7 @@ async function runCleanup(mode: 'quick' | 'full' = 'quick'): Promise<void> {
     }
     console.log(`[cleanup] blog_mentions 0<score<0.2: ${bmLowDel} deleted`)
 
-    // 5. mention_audit_log: approved relevance_breakdown → NULL
+    // 5. mention_audit_log: approved relevance_breakdown → NULL (penalty_flags 보존)
     let mentionTrimmed = 0
     while (true) {
       const { data: batch } = await supabase
@@ -857,13 +857,13 @@ async function runCleanup(mode: 'quick' | 'full' = 'quick'): Promise<void> {
       const ids = batch.map((r: any) => r.id)
       const { error } = await supabase
         .from('mention_audit_log')
-        .update({ relevance_breakdown: null, penalty_flags: null })
+        .update({ relevance_breakdown: null })  // penalty_flags는 분석용으로 보존
         .in('id', ids)
       if (error) { console.error('  mention JSONB trim error:', error.message); break }
       mentionTrimmed += ids.length
       if (mentionTrimmed % 5000 === 0) console.log(`  mention JSONB trim: ${mentionTrimmed} rows...`)
     }
-    console.log(`[cleanup] mention_audit_log JSONB trimmed: ${mentionTrimmed} rows`)
+    console.log(`[cleanup] mention_audit_log JSONB trimmed: ${mentionTrimmed} rows (penalty_flags preserved)`)
 
     // 6. poster_audit_log: non-pending candidates → NULL
     let posterTrimmed = 0
