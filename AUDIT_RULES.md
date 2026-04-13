@@ -224,6 +224,7 @@ DOTENV_CONFIG_PATH=.env.local npx tsx -r dotenv/config server/scripts/audit-all.
 - 소스별 rejection rate 비교 → 특정 수집기 품질 문제 감지
 - 카테고리별 정확률 비교 → 카테고리 분류 로직 개선
 - null/누락 필드 비율 → audit log enrichment 컬럼 채우기
+- keyword source 별 yield 비교 (active%, zero-cycle%, avgEff) → llm_generated 품질 감시 (text_mining 대비 0.05 이상 격차 시 프롬프트 보강)
 - cross-audit 교차 분석 (audit-all.ts --report 활용)
 - 라운드별 변화 추적 (audit-all.ts --compare 활용)
 ```

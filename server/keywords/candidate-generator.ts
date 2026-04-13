@@ -663,6 +663,26 @@ function deduplicateCandidates(
 }
 
 /**
+ * Validation regexes for LLM-generated keywords.
+ * Used to drop obvious quality failures before DB insert.
+ * Rationale: audit 2026-04-13 — llm_generated avgEff 0.096 (2nd worst),
+ *   38/84 zero-cycle, repeated failures: other-region keywords,
+ *   Google-query suffixes, keywords without baby signal.
+ */
+const LLM_KW_OTHER_REGIONS = /제주|부산|대구|광주|대전|울산|인천|세종|전주|춘천|강릉|속초|여수|경주|통영|남해|포항|창원/
+const LLM_KW_QUERY_SUFFIX = /(검색|추천|정보|위치|찾기)$/
+const LLM_KW_BABY_SIGNAL = /키즈|어린이|아기|유아|베이비|영유아|신생아|수유|육아|맘|패밀리|가족|출산|소아과|분유|기저귀|이유식|유모차|카시트/
+
+function validateGeneratedKeyword(keyword: string): { ok: boolean; reason?: string } {
+  const k = keyword.trim()
+  if (k.length < 5 || k.length > 15) return { ok: false, reason: 'length' }
+  if (LLM_KW_OTHER_REGIONS.test(k)) return { ok: false, reason: 'other_region' }
+  if (LLM_KW_QUERY_SUFFIX.test(k)) return { ok: false, reason: 'query_style' }
+  if (!LLM_KW_BABY_SIGNAL.test(k)) return { ok: false, reason: 'no_baby_signal' }
+  return { ok: true }
+}
+
+/**
  * Generate semantically diverse keywords using Gemini Flash.
  * Fetches all existing keywords from DB and asks LLM to produce 50 new ones
  * covering different search intents (activity type, age group, location, season, etc.).
@@ -688,12 +708,49 @@ export async function generateDiverseKeywordsWithLLM(): Promise<{
     const existingSet = new Set((existing ?? []).map((k: { keyword: string }) => k.keyword.toLowerCase()))
     const existingList = (existing ?? []).map((k: { keyword: string }) => k.keyword).slice(0, 200)
 
+    // Fetch top text_mining keywords as few-shot examples of proven quality
+    const { data: topKeywords } = await supabaseAdmin
+      .from('keywords')
+      .select('keyword, efficiency_score')
+      .eq('provider', 'naver')
+      .eq('source', 'text_mining')
+      .order('efficiency_score', { ascending: false })
+      .limit(10)
+    const goodExamples = (topKeywords ?? [])
+      .map((k: { keyword: string }) => `- ${k.keyword}`)
+      .join('\n')
+
     const prompt = `당신은 "아기/유아와 함께 갈 수 있는 장소"를 찾는 네이버 블로그 검색 키워드 전문가입니다.
+
+[필수 제약 — 서비스 지역]
+- 이 서비스는 서울/경기 지역만 다룹니다.
+- 타지역 키워드 절대 금지:
+  제주, 부산, 대구, 광주, 대전, 울산, 인천, 세종, 전주, 춘천, 강릉, 속초, 여수, 경주, 통영, 남해, 포항, 창원
+- 지역명 포함 시 서울/경기 내 구/시/동만 허용 (예: 강남, 송파, 마포, 성동, 분당, 판교, 일산, 수원, 용인, 하남)
+
+[필수 제약 — 키워드 스타일]
+- 네이버 블로그 본문에 등장할 자연스러운 구어체/명사구
+- Google 검색 쿼리 스타일 금지:
+  ❌ "아기 약국 검색"    → ✅ "동네 소아과 후기"
+  ❌ "어린이 병원 추천"  → ✅ "강남 소아과"
+  ❌ "신생아 준비물 정보" → ✅ "신생아 출산 준비물"
+- "~ 검색 / 추천 / 정보 / 위치 / 찾기" 로 끝나는 키워드 금지
+- 5자 이상 15자 이하
+
+[좋은 예시 — text_mining source 상위 효율 키워드]
+${goodExamples || '- (데이터 없음)'}
+
+[나쁜 예시 — 생성 금지]
+- 제주 아기 카페           (타지역)
+- 부산 키즈카페 추천        (타지역 + 검색 스타일)
+- 아기 약국 검색           (Google 쿼리)
+- 신생아 목튜브 수영        (과도하게 구체적, 검색량 0)
+- 영유아 수유쿠션 세척법    (블로그 본문 표현 아님)
 
 기존 키워드 목록 (중복 금지):
 ${JSON.stringify(existingList)}
 
-위 키워드와 중복되지 않는 새로운 검색 키워드 50개를 생성하세요.
+위 제약을 모두 만족하는 새로운 검색 키워드 50개를 생성하세요.
 
 카테고리별 분배 (필수):
 - 놀이/키즈카페: 최소 5개
@@ -725,11 +782,30 @@ JSON 배열로 응답: ["키워드1", "키워드2", ...]`
       return result
     }
 
-    const keywords: string[] = JSON.parse(match[0])
-    result.candidatesGenerated = keywords.length
+    const rawKeywords: string[] = JSON.parse(match[0])
+    result.candidatesGenerated = rawKeywords.length
 
-    for (const kw of keywords) {
-      if (!kw || typeof kw !== 'string' || kw.length < 2) continue
+    // Output validation gate — drop quality failures before DB insert
+    const validKeywords: string[] = []
+    const dropped: Record<string, number> = {}
+    for (const kw of rawKeywords) {
+      if (!kw || typeof kw !== 'string') {
+        dropped.invalid_type = (dropped.invalid_type ?? 0) + 1
+        continue
+      }
+      const v = validateGeneratedKeyword(kw)
+      if (v.ok) {
+        validKeywords.push(kw)
+      } else {
+        dropped[v.reason!] = (dropped[v.reason!] ?? 0) + 1
+      }
+    }
+    console.log(
+      `[candidate-generator] LLM generated ${rawKeywords.length} → ` +
+      `${validKeywords.length} valid, dropped: ${JSON.stringify(dropped)}`,
+    )
+
+    for (const kw of validKeywords) {
       if (existingSet.has(kw.toLowerCase())) continue
 
       const { group, isIndoor } = inferKeywordGroup(kw)

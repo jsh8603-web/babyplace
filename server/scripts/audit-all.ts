@@ -742,6 +742,57 @@ async function runAnalysis(): Promise<void> {
     }
   }
 
+  // 7. Keyword source yield — monitor llm_generated quality
+  // Rationale: audit 2026-04-13 — llm_generated avgEff 0.096 (2nd worst)
+  //   → Phase 1+2 prompt improvements deployed; this query tracks effect over time.
+  console.log('\n--- Keyword Source Yield ---')
+  const { data: kwData } = await supabase
+    .from('keywords')
+    .select('source, is_active, cycle_count, efficiency_score')
+    .eq('provider', 'naver')
+
+  if (kwData && kwData.length > 0) {
+    type KwAgg = { total: number; active: number; zeroCycle: number; effSum: number; effCount: number }
+    const bySource = new Map<string, KwAgg>()
+    for (const k of kwData as Array<{ source: string | null; is_active: boolean | null; cycle_count: number | null; efficiency_score: number | null }>) {
+      const src = k.source ?? 'unknown'
+      const acc = bySource.get(src) ?? { total: 0, active: 0, zeroCycle: 0, effSum: 0, effCount: 0 }
+      acc.total++
+      if (k.is_active) acc.active++
+      if ((k.cycle_count ?? 0) === 0) acc.zeroCycle++
+      if (k.efficiency_score != null) {
+        acc.effSum += k.efficiency_score
+        acc.effCount++
+      }
+      bySource.set(src, acc)
+    }
+
+    const rows = Array.from(bySource.entries())
+      .map(([source, s]) => ({
+        source,
+        total: s.total,
+        activePct: Math.round((s.active / s.total) * 100),
+        zeroCyclePct: Math.round((s.zeroCycle / s.total) * 100),
+        avgEff: s.effCount > 0 ? s.effSum / s.effCount : 0,
+      }))
+      .sort((a, b) => b.avgEff - a.avgEff)
+
+    for (const r of rows) {
+      console.log(
+        `  ${r.source.padEnd(16)} total=${String(r.total).padStart(5)} ` +
+        `active=${String(r.activePct).padStart(3)}% ` +
+        `zero-cycle=${String(r.zeroCyclePct).padStart(3)}% ` +
+        `avgEff=${r.avgEff.toFixed(3)}`,
+      )
+    }
+
+    const tmEff = rows.find(r => r.source === 'text_mining')?.avgEff ?? 0
+    const llmEff = rows.find(r => r.source === 'llm_generated')?.avgEff ?? 0
+    if (tmEff > 0 && tmEff - llmEff > 0.05) {
+      console.log(`  ⚠ llm_generated lags text_mining by ${(tmEff - llmEff).toFixed(3)} eff`)
+    }
+  }
+
   console.log('')
 }
 
