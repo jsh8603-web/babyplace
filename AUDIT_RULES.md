@@ -503,7 +503,7 @@ DOTENV_CONFIG_PATH=.env.local npx tsx -r dotenv/config server/scripts/audit-all.
 - **원인**: 샘플링 개수가 너무 적었음.
 - **조치**: 샘플링 건수 50건으로 확대 및 버그 수정 완료. 3/29 감사에서 정상 작동 확인.
 
-### #4 Poster Gemini API 429 pending 931건 `open`
+### #4 Poster Gemini API 429 pending 931건 `resolved(2026-04-13, poster enrichment 재처리로 pending 1730→48건으로 감소)`
 - **등록일**: 2026-04-12
 - **현상**: poster_audit_log pending 931건. --report에서 poster 93% (12430 중 931 pending). Gemini API 무료 할당량 초과로 poster-enrichment 실패.
 - **원인**: Gemini Flash 429 에러 시 8-step fallback이 있으나, 전체 할당량 소진 시 모든 key/model 실패. poster-enrichment.ts의 fallback chain이 효과 없는 상태.
@@ -511,7 +511,7 @@ DOTENV_CONFIG_PATH=.env.local npx tsx -r dotenv/config server/scripts/audit-all.
 - **검증 방법**: 다음 감사에서 `--report` poster pending < 100건 확인.
 - **실패 시**: poster-enrichment 실행 후 pending 줄지 않으면 Gemini API 할당량 증가 또는 배치 크기 절반으로 축소.
 
-### #5 mention penalty_flags null 지속 `open`
+### #5 mention penalty_flags null 지속 `resolved(2026-04-13, audit-all.ts JSONB trim에서 penalty_flags 제외 — line 860, 다음 감사에서 flags 분포 확인 예정)`
 - **등록일**: 2026-04-12
 - **현상**: --analysis에서 "Total with flags: 0, without: 10000". mention_audit_log 70,395건 전부 penalty_flags null.
 - **원인**: audit-all.ts runCleanup에서 mention_audit_log approved rows의 relevance_breakdown, penalty_flags를 NULL로 덮어씀 (JSONB trim, line ~850). 이번 감사에서 flagged 삭제는 중단했으나, 기록 자체가 bulkJudge에서 저장되지 않는 가능성도 있음.
