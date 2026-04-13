@@ -6,20 +6,30 @@
  * - Date cross-check: dates in image match event dates
  * - Safety check: no horror/adult content
  *
- * Cost: ~$0.002/image (Gemini Flash Vision)
+ * Fallback chain: wife key → own key (both using gemini-2.5-flash vision)
  */
 
 import { GoogleGenAI } from '@google/genai'
 
-let client: GoogleGenAI | null = null
+const VISION_MODEL = 'gemini-2.5-flash'
 
-function getClient(): GoogleGenAI {
-  if (!client) {
-    const apiKey = process.env.GEMINI_API_KEY
-    if (!apiKey) throw new Error('[poster-vision] GEMINI_API_KEY not set')
-    client = new GoogleGenAI({ apiKey })
-  }
-  return client
+interface VisionKeyEntry {
+  client: GoogleGenAI
+  label: string
+}
+
+let _visionClients: VisionKeyEntry[] | null = null
+
+function getVisionClients(): VisionKeyEntry[] {
+  if (_visionClients) return _visionClients
+  const entries: VisionKeyEntry[] = []
+  const primary = process.env.GEMINI_API_KEY
+  const fallback = process.env.GEMINI_FALLBACK_KEY
+  if (primary) entries.push({ client: new GoogleGenAI({ apiKey: primary }), label: 'wife' })
+  if (fallback) entries.push({ client: new GoogleGenAI({ apiKey: fallback }), label: 'own' })
+  if (entries.length === 0) throw new Error('[poster-vision] No GEMINI API keys set')
+  _visionClients = entries
+  return entries
 }
 
 export interface PosterVisionResult {
@@ -44,8 +54,6 @@ export async function verifyPosterImage(
   eventName: string,
   eventDates?: string,
 ): Promise<PosterVisionResult | null> {
-  const ai = getClient()
-
   const prompt = `당신은 아기/어린이 앱의 포스터 검증 시스템입니다.
 이 이미지를 분석하여 JSON으로 답하세요:
 
@@ -98,44 +106,60 @@ JSON만 응답하세요.`
       return null
     }
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: [
-        {
-          role: 'user',
-          parts: [
-            { text: prompt },
-            { inlineData: { mimeType, data: base64 } },
+    // Try each key in fallback order (wife → own), same model
+    const clients = getVisionClients()
+    let lastErr: Error | null = null
+    for (const entry of clients) {
+      try {
+        const response = await entry.client.models.generateContent({
+          model: VISION_MODEL,
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                { text: prompt },
+                { inlineData: { mimeType, data: base64 } },
+              ],
+            },
           ],
-        },
-      ],
-      config: {
-        maxOutputTokens: 2048,
-        temperature: 0,
-        responseMimeType: 'application/json',
-        thinkingConfig: { thinkingBudget: 0 },
-      },
-    })
+          config: {
+            maxOutputTokens: 2048,
+            temperature: 0,
+            responseMimeType: 'application/json',
+            thinkingConfig: { thinkingBudget: 0 },
+          },
+        })
 
-    const text = response.text ?? ''
-    try {
-      // Extract JSON from response (handle markdown fences or extra text)
-      const jsonMatch = text.match(/\{[\s\S]*\}/)
-      const jsonStr = jsonMatch ? jsonMatch[0] : text
-      const parsed = JSON.parse(jsonStr)
-      return {
-        eventNameFound: parsed.event_name_found ?? false,
-        dateMatch: parsed.date_match ?? 'no_date',
-        safetyIssue: parsed.safety_issue ?? false,
-        safetyDetail: parsed.safety_detail ?? undefined,
-        ocrText: parsed.ocr_text ?? [],
-        confidence: parsed.confidence ?? 0,
-        rawResponse: text,
+        const text = response.text ?? ''
+        try {
+          const jsonMatch = text.match(/\{[\s\S]*\}/)
+          const jsonStr = jsonMatch ? jsonMatch[0] : text
+          const parsed = JSON.parse(jsonStr)
+          return {
+            eventNameFound: parsed.event_name_found ?? false,
+            dateMatch: parsed.date_match ?? 'no_date',
+            safetyIssue: parsed.safety_issue ?? false,
+            safetyDetail: parsed.safety_detail ?? undefined,
+            ocrText: parsed.ocr_text ?? [],
+            confidence: parsed.confidence ?? 0,
+            rawResponse: text,
+          }
+        } catch {
+          console.error('[poster-vision] Failed to parse response:', text.slice(0, 300))
+          return null
+        }
+      } catch (err: unknown) {
+        const is429 = err instanceof Error && err.message.includes('429')
+        if (is429) {
+          console.warn(`[poster-vision] 429 on ${entry.label} → next key`)
+          lastErr = err instanceof Error ? err : new Error(String(err))
+          continue
+        }
+        throw err
       }
-    } catch {
-      console.error('[poster-vision] Failed to parse response:', text.slice(0, 300))
-      return null
     }
+    console.error(`[poster-vision] All keys exhausted (429): ${lastErr?.message}`)
+    return null
   } catch (err: any) {
     console.error(`[poster-vision] Vision API error: ${err.message}`)
     return null
