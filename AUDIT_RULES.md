@@ -312,6 +312,9 @@ DOTENV_CONFIG_PATH=.env.local npx tsx -r dotenv/config server/scripts/audit-all.
 | 2026-03-26 | 문령산 비아기 장소 | is_active=false | DB 직접 | — |
 | 2026-03-26 | place --sample --count 파라미터 무시 버그 | --random→--count 파싱 수정 | `place-accuracy-audit.ts` | 이전 라운드 실제 10건만 샘플링 |
 | 2026-03-26 | place 샘플링 10→50 확대 | --count 15→50 | `audit-all.ts` | 전수 완료 ~320라운드→~335라운드 예상 |
+| 2026-04-16 | place-gate.ts 패턴 추가 (체육공원/용달/농업회사법인/의학박물관/포루/각루/안내소) | BLOCKED_NAME_PATTERNS 7종 | `place-gate.ts` | 4종 inaccurate 발견 (의학박물관/용달/체육공원/농업법인) |
+| 2026-04-16 | classification v20: 성인뮤지컬/서브컬처 블랙리스트 | 킹키부츠/헤드윅/쇼죠마츠리/체육대회 | `classifier-config.json` | 이번 세션 FP 패턴 반영 |
+| 2026-04-16 | audit-all.ts 카테고리 정확도 쿼리 버그 수정 | approved/rejected ↔ accurate/inaccurate 정규화 | `audit-all.ts` | 72% 오분석(legacy data) → 실제 현황 확인 가능 |
 
 ## 감사 후 보완사항 수정 정책
 
@@ -512,10 +515,18 @@ DOTENV_CONFIG_PATH=.env.local npx tsx -r dotenv/config server/scripts/audit-all.
 - **검증 방법**: 다음 감사에서 `--report` poster pending < 100건 확인.
 - **실패 시**: poster-enrichment 실행 후 pending 줄지 않으면 Gemini API 할당량 증가 또는 배치 크기 절반으로 축소.
 
-### #5 mention penalty_flags null 지속 `resolved(2026-04-13, audit-all.ts JSONB trim에서 penalty_flags 제외 — line 860, 다음 감사에서 flags 분포 확인 예정)`
+### #5 mention penalty_flags null 지속 `open`
 - **등록일**: 2026-04-12
-- **현상**: --analysis에서 "Total with flags: 0, without: 10000". mention_audit_log 70,395건 전부 penalty_flags null.
-- **원인**: audit-all.ts runCleanup에서 mention_audit_log approved rows의 relevance_breakdown, penalty_flags를 NULL로 덮어씀 (JSONB trim, line ~850). 이번 감사에서 flagged 삭제는 중단했으나, 기록 자체가 bulkJudge에서 저장되지 않는 가능성도 있음.
-- **수정 방안**: mention-audit.ts bulkJudge에서 penalty_flags 저장 여부 확인. 저장 후 cleanup의 JSONB trim이 penalty_flags도 null로 만드는지 확인 → trim에서 penalty_flags 제외.
-- **검증 방법**: 다음 감사 --analysis에서 "Total with flags: > 0" 확인.
+- **현상**: --analysis에서 "Total with flags: 0, without: 10000" (4/16 감사 확인). 3회 연속 flags=0.
+- **원인**: audit-all.ts runCleanup에서 mention_audit_log approved rows의 penalty_flags를 NULL로 덮어씀. mention-audit.ts bulkJudge에서 penalty_flags 저장 여부 불확실.
+- **수정 방안**: `mention-audit.ts` bulkJudge 실행 직후 `--analysis` 실행하여 flags 존재 확인. flags 없으면 bulkJudge에서 penalty_flags를 명시적으로 저장하는 코드 추가 (relevance.ts computePostRelevance의 penalty 배열을 audit_log에 기록).
+- **검증 방법**: `mention-audit.ts --bulk-judge --count 100` 실행 후 `audit-all.ts --analysis` → "Total with flags: > 0" 확인.
 - **실패 시**: 별도 집계 테이블(mention_audit_stats)에 penalty 분포 저장 검토.
+
+### #6 Poster Gemini API fallback 완전 실패 372건 `open`
+- **등록일**: 2026-04-16
+- **현상**: poster_audit_log pending 372건 전체가 `LLM error: All fallback steps exhausted`. poster-enrichment.ts의 8-step fallback chain이 전부 실패.
+- **원인**: Gemini API 무료 할당량 소진 또는 일시적 서비스 장애로 모든 key/model 실패.
+- **수정 방안**: poster-enrichment 재실행으로 pending 건 자동 재처리. 또는 rule-based fallback(`selectBestPoster`)을 LLM 실패 시 자동 적용하여 pending 없이 처리.
+- **검증 방법**: 다음 감사 `--report` poster pending < 100건 확인. 또는 `audit-all.ts --full` 실행 후 재처리.
+- **실패 시**: poster pending 372건 중 Before URL이 신뢰 소스인 건들만 수동 bulk-approve 처리 (kfescdn.visitkorea.or.kr, mediahub.seoul.go.kr, sisul.or.kr 등).
