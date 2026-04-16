@@ -719,18 +719,21 @@ async function runAnalysis(): Promise<void> {
   console.log(`  Checked: ${checkCount}, diverged (>0.05): ${divergeCount} (${divergePct}%)`)
 
   // 6. Category-level accuracy (place) — use place_category column
+  // Note: place_accuracy_audit_log uses 'accurate'/'inaccurate' (new) and 'approved'/'rejected' (legacy)
   console.log('\n--- Place Category Accuracy ---')
   const { data: catData } = await supabase
     .from('place_accuracy_audit_log')
     .select('place_category, audit_status')
-    .in('audit_status', ['approved', 'rejected'])
+    .in('audit_status', ['accurate', 'inaccurate', 'approved', 'rejected'])
 
   if (catData && catData.length > 0) {
     const catStats: Record<string, { approved: number; rejected: number }> = {}
     for (const r of catData) {
       const cat = (r as any).place_category || 'unknown'
       if (!catStats[cat]) catStats[cat] = { approved: 0, rejected: 0 }
-      catStats[cat][r.audit_status as 'approved' | 'rejected']++
+      // normalize legacy values
+      const status = r.audit_status === 'accurate' || r.audit_status === 'approved' ? 'approved' : 'rejected'
+      catStats[cat][status]++
     }
     const sortedCats = Object.entries(catStats).sort((a, b) => (b[1].rejected / (b[1].approved + b[1].rejected)) - (a[1].rejected / (a[1].approved + a[1].rejected)))
     for (const [cat, stats] of sortedCats) {
