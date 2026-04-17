@@ -518,7 +518,7 @@ DOTENV_CONFIG_PATH=.env.local npx tsx -r dotenv/config server/scripts/audit-all.
 - **검증 방법**: 다음 감사에서 `--report` poster pending < 100건 확인.
 - **실패 시**: poster-enrichment 실행 후 pending 줄지 않으면 Gemini API 할당량 증가 또는 배치 크기 절반으로 축소.
 
-### #5 mention penalty_flags null 지속 `open`
+### #5 mention penalty_flags null 지속 `deferred(4/17, bulkJudge에 stale_post_3y 규칙 추가. flags 존재 여부는 다음 pending 처리 후 확인 필요)`
 - **등록일**: 2026-04-12
 - **현상**: --analysis에서 "Total with flags: 0, without: 10000" (4/16 감사 확인). 3회 연속 flags=0.
 - **원인**: audit-all.ts runCleanup에서 mention_audit_log approved rows의 penalty_flags를 NULL로 덮어씀. mention-audit.ts bulkJudge에서 penalty_flags 저장 여부 불확실.
@@ -526,10 +526,10 @@ DOTENV_CONFIG_PATH=.env.local npx tsx -r dotenv/config server/scripts/audit-all.
 - **검증 방법**: `mention-audit.ts --bulk-judge --count 100` 실행 후 `audit-all.ts --analysis` → "Total with flags: > 0" 확인.
 - **실패 시**: 별도 집계 테이블(mention_audit_stats)에 penalty 분포 저장 검토.
 
-### #6 Poster Gemini API fallback 완전 실패 372건 `open`
-- **등록일**: 2026-04-16
-- **현상**: poster_audit_log pending 372건 전체가 `LLM error: All fallback steps exhausted`. poster-enrichment.ts의 8-step fallback chain이 전부 실패.
-- **원인**: Gemini API 무료 할당량 소진 또는 일시적 서비스 장애로 모든 key/model 실패.
-- **수정 방안**: poster-enrichment 재실행으로 pending 건 자동 재처리. 또는 rule-based fallback(`selectBestPoster`)을 LLM 실패 시 자동 적용하여 pending 없이 처리.
-- **검증 방법**: 다음 감사 `--report` poster pending < 100건 확인. 또는 `audit-all.ts --full` 실행 후 재처리.
-- **실패 시**: poster pending 372건 중 Before URL이 신뢰 소스인 건들만 수동 bulk-approve 처리 (kfescdn.visitkorea.or.kr, mediahub.seoul.go.kr, sisul.or.kr 등).
+### #6 Poster pending 1,051건 (LLM 오류 포함) `open`
+- **등록일**: 2026-04-17 (갱신: 372→1,051건)
+- **현상**: 4/17 감사 기준 poster_audit_log pending 1,051건. `--bulk-approve --action kept` 실행 후에도 다수 잔존.
+- **원인**: `action=updated` 건들은 Opus 직접 검토 필요. LLM 오류 건은 poster-enrichment 재실행 필요.
+- **수정 방안**: (1) `poster-audit.ts --review` 실행 후 Opus가 UPDATED 건 10~20건 직접 확인 + approve/reject (2) 나머지는 poster-enrichment 재실행으로 자동 재처리
+- **검증 방법**: 다음 감사 `--report` poster pending < 200건 확인.
+- **실패 시**: Before URL이 신뢰 소스(visitkorea.or.kr, mediahub.seoul.go.kr, culture.seoul.go.kr)인 건들만 수동 bulk-approve.
