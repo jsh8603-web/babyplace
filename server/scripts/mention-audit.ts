@@ -455,6 +455,10 @@ async function bulkJudge(): Promise<void> {
         // #1/#10: chain/region mismatch → reject regardless of name match
         rejectRows.push(row.id)
         excludedIds.push(row.mention_id)
+      } else if (hasStalePost && !hasNameTitle && score <= 0.45) {
+        // stale_post_3y + 제목 미매칭 + 저점수 → 오래된 무관 포스트
+        rejectRows.push(row.id)
+        excludedIds.push(row.mention_id)
       } else if (hasNameTitle && score >= 0.45) {
         approveRows.push(row.id)
       } else if (hasNameSnippet && !hasNameTitle && score >= 0.5) {

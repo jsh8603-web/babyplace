@@ -315,6 +315,9 @@ DOTENV_CONFIG_PATH=.env.local npx tsx -r dotenv/config server/scripts/audit-all.
 | 2026-04-16 | place-gate.ts 패턴 추가 (체육공원/용달/농업회사법인/의학박물관/포루/각루/안내소) | BLOCKED_NAME_PATTERNS 7종 | `place-gate.ts` | 4종 inaccurate 발견 (의학박물관/용달/체육공원/농업법인) |
 | 2026-04-16 | classification v20: 성인뮤지컬/서브컬처 블랙리스트 | 킹키부츠/헤드윅/쇼죠마츠리/체육대회 | `classifier-config.json` | 이번 세션 FP 패턴 반영 |
 | 2026-04-16 | audit-all.ts 카테고리 정확도 쿼리 버그 수정 | approved/rejected ↔ accurate/inaccurate 정규화 | `audit-all.ts` | 72% 오분석(legacy data) → 실제 현황 확인 가능 |
+| 2026-04-17 | 놀이 카테고리 kakao 비아기 업체 대량 수집 | place-gate BLOCKED_NAME_PATTERNS 8패턴 추가(산업$/지게차$/본사$/스틸$/퍼니쳐$/공인중개사/보조축구장$) | `place-gate.ts` | 활성 17건 비활성화 + 미래 수집 차단 |
+| 2026-04-17 | 한강공원 진출입로/나들목/인프라 장소 14건 | is_active=false | DB 직접 | 인공암벽장/자전거대여소/안내센터/나들목 차단 |
+| 2026-04-17 | event-dedup 10건 correct_merge, classification FP 2건 처리 | 4.19혁명/가이아×링크맘팝업스토어 FP | `classification-audit.ts` | — |
 
 ## 감사 후 보완사항 수정 정책
 
