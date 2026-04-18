@@ -314,6 +314,11 @@ DOTENV_CONFIG_PATH=.env.local npx tsx -r dotenv/config server/scripts/audit-all.
 | 2026-03-26 | place 샘플링 10→50 확대 | --count 15→50 | `audit-all.ts` | 전수 완료 ~320라운드→~335라운드 예상 |
 | 2026-04-16 | place-gate.ts 패턴 추가 (체육공원/용달/농업회사법인/의학박물관/포루/각루/안내소) | BLOCKED_NAME_PATTERNS 7종 | `place-gate.ts` | 4종 inaccurate 발견 (의학박물관/용달/체육공원/농업법인) |
 | 2026-04-16 | classification v20: 성인뮤지컬/서브컬처 블랙리스트 | 킹키부츠/헤드윅/쇼죠마츠리/체육대회 | `classifier-config.json` | 이번 세션 FP 패턴 반영 |
+| 2026-04-18 | 한강공원 나들목 진출입로 7건 비활성화 | place-gate 나들목$/진출입로\d*$ 추가 | `place-gate.ts` | 도로진입로가 공원/놀이터로 수집되는 패턴 차단 |
+| 2026-04-18 | 비아기 장소 7건 비활성화 (산/하천/식당/종교단체/타워) | BLOCKED_NAME_PATTERNS에 어린이집$/컨벤션센터$/전도협회$/유니온타워$ 추가 | `place-gate.ts` | bulk-judge false negative 4건 수동 수정 |
+| 2026-04-18 | audit-all.ts penalty_flags 분석 timeout 수정 | ascending+gt(0)+not-null → 내림차순 단일쿼리 | `audit-all.ts` | 134/10K with flags 확인됨: competing_branch 45%, stale_post_3y 41% |
+| 2026-04-18 | --report mention flagged 컬럼 누락 수정 | 출력 포맷에 flagged 추가 | `audit-all.ts` | mention flagged 6163건 실제 존재 확인 |
+| 2026-04-18 | --full 소요시간 자동 출력 | main() 시작 timestamp → 종료 시 분:초 출력 | `audit-all.ts` | v5 #5 항목 구현 |
 | 2026-04-16 | audit-all.ts 카테고리 정확도 쿼리 버그 수정 | approved/rejected ↔ accurate/inaccurate 정규화 | `audit-all.ts` | 72% 오분석(legacy data) → 실제 현황 확인 가능 |
 | 2026-04-17 | 놀이 카테고리 kakao 비아기 업체 대량 수집 | place-gate BLOCKED_NAME_PATTERNS 8패턴 추가(산업$/지게차$/본사$/스틸$/퍼니쳐$/공인중개사/보조축구장$) | `place-gate.ts` | 활성 17건 비활성화 + 미래 수집 차단 |
 | 2026-04-17 | 한강공원 진출입로/나들목/인프라 장소 14건 | is_active=false | DB 직접 | 인공암벽장/자전거대여소/안내센터/나들목 차단 |
@@ -518,7 +523,7 @@ DOTENV_CONFIG_PATH=.env.local npx tsx -r dotenv/config server/scripts/audit-all.
 - **검증 방법**: 다음 감사에서 `--report` poster pending < 100건 확인.
 - **실패 시**: poster-enrichment 실행 후 pending 줄지 않으면 Gemini API 할당량 증가 또는 배치 크기 절반으로 축소.
 
-### #5 mention penalty_flags null 지속 `deferred(4/17, bulkJudge에 stale_post_3y 규칙 추가. flags 존재 여부는 다음 pending 처리 후 확인 필요)`
+### #5 mention penalty_flags null 지속 `resolved(4/18, audit-all.ts --analysis 쿼리 수정. ascending+gt(0)+not-null = Supabase statement timeout → 내림차순 단일쿼리로 변경. 결과: 134/10K with flags, competing_branch 45%, stale_post_3y 41%)`
 - **등록일**: 2026-04-12
 - **현상**: --analysis에서 "Total with flags: 0, without: 10000" (4/16 감사 확인). 3회 연속 flags=0.
 - **원인**: audit-all.ts runCleanup에서 mention_audit_log approved rows의 penalty_flags를 NULL로 덮어씀. mention-audit.ts bulkJudge에서 penalty_flags 저장 여부 불확실.
@@ -526,8 +531,8 @@ DOTENV_CONFIG_PATH=.env.local npx tsx -r dotenv/config server/scripts/audit-all.
 - **검증 방법**: `mention-audit.ts --bulk-judge --count 100` 실행 후 `audit-all.ts --analysis` → "Total with flags: > 0" 확인.
 - **실패 시**: 별도 집계 테이블(mention_audit_stats)에 penalty 분포 저장 검토.
 
-### #6 Poster pending 1,051건 (LLM 오류 포함) `open`
-- **등록일**: 2026-04-17 (갱신: 372→1,051건)
+### #6 Poster pending 1,051건 (LLM 오류 포함) `deferred(4/18, 1,051→390건으로 감소. 56건 UPDATED 수동 리뷰. 다음 감사에서 <200건 목표)`
+- **등록일**: 2026-04-17 (갱신: 372→1,051→390건)
 - **현상**: 4/17 감사 기준 poster_audit_log pending 1,051건. `--bulk-approve --action kept` 실행 후에도 다수 잔존.
 - **원인**: `action=updated` 건들은 Opus 직접 검토 필요. LLM 오류 건은 poster-enrichment 재실행 필요.
 - **수정 방안**: (1) `poster-audit.ts --review` 실행 후 Opus가 UPDATED 건 10~20건 직접 확인 + approve/reject (2) 나머지는 poster-enrichment 재실행으로 자동 재처리

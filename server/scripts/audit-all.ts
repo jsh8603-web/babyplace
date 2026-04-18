@@ -64,7 +64,7 @@ async function runReport(): Promise<void> {
     const reviewed = counts.approved + counts.rejected + counts.flagged
     const reviewRate = counts.total > 0 ? Math.round(reviewed / counts.total * 100) : 0
 
-    console.log(`${audit.name.padEnd(16)} total=${String(counts.total).padStart(4)}  pending=${String(counts.pending).padStart(4)}  approved=${String(counts.approved).padStart(4)}  rejected=${String(counts.rejected).padStart(4)}  review=${reviewRate}%`)
+    console.log(`${audit.name.padEnd(16)} total=${String(counts.total).padStart(4)}  pending=${String(counts.pending).padStart(4)}  approved=${String(counts.approved).padStart(4)}  rejected=${String(counts.rejected).padStart(4)}  flagged=${String(counts.flagged).padStart(4)}  review=${reviewRate}%`)
   }
 
   console.log(`${'─'.repeat(80)}`)
@@ -602,33 +602,25 @@ async function compareWithConfig(): Promise<void> {
 async function runAnalysis(): Promise<void> {
   console.log('\n=== Automated Analysis (#13) ===\n')
 
-  // 1. Penalty flags distribution (mention) — sample 10K rows max to limit egress
+  // 1. Penalty flags distribution (mention) — scan recent 10K rows descending
   console.log('--- Mention Penalty Flags Distribution ---')
-  const BATCH = 1000
-  const MAX_SCAN = 10000
-  let cursor = 0
   const flagDist: Record<string, number> = {}
   let totalWithFlags = 0
   let totalNull = 0
-  let scanned = 0
 
-  while (scanned < MAX_SCAN) {
-    const { data, error } = await supabase
-      .from('mention_audit_log')
-      .select('id, penalty_flags')
-      .order('id', { ascending: true })
-      .gt('id', cursor)
-      .limit(BATCH)
-    if (error || !data || data.length === 0) break
-    for (const row of data) {
-      cursor = row.id
-      scanned++
+  // Scan recent 10K rows descending by id (avoids timeout from full-table + non-null filter)
+  const { data: flagData, error: flagErr } = await supabase
+    .from('mention_audit_log')
+    .select('penalty_flags')
+    .order('id', { ascending: false })
+    .limit(10000)
+  if (!flagErr && flagData) {
+    for (const row of flagData) {
       const flags = (row.penalty_flags || []) as string[]
       if (flags.length === 0) { totalNull++; continue }
       totalWithFlags++
       for (const f of flags) flagDist[f] = (flagDist[f] || 0) + 1
     }
-    if (data.length < BATCH) break
   }
 
   console.log(`  Total with flags: ${totalWithFlags}, without: ${totalNull}`)
@@ -1072,10 +1064,12 @@ async function runCrossAudit(): Promise<void> {
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2)
+  const startTime = Date.now()
 
   if (args.includes('--full')) {
     await runFull()
     await saveSnapshot('full')
+    console.log(`\n총 소요시간: ${Math.round((Date.now() - startTime) / 60000)}분 ${Math.round((Date.now() - startTime) / 1000 % 60)}초`)
   } else if (args.includes('--quick')) {
     await runQuick()
     await saveSnapshot('quick')
