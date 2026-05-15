@@ -63,8 +63,12 @@ async function apply(outputFile: string): Promise<void> {
 
   const blSet = new Set<string>(cfg.blacklist_patterns)
   const wlSet = new Set<string>(cfg.whitelist_title_patterns)
-  const addedBl = (out.add_blacklist || []).filter(p => p && !blSet.has(p))
-  const addedWl = (out.add_whitelist || []).filter(p => p && !wlSet.has(p))
+  const sane = (arr: unknown): string[] =>
+    (Array.isArray(arr) ? arr : [])
+      .map(s => (typeof s === 'string' ? s.trim() : ''))
+      .filter(t => t.length >= 2 && t.length <= 25 && !/[<>{}[\]]|tool_call|[\n\r\t]/.test(t))
+  const addedBl = sane(out.add_blacklist).filter(p => !blSet.has(p))
+  const addedWl = sane(out.add_whitelist).filter(p => !wlSet.has(p))
 
   if (addedBl.length === 0 && addedWl.length === 0) {
     console.log('No new patterns to merge (all duplicates or empty).')
