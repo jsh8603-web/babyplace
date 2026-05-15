@@ -10,26 +10,34 @@
  */
 
 import { GoogleGenAI } from '@google/genai'
+import { MODELS } from '../lib/gemini'
 
-const VISION_MODEL = 'gemini-2.5-flash'
-
-interface VisionKeyEntry {
+interface VisionChainStep {
   client: GoogleGenAI
+  model: string
   label: string
 }
 
-let _visionClients: VisionKeyEntry[] | null = null
+let _visionChain: VisionChainStep[] | null = null
 
-function getVisionClients(): VisionKeyEntry[] {
-  if (_visionClients) return _visionClients
-  const entries: VisionKeyEntry[] = []
+// gemini.ts 와 동일한 8-step chain (MODELS × 2 keys). model 바깥 / key 안쪽 우선순위:
+// 3.1-flash-lite(500 RPD) wife→own → 2.5-flash(20) wife→own → 3-flash(20) → 2.5-flash-lite(20)
+function getVisionChain(): VisionChainStep[] {
+  if (_visionChain) return _visionChain
+  const keys: { key: string; label: string }[] = []
   const primary = process.env.GEMINI_API_KEY
   const fallback = process.env.GEMINI_FALLBACK_KEY
-  if (primary) entries.push({ client: new GoogleGenAI({ apiKey: primary }), label: 'wife' })
-  if (fallback) entries.push({ client: new GoogleGenAI({ apiKey: fallback }), label: 'own' })
-  if (entries.length === 0) throw new Error('[poster-vision] No GEMINI API keys set')
-  _visionClients = entries
-  return entries
+  if (primary) keys.push({ key: primary, label: 'wife' })
+  if (fallback) keys.push({ key: fallback, label: 'own' })
+  if (keys.length === 0) throw new Error('[poster-vision] No GEMINI API keys set')
+  const chain: VisionChainStep[] = []
+  for (const m of MODELS) {
+    for (const k of keys) {
+      chain.push({ client: new GoogleGenAI({ apiKey: k.key }), model: m, label: `${k.label}/${m}` })
+    }
+  }
+  _visionChain = chain
+  return chain
 }
 
 export interface PosterVisionResult {
@@ -114,17 +122,17 @@ JSON만 응답하세요.`
       return null
     }
 
-    // Try each key in fallback order (wife → own), same model
-    const clients = getVisionClients()
+    // 8-step chain (MODELS × 2 keys) — 500 RPD 3.1-flash-lite 우선, quota 소진 시 다음 step
+    const chain = getVisionChain()
     let lastErr: Error | null = null
-    // transient → 동일 key 지수 backoff 재시도 후 next key (isTransient = module-level)
-    for (const entry of clients) {
+    // transient → 동일 step 지수 backoff 재시도 후 next step (isTransient = module-level)
+    for (const step of chain) {
       try {
         let response
         for (let attempt = 0; ; attempt++) {
           try {
-            response = await entry.client.models.generateContent({
-              model: VISION_MODEL,
+            response = await step.client.models.generateContent({
+              model: step.model,
               contents: [
                 {
                   role: 'user',
@@ -147,7 +155,7 @@ JSON만 응답하세요.`
             // quota 소진(429/RESOURCE_EXHAUSTED)은 backoff 무의미 → 즉시 throw → outer catch 에서 next key 전환
             if (attempt >= 3 || !isRetryable(m)) throw e
             const wait = 1000 * Math.pow(2, attempt) + Math.floor(Math.random() * 400)
-            console.warn(`[poster-vision] retryable on ${entry.label} (attempt ${attempt + 1}) → ${wait}ms backoff: ${m.slice(0, 80)}`)
+            console.warn(`[poster-vision] retryable on ${step.label} (attempt ${attempt + 1}) → ${wait}ms backoff: ${m.slice(0, 80)}`)
             await new Promise(r => setTimeout(r, wait))
           }
         }
@@ -173,7 +181,7 @@ JSON만 응답하세요.`
       } catch (err: unknown) {
         const m = err instanceof Error ? err.message : String(err)
         if (isTransient(m)) {
-          console.warn(`[poster-vision] ${entry.label} exhausted retries → next key: ${m.slice(0, 80)}`)
+          console.warn(`[poster-vision] ${step.label} exhausted retries → next key: ${m.slice(0, 80)}`)
           lastErr = err instanceof Error ? err : new Error(String(err))
           continue
         }

@@ -13,7 +13,9 @@
 
 import { GoogleGenAI } from '@google/genai'
 
-const MODELS = [
+// SSOT — fallback 모델 우선순위. poster-vision.ts 등 vision chain 도 이걸 공유.
+// gemini-3.1-flash-lite-preview = 500 RPD (최우선), 나머지 = 20 RPD.
+export const MODELS = [
   'gemini-3.1-flash-lite-preview',
   'gemini-2.5-flash',
   'gemini-3-flash-preview',
