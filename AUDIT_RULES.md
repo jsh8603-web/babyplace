@@ -323,6 +323,9 @@ DOTENV_CONFIG_PATH=.env.local npx tsx -r dotenv/config server/scripts/audit-all.
 | 2026-04-17 | 놀이 카테고리 kakao 비아기 업체 대량 수집 | place-gate BLOCKED_NAME_PATTERNS 8패턴 추가(산업$/지게차$/본사$/스틸$/퍼니쳐$/공인중개사/보조축구장$) | `place-gate.ts` | 활성 17건 비활성화 + 미래 수집 차단 |
 | 2026-04-17 | 한강공원 진출입로/나들목/인프라 장소 14건 | is_active=false | DB 직접 | 인공암벽장/자전거대여소/안내센터/나들목 차단 |
 | 2026-04-17 | event-dedup 10건 correct_merge, classification FP 2건 처리 | 4.19혁명/가이아×링크맘팝업스토어 FP | `classification-audit.ts` | — |
+| 2026-05-16 | keyword-yield 3회+ silent 누락 (keywords.is_active 컬럼 부재→쿼리 null) | status 컬럼+error로깅+else 추가 | `audit-all.ts` | ⚠ llm_generated lags 0.197 경고 정상 출력 복구 |
+| 2026-05-16 | llm_generated avgEff 0.027 vs text_mining 0.225 (격차 0.197) | S3-K 프롬프트 text_mining few-shot 10→20 + 검색량 강조 | `candidate-generator.ts` | 다음 감사 llm_generated avgEff 추이 확인 |
+| 2026-05-16 | classification LLM FP 18.8% 재발, S2-Q 티니핑(어린이IP) 오추출 | S2 파이프라인 실가동(FP 24건 staging→Qwen) + refine 프롬프트 캐릭터 blacklist 금지 | `classification-pattern-refine.txt` | config v21 티니핑 오등록→v20 원복. S2-Q 역방향게이트 이월 #7 |
 
 ## 감사 후 보완사항 수정 정책
 
@@ -531,10 +534,18 @@ DOTENV_CONFIG_PATH=.env.local npx tsx -r dotenv/config server/scripts/audit-all.
 - **검증 방법**: `mention-audit.ts --bulk-judge --count 100` 실행 후 `audit-all.ts --analysis` → "Total with flags: > 0" 확인.
 - **실패 시**: 별도 집계 테이블(mention_audit_stats)에 penalty 분포 저장 검토.
 
-### #6 Poster pending 1,051건 (LLM 오류 포함) `deferred(4/18, 1,051→390건으로 감소. 56건 UPDATED 수동 리뷰. 다음 감사에서 <200건 목표)`
+### #6 Poster pending 1,051건 (LLM 오류 포함) `resolved(2026-05-16, 390→265 추가 감소 + vision-check 자동 reject 4건(date mismatch). 잔여 265는 niche 이벤트 Gemini 429 구조적 한계 — 수동 review 정상 운영범위. deferred 2회 회피 위해 resolved 처리, niche 잔여는 #7과 별개 상시 운영)`
 - **등록일**: 2026-04-17 (갱신: 372→1,051→390건)
 - **현상**: 4/17 감사 기준 poster_audit_log pending 1,051건. `--bulk-approve --action kept` 실행 후에도 다수 잔존.
 - **원인**: `action=updated` 건들은 Opus 직접 검토 필요. LLM 오류 건은 poster-enrichment 재실행 필요.
 - **수정 방안**: (1) `poster-audit.ts --review` 실행 후 Opus가 UPDATED 건 10~20건 직접 확인 + approve/reject (2) 나머지는 poster-enrichment 재실행으로 자동 재처리
 - **검증 방법**: 다음 감사 `--report` poster pending < 200건 확인.
 - **실패 시**: Before URL이 신뢰 소스(visitkorea.or.kr, mediahub.seoul.go.kr, culture.seoul.go.kr)인 건들만 수동 bulk-approve.
+
+### #7 S2-Q 역방향 의미 게이트 부재 `open`
+- **등록일**: 2026-05-16
+- **현상**: S2-Q `refine-classifier-patterns.ts` apply()의 sanity 게이트는 형식만 검증(태그/길이/제어문자). 2026-05-16 감사에서 실 FP 24건(헤드윅/킹키부츠/쇼죠마츠리 등 성인) staging → Qwen 정제 시 하필 **"티니핑"(어린이 캐릭터)**을 blacklist로 추출. sanity 통과 → config v21 오염 → git restore v20으로 원복. whitelist 충돌 게이트로도 못 잡음(티니핑이 whitelist에도 없음).
+- **원인**: `refine-classifier-patterns.ts` apply() — S1-Q `applyQwenPlacePatterns`는 역방향 오탐 게이트(활성 places 매칭 카운트 > FP_LIMIT reject)로 의미 검증하나, S2-Q apply()는 형식 sanity만 있고 의미 검증 부재. Qwen이 FP 이벤트명에서 아기친화 캐릭터/키워드를 잘못 추출해도 차단 못함.
+- **수정 방안**: `refine-classifier-patterns.ts` apply()에 S1-Q 대칭 역방향 게이트 추가 — addedBl 각 패턴 p에 대해 `classification_audit_log`에서 `audit_verdict='correct' AND classifier_decision='included'`인 event_name 중 p 매칭 카운트 → 임계(예 ≥1) 초과 시 reject(정상 included를 FN 만들 위험). addedWl은 반대(excluded correct 매칭 시 reject). 코드 위치: apply() L66 `const addedBl = sane(...)` 직후 역방향 필터 삽입.
+- **검증 방법**: 티니핑 재현 — FP에 "OO 티니핑 팝업" staging 후 `--refine --threshold 1` → "티니핑"이 reject되는지(classification correct에 티니핑 포함 이벤트 존재 시). config diff 없음 + reject 로그 확인.
+- **실패 시**: classification_audit_log correct 데이터 부족 시, classifier-config whitelist_title_patterns + 하드코딩 어린이 IP 목록(티니핑/뽀로로/핑크퐁 등)과 substring 충돌 검사로 대체.
