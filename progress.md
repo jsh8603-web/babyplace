@@ -91,7 +91,7 @@ S1(place 패턴 Qwen 위임) + S2(classification 패턴 자동화) 7 step 전부
 
 - **0-insert 버그 발견·수정**: place_blacklist_patterns 실제 컬럼 = id,pattern_type,pattern,source,hit_count,is_active,created_at. `description`/`discovered_at` 부재(00067 DB 미적용)로 S1-Q + 기존 learnPatternsFromDeactivated 둘 다 전건 insert 실패(silent). → 실제 스키마 컬럼만 사용 + error 로깅으로 수정. unique constraint `place_blacklist_patterns_pattern_type_pattern_key` 존재 확인(onConflict 정상).
 - **S1-Q 실동작 ✅**: `--apply` → Qwen 260 names → 7 accepted/4 rejected → **7 패턴 실제 DB insert 성공** (등산로\s?입구$/묘역제단$/저수지마당바위분기점$/롤링핀/웨이팅/등산로입구$/자전거길$). 역방향 게이트 브런치빈/삼성화재/캠핑장$/수목원$ 자동 차단.
-- **S3-K 실동작 ✅**: `QWEN_KEYWORDS=1` → Qwen 140 생성 → validateGeneratedKeyword 게이트 타지역 40 드롭 → **95 신규 insert, errors 0**.
+- **S3-K 실동작 ✅**: Qwen 140 생성 → validateGeneratedKeyword 게이트 타지역 40 드롭 → **95 신규 insert, errors 0**. env gate 제거 → `isQwenAvailable()` 기준 Qwen 기본·Gemini fallback (크론/감사 어디서든 자동, 사용자 env 설정 불요).
 - **S2 블로커**: classification_blacklist_staging(00068) 테이블 DB 미적용 — 신규 테이블이라 코드 회피 불가. 환경상 프로그래밍 DDL 불가(psql/CLI/pg/rpc 전무, .env 차단). 코드는 완성+graceful → **00068 SQL 대시보드 적용 시 즉시 동작**.
 - tsc 0 / place-gate 33 pass·2 pre-existing (회귀 0)
 

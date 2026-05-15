@@ -695,7 +695,8 @@ export async function generateDiverseKeywordsWithLLM(): Promise<{
 }> {
   const result = { candidatesGenerated: 0, candidatesInserted: 0, errors: 0 }
 
-  const useQwen = process.env.QWEN_KEYWORDS === '1' && isQwenAvailable()
+  // Qwen is the default generator; Gemini is fallback only (on Qwen failure/absence)
+  const useQwen = isQwenAvailable()
   if (!useQwen && !process.env.GEMINI_API_KEY) {
     console.warn('[candidate-generator] No GEMINI_API_KEY and Qwen unavailable, skipping LLM keyword generation')
     return result
