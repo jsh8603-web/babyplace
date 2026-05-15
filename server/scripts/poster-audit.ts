@@ -614,7 +614,7 @@ async function visionCheck(limit = 10): Promise<void> {
 
   console.log(`\n=== Vision Check — ${data.length} posters ===\n`)
 
-  let passed = 0, failed = 0, skipped = 0
+  let passed = 0, failed = 0, skipped = 0, retryKept = 0
 
   for (const row of data) {
     if (!row.after_url) { skipped++; continue }
@@ -633,8 +633,14 @@ async function visionCheck(limit = 10): Promise<void> {
 
     const result = await verifyPosterImage(row.after_url, row.event_name, dateStr)
 
+    if (result === 'RETRY') {
+      // 일시 장애(429/5xx) — audit_status 손대지 않음 = pending 유지 → 다음 파이프라인 루프에서 재처리
+      console.log(`  ↻ Vision transient fail — keep pending (next loop retry)`)
+      retryKept++
+      continue
+    }
     if (!result) {
-      console.log(`  ⚠ Vision check failed (API error)`)
+      console.log(`  ⚠ Vision check failed (permanent) — skip`)
       skipped++
       continue
     }
@@ -669,7 +675,7 @@ async function visionCheck(limit = 10): Promise<void> {
     await new Promise(r => setTimeout(r, 1000))
   }
 
-  console.log(`Vision check: ${passed} approved, ${failed} rejected, ${skipped} need review`)
+  console.log(`Vision check: ${passed} approved, ${failed} rejected, ${skipped} need review, ${retryKept} kept-pending (transient, next loop)`)
 }
 
 // ─── Hide poster with recovery pre-check (#18) ──────────────────────────────

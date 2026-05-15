@@ -42,18 +42,26 @@ export interface PosterVisionResult {
   rawResponse: string
 }
 
+// quota 소진(일일 free-tier 20/day · RPM) = 동일 key backoff 무의미 → 즉시 다른 key 로 전환
+const isQuotaExhausted = (m: string) => /\b429\b|RESOURCE_EXHAUSTED|exceeded your current quota|PerDay|free_tier_requests|quota.{0,20}exceed/i.test(m)
+// 일시 장애(5xx/네트워크) = 동일 key 지수 backoff 재시도 가치 있음
+const isRetryable = (m: string) => /\b(500|502|503)\b|UNAVAILABLE|overloaded|high demand|deadline|ETIMEDOUT|ECONNRESET/i.test(m)
+// 둘 다 = 다음 key 시도 / 전 key 소진 시 'RETRY'(pending 유지 → 다음 루프)
+const isTransient = (m: string) => isQuotaExhausted(m) || isRetryable(m)
+
 /**
  * Verify a poster image using Gemini Vision.
  *
  * @param imageUrl URL of the poster image
  * @param eventName Expected event name
  * @param eventDates Expected date range (e.g., "2026-03-01 ~ 2026-03-31")
+ * @returns PosterVisionResult | 'RETRY'(일시 장애 — pending 유지 후 다음 루프 재시도) | null(영구 실패)
  */
 export async function verifyPosterImage(
   imageUrl: string,
   eventName: string,
   eventDates?: string,
-): Promise<PosterVisionResult | null> {
+): Promise<PosterVisionResult | 'RETRY' | null> {
   const prompt = `당신은 아기/어린이 앱의 포스터 검증 시스템입니다.
 이 이미지를 분석하여 JSON으로 답하세요:
 
@@ -109,26 +117,40 @@ JSON만 응답하세요.`
     // Try each key in fallback order (wife → own), same model
     const clients = getVisionClients()
     let lastErr: Error | null = null
+    // transient → 동일 key 지수 backoff 재시도 후 next key (isTransient = module-level)
     for (const entry of clients) {
       try {
-        const response = await entry.client.models.generateContent({
-          model: VISION_MODEL,
-          contents: [
-            {
-              role: 'user',
-              parts: [
-                { text: prompt },
-                { inlineData: { mimeType, data: base64 } },
+        let response
+        for (let attempt = 0; ; attempt++) {
+          try {
+            response = await entry.client.models.generateContent({
+              model: VISION_MODEL,
+              contents: [
+                {
+                  role: 'user',
+                  parts: [
+                    { text: prompt },
+                    { inlineData: { mimeType, data: base64 } },
+                  ],
+                },
               ],
-            },
-          ],
-          config: {
-            maxOutputTokens: 2048,
-            temperature: 0,
-            responseMimeType: 'application/json',
-            thinkingConfig: { thinkingBudget: 0 },
-          },
-        })
+              config: {
+                maxOutputTokens: 2048,
+                temperature: 0,
+                responseMimeType: 'application/json',
+                thinkingConfig: { thinkingBudget: 0 },
+              },
+            })
+            break
+          } catch (e: unknown) {
+            const m = e instanceof Error ? e.message : String(e)
+            // quota 소진(429/RESOURCE_EXHAUSTED)은 backoff 무의미 → 즉시 throw → outer catch 에서 next key 전환
+            if (attempt >= 3 || !isRetryable(m)) throw e
+            const wait = 1000 * Math.pow(2, attempt) + Math.floor(Math.random() * 400)
+            console.warn(`[poster-vision] retryable on ${entry.label} (attempt ${attempt + 1}) → ${wait}ms backoff: ${m.slice(0, 80)}`)
+            await new Promise(r => setTimeout(r, wait))
+          }
+        }
 
         const text = response.text ?? ''
         try {
@@ -149,19 +171,24 @@ JSON만 응답하세요.`
           return null
         }
       } catch (err: unknown) {
-        const is429 = err instanceof Error && err.message.includes('429')
-        if (is429) {
-          console.warn(`[poster-vision] 429 on ${entry.label} → next key`)
+        const m = err instanceof Error ? err.message : String(err)
+        if (isTransient(m)) {
+          console.warn(`[poster-vision] ${entry.label} exhausted retries → next key: ${m.slice(0, 80)}`)
           lastErr = err instanceof Error ? err : new Error(String(err))
           continue
         }
         throw err
       }
     }
-    console.error(`[poster-vision] All keys exhausted (429): ${lastErr?.message}`)
-    return null
+    console.error(`[poster-vision] All keys exhausted (transient) → RETRY (pending 유지): ${lastErr?.message}`)
+    return 'RETRY'
   } catch (err: any) {
-    console.error(`[poster-vision] Vision API error: ${err.message}`)
+    const m = err?.message ? String(err.message) : String(err)
+    if (isTransient(m)) {
+      console.error(`[poster-vision] transient error → RETRY (pending 유지): ${m.slice(0, 100)}`)
+      return 'RETRY'
+    }
+    console.error(`[poster-vision] Vision API error (permanent): ${m}`)
     return null
   }
 }
