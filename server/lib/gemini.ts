@@ -1,11 +1,11 @@
 /**
  * Gemini client — 8-step fallback chain (2 accounts × 4 models)
  *
- * Fallback order (429 triggers next step):
- *   wife 3.1-flash-lite (500 RPD) → own 3.1-flash-lite (500 RPD)
- *   → wife 2.5-flash (20) → own 2.5-flash (20)
+ * Fallback order (429 triggers next step) — 작은 쿼터 먼저 소진, 500 RPD 보존:
+ *   wife 2.5-flash (20) → own 2.5-flash (20)
  *   → wife 3-flash (20) → own 3-flash (20)
  *   → wife 2.5-flash-lite (20) → own 2.5-flash-lite (20)
+ *   → wife 3.1-flash-lite (500 RPD) → own 3.1-flash-lite (500 RPD)  [보존, 최후]
  *
  * Babyplace uses wife key first (highest volume project).
  * Env: GEMINI_API_KEY (wife free), GEMINI_FALLBACK_KEY (own free)
@@ -14,12 +14,12 @@
 import { GoogleGenAI } from '@google/genai'
 
 // SSOT — fallback 모델 우선순위. poster-vision.ts 등 vision chain 도 이걸 공유.
-// gemini-3.1-flash-lite-preview = 500 RPD (최우선), 나머지 = 20 RPD.
+// 쿼터 작은 모델(20 RPD) 먼저 소진 → 500 RPD(3.1-flash-lite) 는 보존했다가 최후 사용.
 export const MODELS = [
-  'gemini-3.1-flash-lite-preview',
-  'gemini-2.5-flash',
-  'gemini-3-flash-preview',
-  'gemini-2.5-flash-lite',
+  'gemini-2.5-flash',          // 20 RPD
+  'gemini-3-flash-preview',    // 20 RPD
+  'gemini-2.5-flash-lite',     // 20 RPD
+  'gemini-3.1-flash-lite-preview',  // 500 RPD — 보존, 최후
 ] as const
 
 interface KeyEntry {

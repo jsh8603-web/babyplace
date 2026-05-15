@@ -20,8 +20,8 @@ interface VisionChainStep {
 
 let _visionChain: VisionChainStep[] | null = null
 
-// gemini.ts 와 동일한 8-step chain (MODELS × 2 keys). model 바깥 / key 안쪽 우선순위:
-// 3.1-flash-lite(500 RPD) wife→own → 2.5-flash(20) wife→own → 3-flash(20) → 2.5-flash-lite(20)
+// gemini.ts 와 동일한 8-step chain (MODELS × 2 keys). model 바깥 / key 안쪽 우선순위.
+// 20 RPD 3종 wife→own 먼저 소진 → 500 RPD 3.1-flash-lite 는 보존했다가 최후 사용.
 function getVisionChain(): VisionChainStep[] {
   if (_visionChain) return _visionChain
   const keys: { key: string; label: string }[] = []
