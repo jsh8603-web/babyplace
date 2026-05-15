@@ -59,3 +59,4 @@ test-output/
 testsprite_tests/
 
 .vercel
+.research/tmp/

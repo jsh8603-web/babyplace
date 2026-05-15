@@ -99,6 +99,11 @@ S1(place 패턴 Qwen 위임) + S2(classification 패턴 자동화) 7 step 전부
 
 ## Working Notes
 
+> [ckpt-202605160050:btn-babyplace] 인계: [handoff-audit-qwen-20260516.md](./handoff-audit-qwen-20260516.md)
+> - **마지막 결정**: 장소감사 wf 완료(00:20~00:41, 21분, 카운터3 메타v6 `audit-improvement-current.md`). Qwen 4단계 개선 커밋 — keyword-yield silent-fail fix(9e4b4b7: keywords.is_active 없음→status), S3-K 프롬프트 보강, S2-Q sanity+역방향게이트(#7 코드구현 완료, AUDIT_RULES.md #7 status open 표기만 미갱신→resolved로 바꿔야). 어린이 캐릭터 whitelist 리서치 Phase1 완료(40선, Phase2 skip).
+> - **다음 의도**: `server/config/classifier-config.json` 편집 — L2 version 20→21, L3 updated_at "2026-05-16", L38 whitelist `"쿠로미"` 다음에 21개 추가: 티니핑/뽀로로/핑크퐁/타요/또봇/헬로카봇/미니특공대/브레드이발소/콩순이/엄마까투리/슈퍼윙스/두다다쿵/크리쳐스/페파피그/코코멜론/블루이/퍼피구조대/겨울왕국/토이스토리/미키마우스/뿡뿡이 (라바/폴리/호비/꼬모/토마스는 2자 일반어충돌로 제외). L41 changelog 맨앞 unshift `{version:21,date:"2026-05-16",change:"어린이 인기 캐릭터 21종 whitelist 추가 (리서치 기반)"}`. → tsc → git add classifier-config.json AUDIT_RULES.md(#7 resolved) → commit. → 사용자 ②qwen효과 ③토큰 보고. → Phase3 memory(.research/) + MEMORY.md 포인터 + `rm -f .research/tmp/search-*`.
+> - **동기화 필요**: classifier-config 현재 v20(편집 전). 리서치 raw=`.research/tmp/search-phase1-kids-characters-2026-result.txt`+archive. 커밋 567df06(audit docs)/9e4b4b7(keyword fix)/S2-Q gate. AUDIT_RULES.md #6 resolved #7 open(코드 구현됨 상태표기만 미갱신).
+
 > [ckpt-202605152115:btn-babyplace] 인계: [handoff-qwen-binding-20260515.md](./handoff-qwen-binding-20260515.md)
 > - **마지막 결정**: Qwen ping 성공(exit 0, `["ping","ok"]`) — ollama qwen3-coder-fast 작동 확인. `server/lib/qwen.ts` callQwen 헬퍼 작성 완료(extractWithGemini 시그니처 동일 drop-in).
 > - **다음 의도**: S1-Q 구현 — place-accuracy-audit.ts `applyQwenPlacePatterns(dryRun=true)`: place-rejected-names.json + place-pattern-gen.txt → callQwen → JSON.parse → 각 패턴 `new RegExp` 검증 + 활성 places 역방향 오탐 카운트(임계 초과 reject) → dry-run 리포트 / `--apply` 시 place_blacklist_patterns upsert. 이어 S2-Q(refine `--refine`), S3-K(candidate-generator extractWithGemini→callQwen + env gate).

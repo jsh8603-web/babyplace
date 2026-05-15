@@ -542,7 +542,7 @@ DOTENV_CONFIG_PATH=.env.local npx tsx -r dotenv/config server/scripts/audit-all.
 - **검증 방법**: 다음 감사 `--report` poster pending < 200건 확인.
 - **실패 시**: Before URL이 신뢰 소스(visitkorea.or.kr, mediahub.seoul.go.kr, culture.seoul.go.kr)인 건들만 수동 bulk-approve.
 
-### #7 S2-Q 역방향 의미 게이트 부재 `open`
+### #7 S2-Q 역방향 의미 게이트 부재 `resolved(2026-05-16, 커밋 0226874 — refine-classifier-patterns.ts L77-95 역방향 게이트 구현. addedBl은 correct-included event_name substring 매칭 시 reject, addedWl은 correct-excluded 매칭 시 reject. S1-Q 대칭. 추가로 v21에서 어린이 캐릭터 21종 whitelist 등록 + classification-pattern-refine.txt 캐릭터 blacklist 금지 조항으로 이중 방어)`
 - **등록일**: 2026-05-16
 - **현상**: S2-Q `refine-classifier-patterns.ts` apply()의 sanity 게이트는 형식만 검증(태그/길이/제어문자). 2026-05-16 감사에서 실 FP 24건(헤드윅/킹키부츠/쇼죠마츠리 등 성인) staging → Qwen 정제 시 하필 **"티니핑"(어린이 캐릭터)**을 blacklist로 추출. sanity 통과 → config v21 오염 → git restore v20으로 원복. whitelist 충돌 게이트로도 못 잡음(티니핑이 whitelist에도 없음).
 - **원인**: `refine-classifier-patterns.ts` apply() — S1-Q `applyQwenPlacePatterns`는 역방향 오탐 게이트(활성 places 매칭 카운트 > FP_LIMIT reject)로 의미 검증하나, S2-Q apply()는 형식 sanity만 있고 의미 검증 부재. Qwen이 FP 이벤트명에서 아기친화 캐릭터/키워드를 잘못 추출해도 차단 못함.
