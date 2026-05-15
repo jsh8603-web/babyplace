@@ -72,6 +72,38 @@ S1(place 패턴 Qwen 위임) + S2(classification 패턴 자동화) 7 step 전부
 - **미적용**: `00068_classification_blacklist_staging.sql` DB 실적용은 Supabase 워크플로 (S2-2/S2-3 런타임은 적용 후)
 - **미커밋**: 전역 `model-switch-and-send.sh`+`psmux-send.sh` (별도) / 프로젝트 변경분 (커밋 미지시)
 
+### S3: Qwen 실호출 바인딩 + 키워드 정제 (2026-05-15 추가, 사용자 지시)
+
+- [x] S3-0: `server/lib/qwen.ts` — callQwen()/isQwenAvailable() (extractWithGemini 시그니처 drop-in, qwen-task.sh child)
+  - **검증**: ping `["ping","ok"]` exit 0
+- [x] S1-Q: place-accuracy-audit.ts `applyQwenPlacePatterns(apply=false)` + `--apply-qwen-patterns [--apply]`
+  - 3중 게이트: malformed / `new RegExp` invalid / 활성 places 역방향 오탐 > FP_LIMIT(3) reject
+  - **검증 dry-run**: Qwen 260 names → 12 patterns → **7 accepted / 5 rejected**. 게이트가 `공원$`(fp=3900) `캠핑장$`(149) `수목원$`(27) `삼성화재`(143) `브런치빈`(17) 자동 차단 = **자동 에러검출 실증**
+- [x] S2-Q: refine-classifier-patterns.ts `--refine` — collect→callQwen→JSON parse gate→apply 재사용
+  - **검증**: 테이블 미적용 시 graceful skip (크래시 0)
+- [x] S3-K: candidate-generator.ts `extractWithGemini` → callQwen (`QWEN_KEYWORDS=1` gate + Qwen 실패 시 Gemini fallback, 기존 validateGeneratedKeyword 게이트 유지)
+  - **검증**: tsc 0, env off 시 기존 Gemini 경로 drop-in 보존
+- [x] S3-T: 전체 — **tsc 0 errors**, **place-gate.test.ts 33 pass / 2 pre-existing fail = baseline 정확 일치 (회귀 0)**
+
+**검증 전략 실증**: "자동 에러검출 가능?" → **예**. S1-Q 역방향 오탐 게이트가 Qwen 규칙위반 산출물(`공원$` 3900건 과차단)을 DB 도달 전 자동 폐기.
+
+### 실동작 검증 (2026-05-15, 사용자 "전체 파이프라인 동작" 지시)
+
+- **0-insert 버그 발견·수정**: place_blacklist_patterns 실제 컬럼 = id,pattern_type,pattern,source,hit_count,is_active,created_at. `description`/`discovered_at` 부재(00067 DB 미적용)로 S1-Q + 기존 learnPatternsFromDeactivated 둘 다 전건 insert 실패(silent). → 실제 스키마 컬럼만 사용 + error 로깅으로 수정. unique constraint `place_blacklist_patterns_pattern_type_pattern_key` 존재 확인(onConflict 정상).
+- **S1-Q 실동작 ✅**: `--apply` → Qwen 260 names → 7 accepted/4 rejected → **7 패턴 실제 DB insert 성공** (등산로\s?입구$/묘역제단$/저수지마당바위분기점$/롤링핀/웨이팅/등산로입구$/자전거길$). 역방향 게이트 브런치빈/삼성화재/캠핑장$/수목원$ 자동 차단.
+- **S3-K 실동작 ✅**: `QWEN_KEYWORDS=1` → Qwen 140 생성 → validateGeneratedKeyword 게이트 타지역 40 드롭 → **95 신규 insert, errors 0**.
+- **S2 블로커**: classification_blacklist_staging(00068) 테이블 DB 미적용 — 신규 테이블이라 코드 회피 불가. 환경상 프로그래밍 DDL 불가(psql/CLI/pg/rpc 전무, .env 차단). 코드는 완성+graceful → **00068 SQL 대시보드 적용 시 즉시 동작**.
+- tsc 0 / place-gate 33 pass·2 pre-existing (회귀 0)
+
+**검증 전략**: invalid regex(`new RegExp` throw) / JSON 파싱 실패 / 역방향 오탐(활성 데이터 매칭 카운트 초과) 3중 자동 게이트. DB write는 dry-run 기본. S3-K는 env gate + fallback로 점진 롤아웃(회귀 시 즉시 복구).
+
 ## Working Notes
 
+> [ckpt-202605152115:btn-babyplace] 인계: [handoff-qwen-binding-20260515.md](./handoff-qwen-binding-20260515.md)
+> - **마지막 결정**: Qwen ping 성공(exit 0, `["ping","ok"]`) — ollama qwen3-coder-fast 작동 확인. `server/lib/qwen.ts` callQwen 헬퍼 작성 완료(extractWithGemini 시그니처 동일 drop-in).
+> - **다음 의도**: S1-Q 구현 — place-accuracy-audit.ts `applyQwenPlacePatterns(dryRun=true)`: place-rejected-names.json + place-pattern-gen.txt → callQwen → JSON.parse → 각 패턴 `new RegExp` 검증 + 활성 places 역방향 오탐 카운트(임계 초과 reject) → dry-run 리포트 / `--apply` 시 place_blacklist_patterns upsert. 이어 S2-Q(refine `--refine`), S3-K(candidate-generator extractWithGemini→callQwen + env gate).
+> - **동기화 필요**: 커밋 afc66d7 이후 `server/lib/qwen.ts` 신규 미커밋. progress.md S3 step 추가됨. plan.md는 S3 미반영(progress.md만).
+
 - 2026-05-15: progress.md 생성. model-switch 버그 해결 완료, S1-1 착수.
+- 2026-05-15: S1+S2(7 step) 완료 커밋 afc66d7. 사용자 지시로 Qwen 실호출(S1-Q/S2-Q) + S3 키워드 정제 추가.
+- 2026-05-15: qwen.ts 헬퍼 작성 + ping 성공. S1-Q 착수 직전 ckpt(252k).

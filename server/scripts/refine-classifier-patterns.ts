@@ -10,6 +10,7 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import { createClient } from '@supabase/supabase-js'
+import { callQwen } from '../lib/qwen'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,6 +19,7 @@ const supabase = createClient(
 
 const CONFIG_PATH = path.join(process.cwd(), 'server/config/classifier-config.json')
 const QWEN_INPUT = path.join(process.cwd(), 'scripts/qwen-input/classification-patterns.json')
+const QWEN_PROMPT = path.join(process.cwd(), 'scripts/qwen-prompts/classification-pattern-refine.txt')
 
 async function collect(threshold: number): Promise<void> {
   const { data, error } = await supabase
@@ -93,6 +95,41 @@ async function apply(outputFile: string): Promise<void> {
   }
 }
 
+// S2-Q: collect → Qwen call → apply, end-to-end
+async function refine(threshold: number): Promise<void> {
+  try { fs.unlinkSync(QWEN_INPUT) } catch { /* ignore */ }
+  await collect(threshold)
+  if (!fs.existsSync(QWEN_INPUT)) {
+    console.log('No Qwen input produced (below threshold / no staging) — skip refine.')
+    return
+  }
+
+  const spec = fs.readFileSync(QWEN_PROMPT, 'utf-8')
+  const inputJson = fs.readFileSync(QWEN_INPUT, 'utf-8')
+  const fullPrompt = `${spec}\n\n## 입력 데이터\n\n${inputJson}`
+  console.log('Calling Qwen for classification pattern refine...')
+  let raw: string
+  try {
+    raw = await callQwen(fullPrompt, 180)
+  } catch (e: any) {
+    console.error('Qwen call failed:', e.message); return
+  }
+
+  // JSON parse gate — failure aborts (config untouched)
+  let parsed: QwenOutput
+  try {
+    const m = raw.match(/\{[\s\S]*\}/)
+    parsed = JSON.parse(m ? m[0] : raw)
+  } catch {
+    console.error('Qwen output JSON parse failed — abort. Raw head:', raw.slice(0, 300))
+    return
+  }
+
+  const outFile = path.join(path.dirname(QWEN_INPUT), 'classification-qwen-output.json')
+  fs.writeFileSync(outFile, JSON.stringify(parsed, null, 2))
+  await apply(outFile)
+}
+
 async function main(): Promise<void> {
   const args = process.argv.slice(2)
   const thIdx = args.indexOf('--threshold')
@@ -102,6 +139,8 @@ async function main(): Promise<void> {
     const f = args[args.indexOf('--apply') + 1]
     if (!f) { console.error('Usage: --apply <qwen-output.json>'); return }
     await apply(f)
+  } else if (args.includes('--refine')) {
+    await refine(threshold)
   } else if (args.includes('--collect')) {
     await collect(threshold)
   } else {
@@ -109,6 +148,7 @@ async function main(): Promise<void> {
 S2-3 Classifier Pattern Refiner
 
   --collect [--threshold N]   Gather unprocessed FP/FN staging → Qwen input
+  --refine  [--threshold N]   collect → Qwen call → merge (end-to-end)
   --apply <qwen-output.json>  Merge refined patterns → classifier-config.json
 `)
   }

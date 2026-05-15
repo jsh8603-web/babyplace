@@ -13,6 +13,7 @@ import * as path from 'path'
 import { createClient } from '@supabase/supabase-js'
 import { searchKakaoPlace } from '../lib/kakao-search'
 import { isBlockedByNamePattern, isBlockedByBrand } from '../matchers/place-gate'
+import { callQwen } from '../lib/qwen'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -588,7 +589,6 @@ async function learnPatternsFromDeactivated(): Promise<void> {
 
   const existingSet = new Set((existing || []).map(e => `${e.pattern_type}:${e.pattern}`))
 
-  const today = new Date().toISOString().split('T')[0]
   let learned = 0
 
   // Register brand tokens appearing 3+ times
@@ -603,14 +603,11 @@ async function learnPatternsFromDeactivated(): Promise<void> {
         pattern: token,
         source: 'audit',
         is_active: true,
-        description: `${count}건 비활성화 장소에서 반복 발견`,
-        discovered_at: today,
       }, { onConflict: 'pattern_type,pattern' })
 
-    if (!insertErr) {
-      learned++
-      console.log(`  [brand] "${token}" (${count}건)`)
-    }
+    if (insertErr) { console.error(`  ! [brand] "${token}" — ${insertErr.message}`); continue }
+    learned++
+    console.log(`  [brand] "${token}" (${count}건)`)
   }
 
   // Register suffix patterns appearing 5+ times (more conservative)
@@ -629,14 +626,11 @@ async function learnPatternsFromDeactivated(): Promise<void> {
         pattern: pattern,
         source: 'audit',
         is_active: true,
-        description: `${count}건 비활성화 장소의 공통 접미사`,
-        discovered_at: today,
       }, { onConflict: 'pattern_type,pattern' })
 
-    if (!insertErr) {
-      learned++
-      console.log(`  [name] "${pattern}" (${count}건)`)
-    }
+    if (insertErr) { console.error(`  ! [name] "${pattern}" — ${insertErr.message}`); continue }
+    learned++
+    console.log(`  [name] "${pattern}" (${count}건)`)
   }
 
   console.log(`\nLearned ${learned} new patterns from ${data.length} deactivated places`)
@@ -746,6 +740,109 @@ async function collectRejectedPatterns(threshold = 50): Promise<void> {
   console.log('Next: S1-2 Qwen prompt → regex generation')
 }
 
+// ─── S1-Q: Qwen-generated place patterns → 3-gate validate → DB ─────────────
+
+interface QwenPlacePattern {
+  pattern_type: 'name' | 'brand'
+  pattern: string
+  example_names?: string[]
+  description?: string
+}
+
+async function applyQwenPlacePatterns(apply = false): Promise<void> {
+  const inputPath = path.join(process.cwd(), 'scripts', 'qwen-input', 'place-rejected-names.json')
+  const promptPath = path.join(process.cwd(), 'scripts', 'qwen-prompts', 'place-pattern-gen.txt')
+  if (!fs.existsSync(inputPath)) {
+    console.error(`Input not found: ${inputPath} — run --collect-rejected-patterns first`)
+    return
+  }
+  const input = JSON.parse(fs.readFileSync(inputPath, 'utf-8'))
+  const promptSpec = fs.readFileSync(promptPath, 'utf-8')
+  const names: string[] = input.names || []
+  if (names.length === 0) { console.log('No names to process.'); return }
+
+  // 1. Qwen 1-shot call
+  const fullPrompt = `${promptSpec}\n\n## 입력 데이터 (names)\n\n${JSON.stringify(names)}`
+  console.log(`Calling Qwen with ${names.length} names...`)
+  let raw: string
+  try {
+    raw = await callQwen(fullPrompt, 240)
+  } catch (e: any) {
+    console.error('Qwen call failed:', e.message); return
+  }
+
+  // 2. JSON parse gate — parse failure aborts (no DB change)
+  let patterns: QwenPlacePattern[]
+  try {
+    const m = raw.match(/\[[\s\S]*\]/)
+    patterns = JSON.parse(m ? m[0] : raw)
+    if (!Array.isArray(patterns)) throw new Error('not an array')
+  } catch {
+    console.error('Qwen output JSON parse failed — abort. Raw head:', raw.slice(0, 300))
+    return
+  }
+  console.log(`Qwen returned ${patterns.length} patterns`)
+
+  // 3. Load active place names for reverse false-positive check
+  const activeNames: string[] = []
+  let cursor = 0
+  for (;;) {
+    const { data } = await supabase
+      .from('places').select('id, name').eq('is_active', true)
+      .gt('id', cursor).order('id', { ascending: true }).limit(1000)
+    if (!data || data.length === 0) break
+    for (const r of data) activeNames.push(r.name)
+    cursor = data[data.length - 1].id
+    if (data.length < 1000) break
+  }
+
+  // 4. Validation gates: malformed / invalid regex / reverse-FP over limit
+  const FP_LIMIT = 3
+  const accepted: QwenPlacePattern[] = []
+  const rejected: { p: QwenPlacePattern; reason: string }[] = []
+  for (const p of patterns) {
+    if (!p || !p.pattern || (p.pattern_type !== 'name' && p.pattern_type !== 'brand')) {
+      rejected.push({ p, reason: 'malformed' }); continue
+    }
+    let fp: number
+    if (p.pattern_type === 'name') {
+      let re: RegExp
+      try { re = new RegExp(p.pattern) } catch { rejected.push({ p, reason: 'invalid_regex' }); continue }
+      fp = activeNames.filter(n => re.test(n)).length
+    } else {
+      fp = activeNames.filter(n => n.startsWith(p.pattern)).length
+    }
+    if (fp > FP_LIMIT) { rejected.push({ p, reason: `reverse_fp=${fp}` }); continue }
+    accepted.push(p)
+  }
+
+  console.log(`\n=== Qwen Place Pattern Validation (active=${activeNames.length}) ===`)
+  console.log(`Accepted: ${accepted.length}, Rejected: ${rejected.length}`)
+  for (const a of accepted) console.log(`  [OK] ${a.pattern_type} "${a.pattern}" — ${a.description || ''}`)
+  for (const r of rejected) console.log(`  [REJECT:${r.reason}] ${r.p?.pattern_type} "${r.p?.pattern}"`)
+
+  if (!apply) {
+    console.log(`\n(dry-run) ${accepted.length} patterns would be inserted. Use --apply to write.`)
+    return
+  }
+
+  // 5. Apply — upsert accepted patterns (same table/onConflict as learnPatterns)
+  const { data: existing } = await supabase
+    .from('place_blacklist_patterns').select('pattern_type, pattern').eq('is_active', true)
+  const existingSet = new Set((existing || []).map(e => `${e.pattern_type}:${e.pattern}`))
+  let inserted = 0
+  for (const a of accepted) {
+    if (existingSet.has(`${a.pattern_type}:${a.pattern}`)) continue
+    const { error } = await supabase.from('place_blacklist_patterns').upsert({
+      pattern_type: a.pattern_type, pattern: a.pattern, source: 'audit', is_active: true,
+    }, { onConflict: 'pattern_type,pattern' })
+    if (error) { console.error(`  ! ${a.pattern_type}:${a.pattern} — ${error.message}`); continue }
+    inserted++
+    console.log(`  + ${a.pattern_type}:${a.pattern}`)
+  }
+  console.log(`\nInserted ${inserted} patterns to place_blacklist_patterns (active in ~5 min)`)
+}
+
 // ─── #7: Validate bulk judge rules — random sample check ─────────────────────
 
 async function validateBulkPlace(count = 10): Promise<void> {
@@ -814,6 +911,8 @@ async function main(): Promise<void> {
     const thIdx = args.indexOf('--threshold')
     const threshold = thIdx >= 0 ? parseInt(args[thIdx + 1]) || 50 : 50
     await collectRejectedPatterns(threshold)
+  } else if (args.includes('--apply-qwen-patterns')) {
+    await applyQwenPlacePatterns(args.includes('--apply'))
   } else if (args.includes('--correct') || args.includes('--accurate')) {
     const flag = args.includes('--correct') ? '--correct' : '--accurate'
     const idx = args.indexOf(flag)
@@ -851,6 +950,7 @@ Commands:
   --bulk-judge                 Auto-judge pending by name patterns
   --learn-patterns             Extract patterns from deactivated places → DB
   --collect-rejected-patterns [--threshold N]  Collect not-baby names → Qwen input JSON (default: 50)
+  --apply-qwen-patterns [--apply]  Qwen→regex, 3-gate validate (dry-run; --apply writes DB)
   --validate-bulk [--count N]  Validate bulk-judge accuracy (#7)
   --correct <audit_id>         Mark as accurate
   --inaccurate <audit_id>      Mark as inaccurate [--note]

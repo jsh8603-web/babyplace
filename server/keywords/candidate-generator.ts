@@ -14,6 +14,7 @@
 
 import { supabaseAdmin } from '../lib/supabase-admin'
 import { extractWithGemini } from '../lib/gemini'
+import { callQwen, isQwenAvailable } from '../lib/qwen'
 
 export type KeywordProvider = 'naver' | 'kakao'
 
@@ -694,8 +695,9 @@ export async function generateDiverseKeywordsWithLLM(): Promise<{
 }> {
   const result = { candidatesGenerated: 0, candidatesInserted: 0, errors: 0 }
 
-  if (!process.env.GEMINI_API_KEY) {
-    console.warn('[candidate-generator] No GEMINI_API_KEY, skipping LLM keyword generation')
+  const useQwen = process.env.QWEN_KEYWORDS === '1' && isQwenAvailable()
+  if (!useQwen && !process.env.GEMINI_API_KEY) {
+    console.warn('[candidate-generator] No GEMINI_API_KEY and Qwen unavailable, skipping LLM keyword generation')
     return result
   }
 
@@ -774,7 +776,17 @@ ${JSON.stringify(existingList)}
 
 JSON 배열로 응답: ["키워드1", "키워드2", ...]`
 
-    const text = await extractWithGemini(prompt)
+    let text: string
+    if (useQwen) {
+      try {
+        text = await callQwen(prompt, 180)
+      } catch (e: any) {
+        console.warn(`[candidate-generator] Qwen failed (${e.message}), falling back to Gemini`)
+        text = await extractWithGemini(prompt)
+      }
+    } else {
+      text = await extractWithGemini(prompt)
+    }
     const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
     const match = cleaned.match(/\[[\s\S]*\]/)
     if (!match) {
