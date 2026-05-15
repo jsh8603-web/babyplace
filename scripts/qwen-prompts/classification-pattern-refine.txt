@@ -35,6 +35,10 @@ blacklist_patterns / whitelist_title_patterns 는 이벤트 제목에 대해
 4. **과차단 금지** — blacklist 키워드가 정상 아기 이벤트 제목에 우연히 포함될
    만큼 일반적이면(예: "체험","전시","공연","축제","행사" 단독) 제외.
    2글자 이하 단독 키워드 금지. 변별력 있는 복합어 사용.
+   ⛔ **어린이 캐릭터/IP 절대 blacklist 금지**: 티니핑·뽀로로·핑크퐁·포켓몬·
+   콩순이·타요·시크릿쥬쥬·캐치티니핑·아기상어·핑퐁 등은 아기친화이므로
+   FP 이벤트(예: "OO아울렛 티니핑 팝업")에서 캐릭터명을 뽑지 말고,
+   비아기 변별어("아울렛 팝업" 류)나 성인 키워드만 추출한다.
 5. **whitelist 우선순위 인지** — classifier 는 blacklist→whitelist→LLM 순.
    whitelist 가 blacklist 를 덮으므로, fn 키워드가 기존 blacklist 와
    충돌하지 않는지 확인(예: blacklist "개인전" vs whitelist "어린이 개인전").

@@ -718,7 +718,7 @@ export async function generateDiverseKeywordsWithLLM(): Promise<{
       .eq('provider', 'naver')
       .eq('source', 'text_mining')
       .order('efficiency_score', { ascending: false })
-      .limit(10)
+      .limit(20)
     const goodExamples = (topKeywords ?? [])
       .map((k: { keyword: string }) => `- ${k.keyword}`)
       .join('\n')
@@ -740,8 +740,14 @@ export async function generateDiverseKeywordsWithLLM(): Promise<{
 - "~ 검색 / 추천 / 정보 / 위치 / 찾기" 로 끝나는 키워드 금지
 - 5자 이상 15자 이하
 
-[좋은 예시 — text_mining source 상위 효율 키워드]
+[좋은 예시 — text_mining 실측 상위 효율 키워드 · 반드시 이 구체성·길이 수준을 모방]
 ${goodExamples || '- (데이터 없음)'}
+
+[핵심 원칙]
+위 예시는 실제 블로그에 자주 등장해 검색 수율이 입증된 표현이다.
+머릿속에서 조합한 희귀·과상세 키워드는 검색량이 0이라 무용하다.
+실제 부모가 블로그에 쓰는 1~2 단어 자연 표현을 우선하고, 3 단어 이상
+조합이나 특이 상황 키워드는 신중히(검색량 의심 시 생성 금지).
 
 [나쁜 예시 — 생성 금지]
 - 제주 아기 카페           (타지역)

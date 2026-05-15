@@ -741,19 +741,20 @@ async function runAnalysis(): Promise<void> {
   // Rationale: audit 2026-04-13 — llm_generated avgEff 0.096 (2nd worst)
   //   → Phase 1+2 prompt improvements deployed; this query tracks effect over time.
   console.log('\n--- Keyword Source Yield ---')
-  const { data: kwData } = await supabase
+  const { data: kwData, error: kwErr } = await supabase
     .from('keywords')
-    .select('source, is_active, cycle_count, efficiency_score')
+    .select('source, status, cycle_count, efficiency_score')
     .eq('provider', 'naver')
+  if (kwErr) console.log(`  (keyword query error: ${kwErr.message})`)
 
   if (kwData && kwData.length > 0) {
     type KwAgg = { total: number; active: number; zeroCycle: number; effSum: number; effCount: number }
     const bySource = new Map<string, KwAgg>()
-    for (const k of kwData as Array<{ source: string | null; is_active: boolean | null; cycle_count: number | null; efficiency_score: number | null }>) {
+    for (const k of kwData as Array<{ source: string | null; status: string | null; cycle_count: number | null; efficiency_score: number | null }>) {
       const src = k.source ?? 'unknown'
       const acc = bySource.get(src) ?? { total: 0, active: 0, zeroCycle: 0, effSum: 0, effCount: 0 }
       acc.total++
-      if (k.is_active) acc.active++
+      if (k.status !== 'EXHAUSTED') acc.active++
       if ((k.cycle_count ?? 0) === 0) acc.zeroCycle++
       if (k.efficiency_score != null) {
         acc.effSum += k.efficiency_score
@@ -784,8 +785,10 @@ async function runAnalysis(): Promise<void> {
     const tmEff = rows.find(r => r.source === 'text_mining')?.avgEff ?? 0
     const llmEff = rows.find(r => r.source === 'llm_generated')?.avgEff ?? 0
     if (tmEff > 0 && tmEff - llmEff > 0.05) {
-      console.log(`  ⚠ llm_generated lags text_mining by ${(tmEff - llmEff).toFixed(3)} eff`)
+      console.log(`  ⚠ llm_generated lags text_mining by ${(tmEff - llmEff).toFixed(3)} eff — prompt 보강 필요 (4-1)`)
     }
+  } else {
+    console.log('  (no keyword data — query returned empty/null; check columns)')
   }
 
   // S1: Collect rejected place names → Qwen pattern input
