@@ -67,8 +67,33 @@ async function apply(outputFile: string): Promise<void> {
     (Array.isArray(arr) ? arr : [])
       .map(s => (typeof s === 'string' ? s.trim() : ''))
       .filter(t => t.length >= 2 && t.length <= 25 && !/[<>{}[\]]|tool_call|[\n\r\t]/.test(t))
-  const addedBl = sane(out.add_blacklist).filter(p => !blSet.has(p))
-  const addedWl = sane(out.add_whitelist).filter(p => !wlSet.has(p))
+  let addedBl = sane(out.add_blacklist).filter(p => !blSet.has(p))
+  let addedWl = sane(out.add_whitelist).filter(p => !wlSet.has(p))
+
+  // S2-Q reverse semantic gate (mirror of S1-Q reverse-FP): drop a candidate
+  // if it would mis-classify events the audit already confirmed correct —
+  // e.g. Qwen pulling "티니핑" from an FP popup would FN real kids events.
+  const { data: correctRows } = await supabase
+    .from('classification_audit_log')
+    .select('event_name, classifier_decision')
+    .eq('audit_verdict', 'correct')
+  const includedNames: string[] = []
+  const excludedNames: string[] = []
+  for (const r of correctRows || []) {
+    if (!r.event_name) continue
+    if (r.classifier_decision === 'included') includedNames.push(r.event_name)
+    else if (r.classifier_decision === 'excluded') excludedNames.push(r.event_name)
+  }
+  addedBl = addedBl.filter(p => {
+    const hit = includedNames.filter(n => n.includes(p)).length
+    if (hit > 0) { console.log(`  [reverse-reject bl] "${p}" — ${hit} correct-included match`); return false }
+    return true
+  })
+  addedWl = addedWl.filter(p => {
+    const hit = excludedNames.filter(n => n.includes(p)).length
+    if (hit > 0) { console.log(`  [reverse-reject wl] "${p}" — ${hit} correct-excluded match`); return false }
+    return true
+  })
 
   if (addedBl.length === 0 && addedWl.length === 0) {
     console.log('No new patterns to merge (all duplicates or empty).')
