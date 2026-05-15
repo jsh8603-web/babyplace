@@ -371,7 +371,7 @@ async function reviewUpdated(limit = 50, offset = 0): Promise<void> {
     .from('poster_audit_log')
     .select('*')
     .eq('action', 'updated')
-    .eq('audit_status', 'pending')
+    .eq('audit_status', 'flagged')  // Gemini vision 이 manual_review 로 명시한 건만 (pending = vision 미검사 → 제외)
     .order('created_at', { ascending: true })
     .range(offset, offset + limit - 1)
 
@@ -382,9 +382,9 @@ async function reviewUpdated(limit = 50, offset = 0): Promise<void> {
     .from('poster_audit_log')
     .select('id', { count: 'exact', head: true })
     .eq('action', 'updated')
-    .eq('audit_status', 'pending')
+    .eq('audit_status', 'flagged')
 
-  console.log(`\n=== Poster Review — UPDATED (${count ?? 0}건 pending, showing ${offset + 1}~${offset + rows.length}) ===`)
+  console.log(`\n=== Poster Review — UPDATED (${count ?? 0}건 flagged by vision, showing ${offset + 1}~${offset + rows.length}) ===`)
   console.log('Review each entry: check if LLM selection is the best poster for this event.')
   console.log('Actions: --approve <id> | --reject <id> | --lock <event_id> --poster <url>\n')
 
@@ -614,7 +614,7 @@ async function visionCheck(limit = 10): Promise<void> {
 
   console.log(`\n=== Vision Check — ${data.length} posters ===\n`)
 
-  let passed = 0, failed = 0, skipped = 0, retryKept = 0
+  let passed = 0, failed = 0, skipped = 0, retryKept = 0, flaggedForReview = 0
 
   for (const row of data) {
     if (!row.after_url) { skipped++; continue }
@@ -666,8 +666,11 @@ async function visionCheck(limit = 10): Promise<void> {
       await approveAudit(row.id)
       passed++
     } else {
-      console.log(`  → NEEDS MANUAL REVIEW`)
-      skipped++
+      // Gemini 가 회색지대로 판정 → flagged 로 명시 표식. Opus review 는 flagged 만 대상.
+      // (RETRY/영구실패는 pending 유지 → 다음 vision 루프 재처리, Opus 가 미검사건을 떠안지 않음)
+      console.log(`  → FLAGGED for Opus review`)
+      await flagAudit(row.id, `vision: manual_review (conf=${result.confidence}, name_found=${result.eventNameFound})`)
+      flaggedForReview++
     }
     console.log('')
 
@@ -675,7 +678,7 @@ async function visionCheck(limit = 10): Promise<void> {
     await new Promise(r => setTimeout(r, 1000))
   }
 
-  console.log(`Vision check: ${passed} approved, ${failed} rejected, ${skipped} need review, ${retryKept} kept-pending (transient, next loop)`)
+  console.log(`Vision check: ${passed} approved, ${failed} rejected, ${flaggedForReview} flagged→Opus, ${skipped} skipped(permanent), ${retryKept} kept-pending (transient/quota, next loop)`)
 }
 
 // ─── Hide poster with recovery pre-check (#18) ──────────────────────────────
