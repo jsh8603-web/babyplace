@@ -8,6 +8,8 @@
  *   DOTENV_CONFIG_PATH=.env.local npx tsx -r dotenv/config server/scripts/place-accuracy-audit.ts --summary
  */
 
+import * as fs from 'fs'
+import * as path from 'path'
 import { createClient } from '@supabase/supabase-js'
 import { searchKakaoPlace } from '../lib/kakao-search'
 import { isBlockedByNamePattern, isBlockedByBrand } from '../matchers/place-gate'
@@ -643,6 +645,107 @@ async function learnPatternsFromDeactivated(): Promise<void> {
   }
 }
 
+// ─── S1-1: Collect rejected place names for Qwen pattern generation ──────────
+
+// verdicts that are NOT name-pattern learnable (location/lifecycle issues, not "non-baby")
+const NON_LEARNABLE_VERDICTS = new Set([
+  'accurate', 'closed', 'moved', 'duplicate', 'inaccurate', 'bad_data',
+])
+
+async function collectRejectedPatterns(threshold = 50): Promise<void> {
+  // 1. Collect not-baby-friendly flagged/rejected names (keyset pagination — avoids
+  //    Supabase free-tier ORDER BY timeout when pending/flagged rows are numerous)
+  const collected: { name: string; category: string | null }[] = []
+  let cursor = 0
+  const PAGE = 1000
+  for (;;) {
+    const { data, error } = await supabase
+      .from('place_accuracy_audit_log')
+      .select('id, place_name, place_category, audit_status, audit_verdict, audit_notes')
+      .gt('id', cursor)
+      .in('audit_status', ['flagged', 'rejected'])
+      .order('id', { ascending: true })
+      .limit(PAGE)
+    if (error) { console.error('Error:', error.message); return }
+    if (!data || data.length === 0) break
+
+    for (const r of data) {
+      const notes = (r.audit_notes || '').toLowerCase()
+      const verdict = (r.audit_verdict || '').toLowerCase()
+      const isNotBaby =
+        notes.includes('not-baby') || notes.includes('not_baby') ||
+        verdict === 'not_baby_friendly' || verdict === 'flagged' ||
+        (r.audit_status === 'rejected' && !NON_LEARNABLE_VERDICTS.has(verdict))
+      if (isNotBaby && r.place_name) {
+        collected.push({ name: r.place_name, category: r.place_category })
+      }
+    }
+
+    cursor = data[data.length - 1].id
+    if (data.length < PAGE) break
+  }
+
+  const totalCollected = collected.length
+  if (totalCollected === 0) { console.log('No not-baby-friendly flagged/rejected places found.'); return }
+
+  // 2. Load active blacklist patterns to drop names already blocked
+  const { data: existing } = await supabase
+    .from('place_blacklist_patterns')
+    .select('pattern_type, pattern')
+    .eq('is_active', true)
+
+  const nameRegexes: RegExp[] = []
+  const brandPrefixes: string[] = []
+  for (const e of existing || []) {
+    if (e.pattern_type === 'name') {
+      try { nameRegexes.push(new RegExp(e.pattern)) } catch { /* skip invalid */ }
+    } else if (e.pattern_type === 'brand') {
+      brandPrefixes.push(e.pattern)
+    }
+  }
+
+  // 3. Dedup: drop names already blocked by static or dynamic patterns
+  const seen = new Set<string>()
+  const uniqueNames: { name: string; category: string | null }[] = []
+  for (const c of collected) {
+    if (seen.has(c.name)) continue
+    seen.add(c.name)
+    if (isBlockedByNamePattern(c.name) || isBlockedByBrand(c.name)) continue
+    if (nameRegexes.some(re => re.test(c.name))) continue
+    if (brandPrefixes.some(p => c.name.startsWith(p))) continue
+    uniqueNames.push(c)
+  }
+
+  const afterDedup = uniqueNames.length
+  console.log(`\nCollected ${totalCollected} not-baby-friendly audit entries`)
+  console.log(`After dedup (already-blocked removed): ${afterDedup} unique names`)
+
+  // 4. Threshold gate — below threshold not worth a Qwen call
+  if (afterDedup < threshold) {
+    console.log(`Below threshold (${afterDedup} < ${threshold}) — skip Qwen pattern generation.`)
+    return
+  }
+
+  // 5. Save Qwen input JSON (consumed by S1-2)
+  const byCategory: Record<string, string[]> = {}
+  for (const u of uniqueNames) {
+    const cat = u.category || '(none)'
+    ;(byCategory[cat] ||= []).push(u.name)
+  }
+  const outDir = path.join(process.cwd(), 'scripts', 'qwen-input')
+  fs.mkdirSync(outDir, { recursive: true })
+  const outPath = path.join(outDir, 'place-rejected-names.json')
+  fs.writeFileSync(outPath, JSON.stringify({
+    generated_at: new Date().toISOString().split('T')[0],
+    total_collected: totalCollected,
+    after_dedup: afterDedup,
+    names: uniqueNames.map(u => u.name),
+    by_category: byCategory,
+  }, null, 2))
+  console.log(`\nSaved ${afterDedup} names to ${outPath}`)
+  console.log('Next: S1-2 Qwen prompt → regex generation')
+}
+
 // ─── #7: Validate bulk judge rules — random sample check ─────────────────────
 
 async function validateBulkPlace(count = 10): Promise<void> {
@@ -707,6 +810,10 @@ async function main(): Promise<void> {
     await bulkJudgePlaces()
   } else if (args.includes('--learn-patterns')) {
     await learnPatternsFromDeactivated()
+  } else if (args.includes('--collect-rejected-patterns')) {
+    const thIdx = args.indexOf('--threshold')
+    const threshold = thIdx >= 0 ? parseInt(args[thIdx + 1]) || 50 : 50
+    await collectRejectedPatterns(threshold)
   } else if (args.includes('--correct') || args.includes('--accurate')) {
     const flag = args.includes('--correct') ? '--correct' : '--accurate'
     const idx = args.indexOf(flag)
@@ -743,6 +850,7 @@ Commands:
   --summary                    Statistics
   --bulk-judge                 Auto-judge pending by name patterns
   --learn-patterns             Extract patterns from deactivated places → DB
+  --collect-rejected-patterns [--threshold N]  Collect not-baby names → Qwen input JSON (default: 50)
   --validate-bulk [--count N]  Validate bulk-judge accuracy (#7)
   --correct <audit_id>         Mark as accurate
   --inaccurate <audit_id>      Mark as inaccurate [--note]

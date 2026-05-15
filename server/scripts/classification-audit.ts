@@ -249,8 +249,46 @@ async function setVerdict(auditId: number, verdict: string, note?: string): Prom
     .update(update)
     .eq('id', auditId)
 
-  if (error) console.error('Error:', error.message)
-  else console.log(`Set audit #${auditId} → ${verdict}${note ? ` (${note})` : ''}`)
+  if (error) { console.error('Error:', error.message); return }
+  console.log(`Set audit #${auditId} → ${verdict}${note ? ` (${note})` : ''}`)
+
+  // S2-2: stage FP/FN patterns for Qwen refinement (consumed by S2-3)
+  if (verdict === 'false_positive' || verdict === 'false_negative') {
+    await stageClassificationPattern(auditId, verdict)
+  }
+}
+
+// S2-2: harvest one FP/FN pattern → classification_blacklist_staging.
+// Dedup is enforced by the migration's partial unique index
+// (pattern, verdict) WHERE processed_at IS NULL — we just react to 23505.
+async function stageClassificationPattern(auditId: number, verdict: string): Promise<void> {
+  const { data: row } = await supabase
+    .from('classification_audit_log')
+    .select('event_name, classifier_step, matched_pattern')
+    .eq('id', auditId)
+    .single()
+  if (!row) return
+
+  // Prefer the regex that misfired; fall back to event name (LLM-step errors have no pattern)
+  const pattern = row.matched_pattern || row.event_name
+  if (!pattern) return
+
+  const vShort = verdict === 'false_positive' ? 'fp' : 'fn'
+  const { error } = await supabase
+    .from('classification_blacklist_staging')
+    .insert({
+      pattern,
+      verdict: vShort,
+      event_name: row.event_name,
+      classifier_step: row.classifier_step,
+    })
+
+  if (error) {
+    if (error.code === '23505') console.log(`  → pattern "${pattern}" already staged (pending)`)
+    else console.error('  Staging error:', error.message)
+  } else {
+    console.log(`  → staged pattern "${pattern}" (${vShort})`)
+  }
 }
 
 async function showPatterns(): Promise<void> {

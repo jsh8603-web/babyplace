@@ -788,6 +788,30 @@ async function runAnalysis(): Promise<void> {
     }
   }
 
+  // S1: Collect rejected place names → Qwen pattern input
+  console.log('\n--- S1: Rejected Place Pattern Collection ---')
+  try {
+    const { execSync } = await import('child_process')
+    console.log(execSync(
+      'npx tsx -r dotenv/config server/scripts/place-accuracy-audit.ts --collect-rejected-patterns',
+      { env: { ...process.env }, encoding: 'utf-8', timeout: 120000, cwd: process.cwd() },
+    ))
+  } catch (err: any) {
+    console.error('  S1 collect error:', err.message?.slice(0, 200))
+  }
+
+  // S2: Collect classification FP/FN staging → Qwen refine input
+  console.log('\n--- S2: Classification Pattern Staging Collection ---')
+  try {
+    const { execSync } = await import('child_process')
+    console.log(execSync(
+      'npx tsx -r dotenv/config server/scripts/refine-classifier-patterns.ts --collect',
+      { env: { ...process.env }, encoding: 'utf-8', timeout: 120000, cwd: process.cwd() },
+    ))
+  } catch (err: any) {
+    console.error('  S2 collect error:', err.message?.slice(0, 200))
+  }
+
   console.log('')
 }
 
@@ -1078,6 +1102,22 @@ async function main(): Promise<void> {
     await runCrossAudit()
   } else if (args.includes('--analysis')) {
     await runAnalysis()
+  } else if (args.includes('--collect-rejected-patterns')) {
+    const { execSync } = await import('child_process')
+    const thIdx = args.indexOf('--threshold')
+    const th = thIdx >= 0 ? args[thIdx + 1] || '50' : '50'
+    console.log(execSync(
+      `npx tsx -r dotenv/config server/scripts/place-accuracy-audit.ts --collect-rejected-patterns --threshold ${th}`,
+      { env: { ...process.env }, encoding: 'utf-8', timeout: 120000, cwd: process.cwd() },
+    ))
+  } else if (args.includes('--refine-classifier-patterns')) {
+    const { execSync } = await import('child_process')
+    const thIdx = args.indexOf('--threshold')
+    const th = thIdx >= 0 ? args[thIdx + 1] || '50' : '50'
+    console.log(execSync(
+      `npx tsx -r dotenv/config server/scripts/refine-classifier-patterns.ts --collect --threshold ${th}`,
+      { env: { ...process.env }, encoding: 'utf-8', timeout: 120000, cwd: process.cwd() },
+    ))
   } else if (args.includes('--cross-audit')) {
     await runCrossAudit()
   } else if (args.includes('--cleanup')) {
@@ -1097,7 +1137,9 @@ Commands:
   --full      Integrated pipeline: sample → proactive scans → bulk-judge → vision-check → pattern analysis → report + snapshot
   --quick     6종 lightweight: sample → bulk-judge → vision-check → cross-audit + snapshot
   --report    Summary report + cross-audit quality signals + source dashboard
-  --analysis  Automated 4th-stage analysis (penalty distribution, coverage, divergence)
+  --analysis  Automated 4th-stage analysis (penalty distribution, coverage, divergence) + S1 pattern collection
+  --collect-rejected-patterns [--threshold N]  Collect not-baby place names → Qwen input JSON
+  --refine-classifier-patterns [--threshold N] Collect FP/FN staging → Qwen refine input JSON
   --compare   Round-over-round change tracking + config version changes
   --cleanup   Delete flagged/rejected audit_log + score=0 mentions (quick mode)
   --cleanup --full-cleanup  + score<0.2 mentions + JSONB trim + log tables cleanup
