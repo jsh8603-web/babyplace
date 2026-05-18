@@ -144,6 +144,31 @@ export type FacilityTag =
 
 export type SortOption = 'distance' | 'popularity' | 'recent'
 
+// ─── Place feedback (사용자 가리기/재분류 → place audit wf 원인추적) ───
+export type PlaceFeedbackReason = 'not_baby' | 'closed' | 'wrong_category' | 'other'
+export type PlaceFeedbackType = 'hide' | 'recategorize'
+export type PlaceFeedbackAuditStatus = 'pending' | 'approved' | 'rejected' | 'flagged'
+
+export interface PlaceFeedback {
+  id: number
+  place_id: number
+  user_id: string
+  feedback_type: PlaceFeedbackType
+  reason: PlaceFeedbackReason
+  /** recategorize: 변경 전 category (잘못된 값일 수 있어 string) */
+  prev_category: string | null
+  /** recategorize: 사용자가 고른 올바른 분류 */
+  new_category: PlaceCategory | null
+  /** 즉시 반영 여부 (recategorize=true) */
+  applied: boolean
+  audit_status: PlaceFeedbackAuditStatus
+  /** 감사가 기록하는 원인 코드 (예: kakao_default_fallback) */
+  root_cause: string | null
+  audit_notes: string | null
+  created_at: string
+  audited_at: string | null
+}
+
 export interface PlacesQueryParams {
   swLat: number
   swLng: number

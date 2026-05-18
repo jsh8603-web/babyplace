@@ -30,9 +30,16 @@
 - `deferred`는 1회만 허용 — 2회 연속 deferred 시 `wontfix` 사유를 반드시 작성
 - **모든 open 항목의 상태가 업데이트되어야 0단계 완료**
 
+**C. 사용자 피드백 인지 (place_feedback) — 필수**
+사용자가 목록에서 장소를 가리거나(사유 포함) 분류를 변경하면, 장소감사 wf 는
+매 라운드 그 피드백을 **반드시 인지**한다. `place_feedback` 의 `audit_status='pending'`
+건수를 조회(`place-accuracy-audit.ts --feedback`)하여, pending 이 1건이라도 있으면
+아래 **8종 감사를 생략할 수 없다**.
+- pending 미확인 채로 0단계 종료 = 0단계 미완료
+
 ### 실행 순서 (#11)
 효율적 실행을 위해 **빠른 전수 감사 먼저, 대규모 감사 나중에** 실행:
-1. poster → classification → event-dedup → candidate (전수, 빠름)
+1. poster → classification → event-dedup → candidate → place-feedback (전수, 빠름)
 2. mention → place (대규모, 느림)
 3. 4단계 시스템적 분석은 1~3단계 전체 완료 후 한 번에 수행
 
@@ -476,6 +483,39 @@ DOTENV_CONFIG_PATH=.env.local npx tsx -r dotenv/config server/scripts/audit-all.
 | 2026-03-06 | `matchesAsStandaloneWord` 도입 | 2자 이하 term → 앞뒤 한글 없는 경우만 매칭 (복합어 통과) |
 | 2026-03-06 | 7 term 비활성화 (카페,전시,베이커리,브런치,호텔,펜션,맛집) | 아기 친화 시설 포스팅 차단 해소. 디키디키 0건→36건 |
 | 2026-03-06 | 페이지네이션 수정 (`runReverseSearch`) | Supabase 1000행 제한 → 실제 2,250개 처리 |
+
+## 8종: 사용자 피드백 감사 (place-feedback)
+
+### [불변 원칙 — 사용자 지시 SSOT]
+
+사용자가 목록에서 장소를 가리거나(사유 포함) 분류(태그)를 변경하면,
+장소감사 wf 는 매 라운드 그 피드백을 **반드시 인지**하고 다음을 수행한다:
+
+1. 해당 장소가 **왜 잘못 수집·분류되었는지 원인을 코드 레벨에서 확인**
+2. 그 **근본 원인을 코드 레벨에서 수정**
+3. **같은 원인을 가질 수 있는, 이미 DB 에 들어온 다른 장소들을 탐색하여
+   동일하게 수정** (사용자가 일일이 지적하지 않아도 선제적으로)
+
+피드백 pending 이 1건이라도 있는데 이 절차를 생략하거나 부분만 처리하면
+감사 wf 는 **미완료**다. 이 원칙은 구현이 바뀌어도 불변이다.
+
+### [현재 구현 예시 — 규칙 아님, 변경 가능]
+
+> 아래는 작성 시점(2026-05-18) 구현 참고. 흐름이 바뀌면 이 예시만 갱신하고
+> 위 불변 원칙은 유지한다. 상세는 `plan-place-feedback.md`.
+
+- 입력: `place_feedback` 테이블 (`audit_status='pending'`)
+  - `feedback_type='recategorize'` = 사용자가 분류 변경 (places.category 즉시 반영됨)
+  - `feedback_type='hide'` = 사유와 함께 가리기 (not_baby / closed / other)
+- 명령 (`place-accuracy-audit.ts`):
+  - `--feedback` — pending 전건 목록
+  - `--feedback-trace <id>` — 원인추적. kakao 는 `mapKakaoCategory` 재현 →
+    `kakao_pattern_miss` / `kakao_default_priority` 등 root_cause 판정 + 수정 제안
+  - `--feedback-bulk-fix <id> [--apply]` — 동일 sub_category·동일 잘못된 category
+    장소 일괄 재분류 (dry-run 기본; `--apply` 로 적용 + root_cause 기록)
+- 판정 기준·source 별 착안점: `place-audit-rules.md` "사용자 피드백 검토" 절
+- 코드 패치 후 정상 데이터 오분류 점검: 4단계 4-2b 오탐 점검 절차 적용
+- 전수 처리 (pending 전건). 부분 처리 후 종료 = wf 미완료
 
 ## 이월 과제 (다음 라운드 필수 처리)
 

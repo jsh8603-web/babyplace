@@ -18,6 +18,7 @@ import type {
 } from '@/types'
 import BottomSheet from '@/components/BottomSheet'
 import PlaceCard from '@/components/place/PlaceCard'
+import PlaceHideSheet, { type HideTarget } from '@/components/place/PlaceHideSheet'
 import EventCard from '@/components/event/EventCard'
 import CategoryChips from '@/components/CategoryChips'
 import FilterPanel from '@/components/FilterPanel'
@@ -154,6 +155,7 @@ export default function HomePage() {
     sort: 'distance',
   })
   const [hiddenPlaceIds, setHiddenPlaceIds] = useState<Set<number>>(new Set())
+  const [hideTarget, setHideTarget] = useState<HideTarget | null>(null)
   const [hiddenEventIds, setHiddenEventIds] = useState<Set<number>>(new Set())
   const [snapPoint, setSnapPoint] = useState<SnapPoint>(savedState?.snapPoint ?? DEFAULT_SNAP)
   const listScrollRef = useRef<HTMLDivElement>(null)
@@ -250,16 +252,29 @@ export default function HomePage() {
 
   // Events: compute distance + sort by user selection
   const allEvents = eventsData?.events ?? []
+  // 기준 위치: 선택 장소 > 지도 중심(현재위치 버튼·지역 이동 시 갱신) > 현재위치
+  const mapCenterLoc = mapBounds
+    ? {
+        lat: (mapBounds.swLat + mapBounds.neLat) / 2,
+        lng: (mapBounds.swLng + mapBounds.neLng) / 2,
+      }
+    : null
   const refLocation = selectedPlace
     ? { lat: selectedPlace.lat, lng: selectedPlace.lng }
-    : userLocation
+    : mapCenterLoc ?? userLocation
   const eventsWithDist = allEvents.map((e) => ({
     ...e,
     _dist: refLocation && e.lat != null && e.lng != null
       ? haversineMeters(refLocation.lat, refLocation.lng, e.lat, e.lng)
       : null as number | null,
   }))
-  const sortedEvents = [...eventsWithDist].sort((a, b) => {
+  // 인기순·마감임박순: 기준 위치 3km 내만 노출. 거리순: 기존대로 전체.
+  const EVENT_RADIUS_M = 3000
+  const visibleEvents =
+    eventSort === 'distance' || !refLocation
+      ? eventsWithDist
+      : eventsWithDist.filter((e) => e._dist != null && e._dist <= EVENT_RADIUS_M)
+  const sortedEvents = [...visibleEvents].sort((a, b) => {
     if (eventSort === 'distance') {
       if (a._dist != null && b._dist != null) return a._dist - b._dist
       if (a._dist != null) return -1
@@ -320,19 +335,42 @@ export default function HomePage() {
     setIsEmergencyOpen(true)
   }
 
-  const handleHidePlace = useCallback(async (place: Place) => {
-    setHiddenPlaceIds((prev) => new Set(prev).add(place.id))
-    try {
-      await fetch('/api/hide', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ placeId: place.id }),
-      })
-    } catch {
-      // Revert on failure
-      setHiddenPlaceIds((prev) => { const s = new Set(prev); s.delete(place.id); return s })
-    }
+  // 가리기 클릭 → 사유 시트 오픈 (즉시 가리지 않음)
+  const handleHidePlace = useCallback((place: Place) => {
+    setHideTarget({ id: place.id, name: place.name, category: place.category })
   }, [])
+
+  // 시트 제출 → 피드백 전송 + 낙관적 가리기. recategorize 는 places 재조회
+  const handleFeedbackSubmit = useCallback(
+    async (payload: {
+      type: 'hide' | 'recategorize'
+      reason: string
+      newCategory?: string
+    }) => {
+      if (!hideTarget) return
+      const placeId = hideTarget.id
+      setHiddenPlaceIds((prev) => new Set(prev).add(placeId))
+      try {
+        const res = await fetch('/api/places/feedback', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ placeId, ...payload }),
+        })
+        if (!res.ok) throw new Error('feedback failed')
+        if (payload.type === 'recategorize') {
+          queryClient.invalidateQueries({ queryKey: ['places'] })
+        }
+      } catch {
+        // Revert on failure
+        setHiddenPlaceIds((prev) => {
+          const s = new Set(prev)
+          s.delete(placeId)
+          return s
+        })
+      }
+    },
+    [hideTarget, queryClient],
+  )
 
   const handleHideEvent = useCallback(async (event: Event) => {
     setHiddenEventIds((prev) => new Set(prev).add(event.id))
@@ -646,7 +684,11 @@ export default function HomePage() {
             ) : sortedEvents.length === 0 ? (
               <div className="px-4 py-12 text-center">
                 <span className="text-3xl mb-2 block">🎪</span>
-                <p className="text-[15px] font-semibold text-warm-600">진행중인 이벤트가 없습니다</p>
+                <p className="text-[15px] font-semibold text-warm-600">
+                  {eventSort !== 'distance'
+                    ? '주변 3km 내 진행중인 이벤트가 없습니다'
+                    : '진행중인 이벤트가 없습니다'}
+                </p>
               </div>
             ) : (
               <div className="px-4 space-y-3">
@@ -675,6 +717,14 @@ export default function HomePage() {
         onOpenChange={setIsFilterOpen}
         filters={filters}
         onFiltersChange={setFilters}
+      />
+
+      {/* Place hide / recategorize sheet */}
+      <PlaceHideSheet
+        open={hideTarget != null}
+        onOpenChange={(o) => { if (!o) setHideTarget(null) }}
+        place={hideTarget}
+        onSubmit={handleFeedbackSubmit}
       />
 
       {/* Emergency overlay */}

@@ -14,6 +14,7 @@ import { createClient } from '@supabase/supabase-js'
 import { searchKakaoPlace } from '../lib/kakao-search'
 import { isBlockedByNamePattern, isBlockedByBrand } from '../matchers/place-gate'
 import { callQwen } from '../lib/qwen'
+import { mapKakaoCategory } from '../collectors/kakao-category'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -873,6 +874,152 @@ async function validateBulkPlace(count = 10): Promise<void> {
 
 // ─── CLI Parser ──────────────────────────────────────────────────────────────
 
+// ─── Feedback audit (사용자 가리기/재분류 → 원인추적·일괄수정) ───
+// 불변 원칙: 사용자가 목록에서 가리기/재분류하면 audit wf 가 매 라운드 인지하여
+//  ① 원인 코드레벨 확인 ② 근본 원인 코드 수정 ③ 동일원인 장소 일괄 수정.
+// 아래는 그 원칙을 충족하는 현재 구현(예시) — 흐름 변경 시 본 함수만 갱신.
+
+interface FeedbackRow {
+  id: number
+  place_id: number
+  feedback_type: string
+  reason: string
+  prev_category: string | null
+  new_category: string | null
+  audit_status: string
+  created_at: string
+}
+
+async function listFeedback(): Promise<void> {
+  const { data: fb } = await supabase
+    .from('place_feedback')
+    .select('id, place_id, feedback_type, reason, prev_category, new_category, audit_status, created_at')
+    .eq('audit_status', 'pending')
+    .order('created_at', { ascending: true })
+  const rows = (fb ?? []) as FeedbackRow[]
+  if (rows.length === 0) { console.log('No pending place_feedback.'); return }
+
+  const ids = [...new Set(rows.map((r) => r.place_id))]
+  const { data: places } = await supabase
+    .from('places').select('id, name, category, source, sub_category').in('id', ids)
+  const pmap = new Map((places ?? []).map((p: any) => [p.id, p]))
+
+  console.log(`\nPending place_feedback: ${rows.length}\n`)
+  for (const r of rows) {
+    const p: any = pmap.get(r.place_id)
+    const label = r.feedback_type === 'recategorize'
+      ? `${r.prev_category} → ${r.new_category}`
+      : r.reason
+    console.log(`#${r.id} [${r.feedback_type}] place=${r.place_id} "${p?.name ?? '?'}" (${p?.source ?? '?'}) ${label}`)
+  }
+  console.log(`\nTrace: --feedback-trace <id>  |  Bulk fix: --feedback-bulk-fix <id> [--apply]`)
+}
+
+async function traceFeedback(id: number): Promise<void> {
+  const { data: fbData } = await supabase
+    .from('place_feedback').select('*').eq('id', id).single()
+  if (!fbData) { console.error(`feedback #${id} not found`); return }
+  const fb = fbData as FeedbackRow
+
+  const { data: place } = await supabase
+    .from('places').select('id, name, category, source, sub_category').eq('id', fb.place_id).single()
+  if (!place) { console.error(`place ${fb.place_id} not found`); return }
+  const pl: any = place
+
+  console.log(`\n=== Feedback #${id} trace ===`)
+  console.log(`place #${pl.id} "${pl.name}"  source=${pl.source}  sub_category=${pl.sub_category ?? '(none)'}`)
+  console.log(`type=${fb.feedback_type} reason=${fb.reason} ${fb.prev_category ?? ''} → ${fb.new_category ?? ''}`)
+
+  if (fb.feedback_type !== 'recategorize') {
+    console.log(`\n[hide] 사유 집계 검토 — not_baby → place-gate/blacklist, closed → is_active=false (수동 판정).`)
+    return
+  }
+  if (pl.source !== 'kakao') {
+    console.log(`\n[source=${pl.source}] 원인추적 stub — kakao 외 수집기 매핑은 후속(plan 범위 밖). 수동 검토.`)
+    return
+  }
+
+  const subCat = (pl.sub_category as string) ?? ''
+  const reproduced = mapKakaoCategory(
+    { category_name: subCat, place_name: pl.name },
+    (fb.prev_category ?? '놀이') as any,
+  )
+  console.log(`\nmapKakaoCategory(category_name="${subCat}", default="${fb.prev_category}") → ${reproduced.category}`)
+
+  let rootCause: string
+  if (reproduced.category === fb.prev_category) {
+    rootCause = `kakao_pattern_miss:sub="${subCat}"→${fb.new_category}`
+    console.log(`원인: sub_category "${subCat}" 가 mapKakaoCategory 어느 패턴에도 안 잡혀 defaultCategory="${fb.prev_category}" fallback (kakao-category.ts:495 + :273 ?? '놀이').`)
+    console.log(`수정 제안: mapKakaoCategory 의 "${fb.new_category}" 분기 정규식에 "${subCat}" 키워드 추가 (4-2b 오탐 점검 후).`)
+  } else if (reproduced.category === fb.new_category) {
+    rootCause = `kakao_default_priority:sub="${subCat}"`
+    console.log(`원인: 현재 패턴은 "${fb.new_category}" 를 올바로 반환 → 코드 현행 정상. 수집 당시 defaultCategory 우선(KEYWORD_GROUP_TO_CATEGORY) 경로였을 가능성. DB 일괄 정정만 필요.`)
+  } else {
+    rootCause = `kakao_unexpected:repro=${reproduced.category}`
+    console.log(`원인 불명확: 재현 결과 ${reproduced.category} (prev/new 모두 아님). 수동 분석 필요.`)
+  }
+
+  const { data: same } = await supabase
+    .from('places')
+    .select('id')
+    .eq('source', 'kakao')
+    .eq('category', fb.prev_category)
+    .eq('sub_category', subCat)
+    .eq('is_active', true)
+  console.log(`\n동일원인 후보(source=kakao, category=${fb.prev_category}, sub_category="${subCat}", active): ${same?.length ?? 0}건`)
+  console.log(`root_cause(제안) = ${rootCause}`)
+  console.log(`일괄수정: --feedback-bulk-fix ${id} [--apply]`)
+}
+
+async function bulkFixFeedback(id: number, apply: boolean): Promise<void> {
+  const { data: fbData } = await supabase
+    .from('place_feedback').select('*').eq('id', id).single()
+  if (!fbData) { console.error(`feedback #${id} not found`); return }
+  const fb = fbData as FeedbackRow
+  if (fb.feedback_type !== 'recategorize' || !fb.prev_category || !fb.new_category) {
+    console.error('bulk-fix 는 recategorize 피드백만 지원'); return
+  }
+
+  const { data: place } = await supabase
+    .from('places').select('source, sub_category').eq('id', fb.place_id).single()
+  const pl: any = place
+  if (!pl || pl.source !== 'kakao') {
+    console.error('bulk-fix 는 source=kakao 만 지원 (후속 확장)'); return
+  }
+  const subCat = (pl.sub_category as string) ?? ''
+
+  const { data: targets } = await supabase
+    .from('places')
+    .select('id, name')
+    .eq('source', 'kakao')
+    .eq('category', fb.prev_category)
+    .eq('sub_category', subCat)
+    .eq('is_active', true)
+  const list = (targets ?? []) as { id: number; name: string }[]
+
+  console.log(`\n동일원인 대상: source=kakao category="${fb.prev_category}" sub_category="${subCat}" active`)
+  console.log(`${list.length}건 → "${fb.new_category}" 재분류${apply ? '' : ' (dry-run)'}`)
+  for (const t of list.slice(0, 30)) console.log(`  #${t.id} ${t.name}`)
+  if (list.length > 30) console.log(`  ... +${list.length - 30}`)
+
+  if (!apply) { console.log(`\n--apply 로 실제 적용.`); return }
+
+  const ids = list.map((t) => t.id)
+  if (ids.length > 0) {
+    const { error: upErr } = await supabase
+      .from('places')
+      .update({ category: fb.new_category, updated_at: new Date().toISOString() })
+      .in('id', ids)
+    if (upErr) { console.error('bulk update 실패:', upErr.message); return }
+  }
+  await supabase.from('place_feedback').update({
+    audit_status: 'approved',
+    root_cause: `kakao_bulk:sub="${subCat}" ${fb.prev_category}→${fb.new_category} (${ids.length})`,
+    audited_at: new Date().toISOString(),
+  }).eq('id', id)
+  console.log(`\n${ids.length}건 재분류 완료. feedback #${id} approved.`)
+}
+
 async function main(): Promise<void> {
   const args = process.argv.slice(2)
 
@@ -936,6 +1083,18 @@ async function main(): Promise<void> {
     const id = parseInt(args[idx + 1])
     if (isNaN(id)) { console.error('Usage: --duplicate <audit_id>'); return }
     await setVerdict(id, 'duplicate')
+  } else if (args.includes('--feedback-trace')) {
+    const idx = args.indexOf('--feedback-trace')
+    const id = parseInt(args[idx + 1])
+    if (isNaN(id)) { console.error('Usage: --feedback-trace <feedback_id>'); return }
+    await traceFeedback(id)
+  } else if (args.includes('--feedback-bulk-fix')) {
+    const idx = args.indexOf('--feedback-bulk-fix')
+    const id = parseInt(args[idx + 1])
+    if (isNaN(id)) { console.error('Usage: --feedback-bulk-fix <feedback_id> [--apply]'); return }
+    await bulkFixFeedback(id, args.includes('--apply'))
+  } else if (args.includes('--feedback')) {
+    await listFeedback()
   } else {
     console.log(`
 Place Accuracy Audit CLI
@@ -956,6 +1115,9 @@ Commands:
   --inaccurate <audit_id>      Mark as inaccurate [--note]
   --closed <audit_id>          Mark as closed/moved
   --duplicate <audit_id>       Mark as duplicate
+  --feedback                   Pending place_feedback (사용자 가리기/재분류)
+  --feedback-trace <id>        원인추적 (kakao mapKakaoCategory 재현 + root_cause 제안)
+  --feedback-bulk-fix <id> [--apply]  동일원인 장소 일괄 재분류 (dry-run; --apply 적용)
 `)
   }
 

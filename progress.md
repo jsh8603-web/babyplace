@@ -99,6 +99,16 @@ S1(place 패턴 Qwen 위임) + S2(classification 패턴 자동화) 7 step 전부
 
 ## Working Notes
 
+> [ckpt-202605160320:btn-babyplace] button 웹앱 모델 sonnet 오표시 수정 완료 — 커밋 009eebd, server 재시작만 남음
+> - **마지막 결정**: 원인 = btn-babyplace 가 button secretary registry 미등록 → server.js L1449 SSOT 1~3순위 null → 4순위 stale `.session-models`(`{"babyplace":"sonnet"}`) 폴백. **수정 완료(미커밋)**: ①`D:/projects/button/agent/server.js` getRegistryMap()(L1565) 전역 `~/.claude/.session-registry.txt` fallback 병합 (secretary overwrite=true → 전역 overwrite=false) ②`.session-models` → `{}` (stale 제거, gitignore라 커밋 제외). `node --check server.js` OK. CLAUDE_MODEL 기본=opus(L21).
+> - **다음 의도**: button repo 커밋 = `git -C D:/projects/button add agent/server.js && git -C D:/projects/button commit` (.session-models gitignore 확인됨 = 커밋 제외). → 사용자에 **button server 재시작 필요** 안내(running 프로세스라 server.js 반영 위해).
+> - **동기화 필요**: button = 별 git repo. server.js 는 server 재시작 전 미반영. babyplace 본세션 poster-vision 커밋들(3aaa0e2/43d155e/fbe14d7/af56c25 등)은 별개 완료.
+
+> [ckpt-202605160235:btn-babyplace] Haiku vs Gemini poster vision 실험 (사용자: T2 OAuth, 2세트, 50샘플)
+> - **마지막 결정**: ①classifier v21 캐릭터21종 커밋 7ca07aa, AUDIT_RULES #7 resolved, r1리서치 afd46c4 ②poster-vision.ts retry보완 **미커밋**: transient backoff + `'RETRY'` sentinel(throw/null 대신)→ poster-audit.ts visionCheck pending 유지 다음루프(accept경로 보존). backoff 게이트 분리 isQuotaExhausted(429/RESOURCE_EXHAUSTED=즉시 next key, "20소진→다른키" 의도 복원) vs isRetryable(503류=backoff). tsc 0 ③50건 실험: Haiku REJECT recall ~75%(명확 9/12, 합성8594·여행상품10149 놓침), Gemini conf ~92%(8594만0.8오판) 단 free-tier 20/day로 50중19만응답. gold오염확인(8546 실제공식콜라보·8524 남산골=과거Opus오판).
+> - **다음 의도**: 핵심건 Opus Read 채점(8524/8587/10149/8594/8560, img=`.haiku-vote-tmp/{event_id}.{ext}`, 8560은 1.9MB 큼) → 세트1·2 진짜정답률 → 종합보고(결론: Gemini정확도우세나 quota병목 → 현행Gemini+retry/quota게이트(완료)가 최적, Haiku단독 정확도미달, 하이브리드 검토) → poster-vision.ts+poster-audit.ts 커밋. 실험스크립트 `_haiku_poster_vote.ts`/`_haiku_poster_explore.ts` 1회용=커밋제외.
+> - **동기화 필요**: 미커밋 = server/utils/poster-vision.ts, server/scripts/poster-audit.ts. T2키 SSOT=`~/.claude/keys/anthropic-oauth.md`(.credentials.json claudeAiOauth.accessToken, header=Bearer+`anthropic-beta:oauth-2025-04-20`). babyplace Gemini=GEMINI_API_KEY(wife)+GEMINI_FALLBACK_KEY(own) 2키공유(.env.local). 결과=`.haiku-vote-tmp/_results.json`(50)+`_run50.log`. 사용자방향="50비슷하면 현행+제미나이retry가 최선".
+
 > [ckpt-202605160050:btn-babyplace] 인계: [handoff-audit-qwen-20260516.md](./handoff-audit-qwen-20260516.md)
 > - **마지막 결정**: 장소감사 wf 완료(00:20~00:41, 21분, 카운터3 메타v6 `audit-improvement-current.md`). Qwen 4단계 개선 커밋 — keyword-yield silent-fail fix(9e4b4b7: keywords.is_active 없음→status), S3-K 프롬프트 보강, S2-Q sanity+역방향게이트(#7 코드구현 완료, AUDIT_RULES.md #7 status open 표기만 미갱신→resolved로 바꿔야). 어린이 캐릭터 whitelist 리서치 Phase1 완료(40선, Phase2 skip).
 > - **다음 의도**: `server/config/classifier-config.json` 편집 — L2 version 20→21, L3 updated_at "2026-05-16", L38 whitelist `"쿠로미"` 다음에 21개 추가: 티니핑/뽀로로/핑크퐁/타요/또봇/헬로카봇/미니특공대/브레드이발소/콩순이/엄마까투리/슈퍼윙스/두다다쿵/크리쳐스/페파피그/코코멜론/블루이/퍼피구조대/겨울왕국/토이스토리/미키마우스/뿡뿡이 (라바/폴리/호비/꼬모/토마스는 2자 일반어충돌로 제외). L41 changelog 맨앞 unshift `{version:21,date:"2026-05-16",change:"어린이 인기 캐릭터 21종 whitelist 추가 (리서치 기반)"}`. → tsc → git add classifier-config.json AUDIT_RULES.md(#7 resolved) → commit. → 사용자 ②qwen효과 ③토큰 보고. → Phase3 memory(.research/) + MEMORY.md 포인터 + `rm -f .research/tmp/search-*`.
