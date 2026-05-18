@@ -281,6 +281,50 @@ export default function PlaceDetail({
           </div>
         </div>
 
+        {/* Top blog posts (먼저 노출) */}
+        {topPosts && topPosts.length > 0 && (
+          <div className="bg-white px-4 py-4">
+            <h2 className="text-[15px] font-semibold text-warm-700 mb-3">
+              인기 포스팅 TOP {topPosts.length}
+            </h2>
+            <div className="space-y-0">
+              {topPosts.map((post, idx) => (
+                <a
+                  key={post.id}
+                  href={post.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="
+                    flex items-start gap-3 py-3
+                    border-b border-warm-200 last:border-0
+                    hover:bg-warm-50 transition-colors -mx-4 px-4
+                  "
+                  aria-label={`${idx + 1}번째 포스팅: ${post.title ?? '제목 없음'}`}
+                >
+                  <span className="text-[13px] font-semibold text-warm-400 w-4 shrink-0 pt-0.5">
+                    {idx + 1}
+                  </span>
+                  <SourceBadge sourceType={post.source_type} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[14px] font-medium text-warm-700 leading-snug line-clamp-2">
+                      {post.title ?? '(제목 없음)'}
+                    </p>
+                    {post.snippet && (
+                      <p className="text-[12px] text-warm-400 mt-0.5 line-clamp-1">
+                        {post.snippet}
+                      </p>
+                    )}
+                    <p className="text-[12px] text-warm-400 mt-0.5">
+                      {formatPostDate(post.post_date)}
+                    </p>
+                  </div>
+                  <ExternalLink size={14} className="text-warm-300 shrink-0 mt-1" />
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Nearby running events */}
         {nearbyEvents && nearbyEvents.length > 0 && (
           <div className="bg-white px-4 py-4">
@@ -332,50 +376,6 @@ export default function PlaceDetail({
                         )}
                       </p>
                     )}
-                  </div>
-                  <ExternalLink size={14} className="text-warm-300 shrink-0 mt-1" />
-                </a>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Top 5 blog posts */}
-        {topPosts && topPosts.length > 0 && (
-          <div className="bg-white px-4 py-4">
-            <h2 className="text-[15px] font-semibold text-warm-700 mb-3">
-              인기 포스팅 TOP {topPosts.length}
-            </h2>
-            <div className="space-y-0">
-              {topPosts.map((post, idx) => (
-                <a
-                  key={post.id}
-                  href={post.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="
-                    flex items-start gap-3 py-3
-                    border-b border-warm-200 last:border-0
-                    hover:bg-warm-50 transition-colors -mx-4 px-4
-                  "
-                  aria-label={`${idx + 1}번째 포스팅: ${post.title ?? '제목 없음'}`}
-                >
-                  <span className="text-[13px] font-semibold text-warm-400 w-4 shrink-0 pt-0.5">
-                    {idx + 1}
-                  </span>
-                  <SourceBadge sourceType={post.source_type} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[14px] font-medium text-warm-700 leading-snug line-clamp-2">
-                      {post.title ?? '(제목 없음)'}
-                    </p>
-                    {post.snippet && (
-                      <p className="text-[12px] text-warm-400 mt-0.5 line-clamp-1">
-                        {post.snippet}
-                      </p>
-                    )}
-                    <p className="text-[12px] text-warm-400 mt-0.5">
-                      {formatPostDate(post.post_date)}
-                    </p>
                   </div>
                   <ExternalLink size={14} className="text-warm-300 shrink-0 mt-1" />
                 </a>

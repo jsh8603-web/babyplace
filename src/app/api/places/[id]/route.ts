@@ -3,6 +3,33 @@ import { createServerSupabase } from '@/lib/supabase-server'
 import type { Place, BlogMention, Event, PlaceDetailResponse } from '@/types'
 
 /**
+ * 이벤트 source 노출 우선순위 (값이 작을수록 먼저).
+ * 신뢰 소스(공식 API)는 babyplace 타깃(아기 동반) 적합성 순:
+ *   babygo > seoul_events > tour_api > interpark.
+ * 그 외(blog_discovery, exhibition_extraction 등)는 비신뢰로 후순위.
+ * poster-audit-rules.md OFFICIAL_POSTER_SOURCES 정의 기반.
+ */
+const EVENT_SOURCE_RANK: Record<string, number> = {
+  babygo: 0,
+  seoul_events: 1,
+  tour_api: 2,
+  interpark: 3,
+}
+const UNTRUSTED_SOURCE_RANK = 4
+
+/** 인근 이벤트 노출 상한 */
+const NEARBY_EVENTS_LIMIT = 20
+
+function eventSourceRank(source: string): number {
+  return EVENT_SOURCE_RANK[source] ?? UNTRUSTED_SOURCE_RANK
+}
+
+/** 정상 대표 이미지 보유 여부 (URL 존재 + 숨김 아님) */
+function hasValidPoster(ev: Pick<Event, 'poster_url' | 'poster_hidden'>): boolean {
+  return !!ev.poster_url && !ev.poster_hidden
+}
+
+/**
  * GET /api/places/[id]
  * Returns: place row + top 5 blog_mentions (by post_date DESC) + isFavorited (login user)
  */
@@ -74,7 +101,7 @@ export async function GET(
   const today = new Date().toISOString().split('T')[0]
   const { data: eventsData } = await supabase
     .from('events')
-    .select('id, name, sub_category, category, venue_name, venue_address, start_date, end_date, date_confirmed, lat, lng, poster_url, time_info, price_info, age_range, source, source_id, source_url, description, created_at, updated_at')
+    .select('id, name, sub_category, category, venue_name, venue_address, start_date, end_date, date_confirmed, lat, lng, poster_url, poster_hidden, time_info, price_info, age_range, source, source_id, source_url, description, created_at, updated_at')
     .gte('end_date', today)
     .lte('start_date', today)
     .not('lat', 'is', null)
@@ -90,11 +117,27 @@ export async function GET(
         nearbyEvents.push({ ...ev, distance: Math.round(dist * 100) / 100 } as Event)
       }
     }
-    // Sort by distance (closest first)
-    nearbyEvents.sort((a, b) => (a.distance ?? 0) - (b.distance ?? 0))
+    // 1) source priority  2) untrusted: valid-poster first  3) distance
+    nearbyEvents.sort((a, b) => {
+      const ra = eventSourceRank(a.source)
+      const rb = eventSourceRank(b.source)
+      if (ra !== rb) return ra - rb
+      if (ra === UNTRUSTED_SOURCE_RANK) {
+        const pa = hasValidPoster(a) ? 0 : 1
+        const pb = hasValidPoster(b) ? 0 : 1
+        if (pa !== pb) return pa - pb
+      }
+      return (a.distance ?? 0) - (b.distance ?? 0)
+    })
   }
 
-  const response: PlaceDetailResponse = { place, topPosts, nearbyEvents, isFavorited, isHidden }
+  const response: PlaceDetailResponse = {
+    place,
+    topPosts,
+    nearbyEvents: nearbyEvents.slice(0, NEARBY_EVENTS_LIMIT),
+    isFavorited,
+    isHidden,
+  }
   return NextResponse.json(response)
 }
 
